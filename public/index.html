@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0c0d14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<title>NEÓN · Prototipo de pelea</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+<div id="game"></div>
+
+<!-- ======================= MENÚ PRINCIPAL ======================= -->
+<section class="screen" id="s-menu">
+  <div class="menu-left">
+    <h1 class="logo">NE<span>Ó</span>N</h1>
+    <p class="sub">prototipo de pelea</p>
+  </div>
+  <div class="menu-right">
+    <button class="mbtn hot" data-go="online">1 vs 1 online</button>
+    <button class="mbtn" data-go="practice">Campo de práctica</button>
+    <button class="mbtn" data-go="armory">Armería y combos</button>
+    <div class="row3">
+      <button class="mbtn sm" data-go="shop">Tienda<i class="mock">maqueta</i></button>
+      <button class="mbtn sm" data-go="profile">Perfil<i class="mock">maqueta</i></button>
+      <button class="mbtn sm" data-go="stages">Escenarios<i class="mock">maqueta</i></button>
+    </div>
+    <button class="mbtn sm ghost" data-go="settings">Ajustes</button>
+  </div>
+</section>
+
+<!-- ======================= SELECCIÓN DE PERSONAJE ======================= -->
+<section class="screen" id="s-select">
+  <header class="bar-top"><button class="back" data-back>‹</button><h2>Elige luchador</h2><span id="selRival" class="pill"></span></header>
+  <div class="sel-wrap">
+    <div class="cards" id="selCards"></div>
+    <aside class="detail" id="selDetail"></aside>
+  </div>
+</section>
+
+<!-- ======================= SALA ONLINE ======================= -->
+<section class="screen" id="s-lobby">
+  <header class="bar-top"><button class="back" data-back>‹</button><h2>1 vs 1 online</h2><span class="pill">al mejor de 3 · 3 min por ronda</span></header>
+  <div class="lobby">
+    <div class="panel">
+      <h3>Crear sala</h3>
+      <p>Comparte el código con tu amigo.</p>
+      <div class="code" id="hostCode">— — — — —</div>
+      <div class="row"><button class="mbtn sm" id="bHost">Crear código</button><button class="mbtn sm ghost" id="bCopy" disabled>Copiar</button></div>
+    </div>
+    <div class="or">o</div>
+    <div class="panel">
+      <h3>Unirse a una sala</h3>
+      <p>Escribe el código que te ha pasado tu amigo.</p>
+      <input id="joinCode" maxlength="5" placeholder="CÓDIGO" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <div class="row"><button class="mbtn sm hot" id="bJoin">Conectar</button></div>
+    </div>
+  </div>
+  <p class="status" id="lobbyStatus"></p>
+</section>
+
+<!-- ======================= PANTALLA VS ======================= -->
+<section class="screen" id="s-vs">
+  <div class="vs-side l" id="vsL"></div>
+  <div class="vs-mid">VS</div>
+  <div class="vs-side r" id="vsR"></div>
+  <div class="vs-info" id="vsInfo"></div>
+</section>
+
+<!-- ======================= HUD DE COMBATE ======================= -->
+<div id="hud">
+  <div class="bars">
+    <div class="side l"><div class="bar"><i class="lag" id="lag0"></i><i class="hp" id="hp0"></i></div><div class="nm"><span id="nm0"></span><span class="pips" id="pips0"></span></div></div>
+    <div class="timer" id="timer">∞</div>
+    <div class="side r"><div class="bar"><i class="lag" id="lag1"></i><i class="hp" id="hp1"></i></div><div class="nm"><span class="pips" id="pips1"></span><span id="nm1"></span></div></div>
+  </div>
+  <div class="combo l" id="combo0"></div><div class="combo r" id="combo1"></div>
+  <div id="banner"></div>
+  <div id="moveName"></div>
+  <div id="perf"></div>
+  <div class="hud-btns">
+    <button class="tbtn" id="bMoves">Movimientos</button>
+    <button class="tbtn" id="bBoxes">Hitboxes</button>
+    <button class="tbtn" id="bPause">❚❚</button>
+  </div>
+</div>
+
+<!-- ======================= CONTROLES TÁCTILES ======================= -->
+<div id="touch">
+  <canvas id="trail"></canvas>
+  <div id="stickBase"></div><div id="stickKnob"></div>
+  <div class="rbtn" id="bGrab">Agarre</div>
+  <div class="rbtn" id="bBlock">Bloqueo</div>
+</div>
+
+<!-- ======================= PANEL DE MOVIMIENTOS / COMBOS ======================= -->
+<aside id="movesPanel">
+  <header><div class="tabs"><button class="tab on" data-tab="moves">Movimientos</button><button class="tab" data-tab="combos">Combos</button></div><button class="x" id="bMovesClose">✕</button></header>
+  <div class="mp-body" id="mpBody"></div>
+</aside>
+
+<!-- ======================= PAUSA ======================= -->
+<section class="overlay" id="s-pause">
+  <div class="box">
+    <h2>Pausa</h2>
+    <p class="hint" id="pauseHint"></p>
+    <button class="mbtn" id="bResume">Continuar</button>
+    <button class="mbtn" id="bResetPos">Reiniciar posiciones</button>
+    <button class="mbtn" id="bPauseSettings">Ajustes</button>
+    <button class="mbtn ghost" id="bQuit">Salir al menú</button>
+  </div>
+</section>
+
+<!-- ======================= RESULTADOS ======================= -->
+<section class="overlay" id="s-results">
+  <div class="box wide">
+    <h2 id="resTitle">¡Victoria!</h2>
+    <div class="score" id="resScore">2 — 1</div>
+    <div class="res-chars" id="resChars"></div>
+    <p class="hint" id="resHint"></p>
+    <div class="row"><button class="mbtn hot" id="bRematch">Revancha</button><button class="mbtn" id="bReselect">Cambiar luchador</button><button class="mbtn ghost" id="bResMenu">Menú</button></div>
+  </div>
+</section>
+
+<!-- ======================= AJUSTES ======================= -->
+<section class="screen" id="s-settings">
+  <header class="bar-top"><button class="back" data-back>‹</button><h2>Ajustes</h2></header>
+  <div class="settings">
+    <label>Calidad gráfica<select id="setQuality"><option value="0">Baja (sin contornos)</option><option value="1">Media</option><option value="2">Alta</option></select></label>
+    <label>Mostrar rendimiento (FPS)<input type="checkbox" id="setFps"></label>
+    <label>Vibración al golpear<input type="checkbox" id="setVib"></label>
+    <label>Opacidad de los controles<input type="range" id="setOpacity" min="20" max="100"></label>
+    <label>Tamaño de los botones<input type="range" id="setBtn" min="60" max="110"></label>
+    <label>Retardo online<select id="setDelay"><option value="0">Automático</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>8</option></select></label>
+  </div>
+</section>
+
+<!-- ======================= MAQUETAS ======================= -->
+<section class="screen" id="s-shop">
+  <header class="bar-top"><button class="back" data-back>‹</button><h2>Tienda</h2><span class="pill mockp">maqueta</span><span class="pill">◆ 1.250</span></header>
+  <div class="shop">
+    <div class="pass"><div class="pass-head"><b>Pase de temporada 1 · Neón Rojo</b><span>Nivel 7 / 50</span></div><div class="pass-track" id="passTrack"></div></div>
+    <div class="skins" id="shopSkins"></div>
+  </div>
+</section>
+<section class="screen" id="s-profile">
+  <header class="bar-top"><button class="back" data-back>‹</button><h2>Perfil</h2><span class="pill mockp">maqueta</span></header>
+  <div class="profile">
+    <div class="pcard"><div class="avatar">G</div><div><b>Gabriel</b><span class="rank">◆ ORO II · 1.482 pts</span></div></div>
+    <div class="pstats"><div><b>48</b>Victorias</div><div><b>31</b>Derrotas</div><div><b>61%</b>Ratio</div><div><b>VEGA</b>Favorita</div></div>
+    <h3>Últimas partidas</h3>
+    <ul class="hist"><li class="w">Victoria 2-1 · VEGA vs KAI · hace 5 min</li><li class="l">Derrota 0-2 · AURA vs SOMBRA · hace 1 h</li><li class="w">Victoria 2-0 · VEGA vs AURA · ayer</li></ul>
+  </div>
+</section>
+<section class="screen" id="s-stages">
+  <header class="bar-top"><button class="back" data-back>‹</button><h2>Escenarios</h2><span class="pill mockp">maqueta</span></header>
+  <div class="stages">
+    <div class="stage s1"><b>Azotea Neón</b><span>Disponible</span></div>
+    <div class="stage s2"><b>Mercado bajo la lluvia</b><span>Próximamente</span></div>
+    <div class="stage s3"><b>Fábrica orbital</b><span>Próximamente</span></div>
+  </div>
+</section>
+
+<!-- ======================= ARMERÍA ======================= -->
+<section class="screen" id="s-armory">
+  <header class="bar-top"><button class="back" data-back>‹</button><h2>Armería</h2><span class="pill">elige un arma para verla en acción</span></header>
+  <div class="armory" id="armoryList"></div>
+</section>
+
+<div id="toast"></div>
+<div id="rotate">↻<span>Gira el móvil en horizontal</span></div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

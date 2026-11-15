@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><title>Laboratorio de animaciones</title>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<style>body{margin:0;background:#1a1730;color:#fff;font:12px sans-serif}#info{position:fixed;top:4px;left:4px}</style></head>
+<body><div id="info">cargando…</div>
+<script type="module">
+import * as THREE from 'three';
+import { ModelLibrary, ModelFighter } from './js/models.js';
+const q = new URLSearchParams(location.search);
+const char = q.get('char') || 'warrior', cols = +(q.get('cols') || 6), cell = +(q.get('cell') || 170);
+const lib = new ModelLibrary(); await lib.preload([char]);
+const clips = (q.get('clips') ? q.get('clips').split(',') : [...lib.clips.keys()]).slice(+(q.get('from') || 0), +(q.get('to') || 999));
+const rows = clips.length, W = cell * cols, H = cell * rows;
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(W, H); r.setScissorTest(true); document.body.appendChild(r.domElement);
+r.setClearColor('#232036');
+const scene = new THREE.Scene();
+scene.add(new THREE.AmbientLight('#ffffff', 0.6)); const k = new THREE.DirectionalLight('#ffffff', 2.2); k.position.set(-2, 4, 6); scene.add(k);
+const f = new ModelFighter(lib, await lib.loadChar(char), { height: 1.8 }); scene.add(f.root);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ color: '#2e2a48' })); floor.rotation.x = -Math.PI / 2; scene.add(floor);
+const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50); cam.position.set(0, 1.1, 4.6); cam.lookAt(0, 0.85, 0);
+const lab = document.createElement('canvas'); lab.width = W; lab.height = H;
+clips.forEach((c, row) => {
+  const m = lib.meta[c];
+  for (let i = 0; i < cols; i++) {
+    const t = m.dur * i / (cols - 1);
+    f.pose(c, t); scene.updateMatrixWorld(true);
+    const x = i * cell, y = H - (row + 1) * cell; r.setViewport(x, y, cell, cell); r.setScissor(x, y, cell, cell); r.render(scene, cam);
+  }
+});
+const ctx = lab.getContext('2d'); ctx.drawImage(r.domElement, 0, 0); ctx.fillStyle = '#ffd23f'; ctx.font = 'bold 13px sans-serif';
+clips.forEach((c, row) => ctx.fillText(`${c} (${lib.meta[c].dur.toFixed(2)}s, golpe ${lib.meta[c].hit.toFixed(2)})`, 4, row * cell + 14));
+r.domElement.remove(); document.body.appendChild(lab);
+document.getElementById('info').textContent = 'listo'; window.READY = true;
+</script></body></html>

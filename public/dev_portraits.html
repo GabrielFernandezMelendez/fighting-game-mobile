@@ -1,0 +1,25 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Retratos</title>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<style>body{margin:0;background:#111}#h{width:448px;height:576px}</style></head><body><div id="h"></div>
+<script type="module">
+// Herramienta de desarrollo: genera los retratos de la pantalla de selección a partir de los modelos
+import { Renderer3D } from './js/render.js';
+import { CHARS } from './js/data.js';
+const R = new Renderer3D(); await R.init(document.getElementById('h'));
+const T = R.T; R.renderer.setPixelRatio(1); R.renderer.setSize(448, 576);
+const out = {};
+const poses = { aura: ['Sword_Idle', 0.3], vega: ['Sword_Idle', 0.5], kai: ['Sword_Idle', 0.6], sombra: ['Sword_Idle', 0.2] };
+for (const id of ['aura', 'vega', 'kai', 'sombra']) {
+  const C = CHARS[id]; R.setFighters([{ c: id, w: C.weapon }, { c: 'dummy', w: 'none' }]);
+  R.scene.children.forEach(o => { if (!o.isLight && o !== R.rigs[0].root) o.visible = false; });
+  R.rigs[1].root.visible = false; R.rigs[1].shadow.visible = false; R.rigs[0].shadow.visible = false;
+  const mf = R.rigs[0].model; const [clip, x] = poses[id];
+  mf.root.position.set(0, 0, 0); mf.root.scale.set(-1, 1, 1); mf.turn.rotation.y = 0.35;
+  mf.pose(clip, R.lib.meta[clip].dur * x);
+  R.scene.background = new T.Color(C.accent).multiplyScalar(0.12);
+  const cam = new T.PerspectiveCamera(26, 448 / 576, 0.1, 50); cam.position.set(0.55, 1.3, 4.3); cam.lookAt(0.0, 1.02, 0);
+  R.scene.updateMatrixWorld(true); R.renderer.render(R.scene, cam);
+  out[id] = R.renderer.domElement.toDataURL('image/jpeg', 0.9);
+}
+window.OUT = out; window.READY = true;
+</script></body></html>

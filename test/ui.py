@@ -1,0 +1,42 @@
+import asyncio, sys
+from playwright.async_api import async_playwright
+OUT='/home/claude/neon2/test/'
+async def main():
+    async with async_playwright() as p:
+        b=await p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
+        ctx=await b.new_context(viewport={'width':844,'height':390},device_scale_factor=2,is_mobile=True,has_touch=True)
+        pg=await ctx.new_page(); logs=[]
+        pg.on('pageerror',lambda e: logs.append('PAGEERR '+str(e)))
+        pg.on('console',lambda m: logs.append(m.type+': '+m.text) if m.type=='error' else None)
+        await pg.route('**/fonts.g*/**',lambda r:r.abort())
+        await pg.route('**/peerjs*',lambda r:r.abort())
+        await pg.goto('http://localhost:8780/index.html'); await pg.wait_for_timeout(600)
+        await pg.screenshot(path=OUT+'u_menu.png')
+        await pg.tap('[data-go=practice]'); await pg.wait_for_timeout(500)
+        await pg.tap('.card[data-id=kai]'); await pg.wait_for_timeout(300)
+        await pg.screenshot(path=OUT+'u_select.png')
+        await pg.tap('#bConfirm'); await pg.wait_for_timeout(2500)
+        await pg.screenshot(path=OUT+'u_game_kai.png')
+        await pg.tap('#bMoves'); await pg.wait_for_timeout(400)
+        await pg.tap('.tab[data-tab=combos]'); await pg.wait_for_timeout(300)
+        await pg.screenshot(path=OUT+'u_combos.png')
+        btns=await pg.query_selector_all('#mpBody [data-demo]')
+        await btns[1].tap(); await pg.wait_for_timeout(1700)
+        await pg.screenshot(path=OUT+'u_demo.png')
+        await pg.wait_for_timeout(2500)
+        print('kai combo hits', await pg.evaluate("window.__app.M.fighters[1].comboHits"), await pg.evaluate("document.getElementById('perf').textContent"))
+        await pg.tap('#bMovesClose'); await pg.wait_for_timeout(200)
+        await pg.tap('#bPause'); await pg.wait_for_timeout(300); await pg.screenshot(path=OUT+'u_pause.png'); await pg.tap('#bQuit'); await pg.wait_for_timeout(400)
+        await pg.tap('[data-go=armory]'); await pg.wait_for_timeout(300); await pg.screenshot(path=OUT+'u_armory.png')
+        await pg.tap('.wcard >> nth=3'); await pg.wait_for_timeout(2500); await pg.screenshot(path=OUT+'u_sombra_moves.png')
+        btns=await pg.query_selector_all('#mpBody [data-demo]')
+        await btns[1].tap(); await pg.wait_for_timeout(330); await pg.screenshot(path=OUT+'u_spear_fwd.png')
+        await pg.wait_for_timeout(900)
+        await btns[8].tap(); await pg.wait_for_timeout(700); await pg.screenshot(path=OUT+'u_spear_air.png')
+        await pg.wait_for_timeout(1000)
+        await pg.tap('#bPause'); await pg.wait_for_timeout(200); await pg.tap('#bQuit'); await pg.wait_for_timeout(300)
+        for s in ['shop','profile','stages','settings']:
+            await pg.tap(f'[data-go={s}]'); await pg.wait_for_timeout(300); await pg.screenshot(path=OUT+f'u_{s}.png'); await pg.tap(f'#s-{s} [data-back]'); await pg.wait_for_timeout(200)
+        await pg.tap('[data-go=online]'); await pg.wait_for_timeout(300); await pg.screenshot(path=OUT+'u_lobby.png')
+        print('\n'.join(logs[:12])); await b.close()
+asyncio.run(main())
