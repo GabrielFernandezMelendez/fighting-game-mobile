@@ -39,6 +39,14 @@ assert.equal(config.previewType, 'concept-relief',
   'reference-only preview must not be labeled as production model');
 assert.equal(config.productionModelUrl, null,
   'the production rigged model has not been delivered');
+const conceptPNG = readFileSync(new URL('../public/assets/previews/aura_concept_v3.png', import.meta.url));
+assert.equal(conceptPNG.subarray(0,8).toString('hex'), '89504e470d0a1a0a',
+  'Aura concept must be a real PNG (not an SVG preview)');
+assert.equal(conceptPNG.readUInt32BE(16),1672,'Aura concept must preserve original width');
+assert.equal(conceptPNG.readUInt32BE(20),941,'Aura concept must preserve original height');
+const reliefGLB = readFileSync(new URL('../public/assets/previews/aura-concept-relief.glb', import.meta.url));
+assert.equal(reliefGLB.subarray(0,4).toString('ascii'),'glTF','reference must be a binary GLB');
+assert.equal(reliefGLB.readUInt32LE(4),2,'reference GLB version must be 2');
 assert.ok(preview.includes('new THREE.OrthographicCamera('), 'side orthographic camera missing');
 assert.ok(!preview.includes('canvas.addEventListener(\'pointermove\''), 'orbit dragging must be disabled');
 assert.ok(preview.includes('new GLTFLoader()'), 'GLB loader missing');
