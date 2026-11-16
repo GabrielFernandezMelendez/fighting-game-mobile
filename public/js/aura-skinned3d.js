@@ -1,5 +1,5 @@
 // AURA V6 — genuine skinned 3D mesh technical prototype, not the approved final sculpt.
-// 14-bone humanoid skeleton; surface vertices blend between joints. Three.js runtime
+// 17-bone humanoid skeleton; surface vertices blend between joints. Three.js runtime
 // shows early deformation + three authored poses. The concept relief remains the
 // default visual fidelity target until the Blender mesh passes art review.
 export function createAuraSkinned3D(THREE, materialRamp) {
