@@ -18,11 +18,11 @@ Referencias de dirección: Guilty Gear Xrd (técnicas de ASW, GDC 2015), 2XKO, M
 ### Pilares (lo que nunca se rompe)
 | Pilar | Qué significa | Dónde vive en el código |
 |---|---|---|
-| **Color plano** | Cada zona tiene **un** color de paleta. Sin degradados, sin sombras pintadas en la textura. | Atributo de color por cara del GLB (`COLOR_0`) |
-| **Dos tonos de luz** | Luz y sombra con un corte duro. La sombra tiene **color propio por material** (lavanda, rosado…), nunca gris ni negro. | `makeCel` + `CEL_PRESETS` en `public/js/models.js` |
-| **Tinta** | Contorno exterior grueso y líneas finas (~2 px) donde cambia el color o hay un pliegue fuerte. | Contorno: `outlineMaterial`. Tinta interior: `prepareInk` + `INK` |
+| **Color plano** | Cada zona tiene **un** color de paleta. Sin degradados, sin sombras pintadas en la textura. | Zona por vértice en el GLB (`COLOR_0.r`) + paleta en `extras`; el shader elige la zona por píxel |
+| **Dos tonos de luz** | Luz y sombra con un corte duro. La sombra tiene **color propio por zona** (marfil → beige, pantalón → violeta…), nunca gris ni negro, y nunca igual al color de otra zona. | `makeCel` + `ZONE_SHADE` / `CEL_PRESETS` en `public/js/models.js` |
+| **Tinta** | Contorno exterior grueso y líneas finas (~2,5 px) donde cambia el color. | Contorno: `outlineMaterial`. Tinta interior: `prepareLabels` + `INK` |
 | **Silueta legible** | De perfil se distinguen cabeza, torso, brazos, piernas y arma. | Diseño + contorno + tinta |
-| **Efectos cartoon** | Polvo, estelas e impactos planos, de 2 tonos, con tinta, a 12 fps. | `public/js/vfx.js` |
+| **Efectos cartoon** | Polvo, estelas e impactos planos con volumen cel (2–3 tonos), a 12 fps. El polvo **no** lleva tinta: es ondulado y suave como en la lámina. | `public/js/vfx.js` |
 | **Rendimiento móvil** | ≤ 30 k triángulos por personaje, sin texturas grandes y sin posprocesado. | Pipeline (F2b) |
 
 ---
@@ -86,19 +86,20 @@ Una **hoja de personaje** como `references/aura/aura_sheet_v3_rgb.png`:
 | 7 | En partida | Lectura de perfil, tinta, polvo, estela, cámara | `index.html?aura3d` (o el flag del personaje) |
 
 ### Qué parámetros puede pedir cambiar un diseñador (sin tocar el modelo)
-- **Color de sombra y dureza por material:** `CEL_PRESETS` en `models.js`.
-  - `shade`: color de la sombra (se multiplica por el color base).
+- **Color de sombra por zona:** `ZONE_SHADE` en `models.js` (multiplica al color de la zona). Regla: la sombra de una zona no puede parecerse al color de una zona vecina.
+- **Dureza y borde por material:** `CEL_PRESETS` en `models.js`.
+  - `shade`: sombra para modelos sin zonas (se multiplica por el color base).
   - `band`: dónde corta la luz; más alto = más sombra.
   - `rim`: intensidad del borde de acento.
   - El preset se elige por el **nombre del material** del GLB: `<Pj>_pelo`, `<Pj>_mascara`, `<Pj>_piel`; el resto usa `default`.
 - **Tinta:** `INK` en `models.js`.
   - `color`, `width` (px a cada lado).
   - `minLuma`: por debajo de esa luminosidad no se dibuja tinta, porque no se vería.
-  - `crease`: umbral de pliegue; más alto = más líneas.
+  - `crease`: umbral de pliegue (solo modelos antiguos con color por cara).
 - **Contorno exterior:** campo `outline` del personaje (Aura 0,016 en `AURA3D_OVERRIDE`, `render.js`).
-- **Polvo:** `DUST_LIGHT`, `DUST_SHADE`, `DUST_FPS` y la forma en `DUST_FRAG`, en `vfx.js`.
+- **Polvo:** `DUST_LIGHT`, `DUST_SHADE`, `DUST_DEEP`, `DUST_FPS` y la forma en `DUST_FRAG` (cuerpo pegado al suelo + 3 volutas onduladas), en `vfx.js`.
   - Revisión aislada en `public/dev_vfx.html` (parámetros `?cols=6&bg=%23…`).
-- **Paleta del modelo:** `DISPLAY` en `tools/bl_aura_retopo.py` (colores finales) y `PALETTE` en `tools/bl_aura_flatcolor.py` (colores para clasificar zonas).
+- **Paleta del modelo:** `DISPLAY` en `tools/bl_aura_retopo.py` (colores finales; viajan en el GLB como `extras.neon_palette` y `neon_zones`) y `PALETTE` en `tools/bl_aura_flatcolor.py` (colores para clasificar zonas).
 
 ### Valores de Aura (referencia)
 | Zona | Color | Sombra (`shade`) |
@@ -111,8 +112,8 @@ Una **hoja de personaje** como `references/aura/aura_sheet_v3_rgb.png`:
 | Pelo | `#DCCBF0` | `#9a8ac4`, band 0,22 |
 | Máscara | `#D8D0D6` | `#a39db8`, band 0,28 |
 | Piel | `#E7B49E` | `#c08680` |
-| Tinta | `#140f1c`, 1 px por lado | — |
-| Polvo | `#e2d5c5` / `#a28d82` + tinta `#0c0912` | — |
+| Tinta | `#140f1c`, 1,3 px por lado | — |
+| Polvo | `#e2d5c5` / `#ae9c90` / `#7f6c66` (luz / sombra / fondo) | — |
 
 ---
 
@@ -140,7 +141,8 @@ Una **hoja de personaje** como `references/aura/aura_sheet_v3_rgb.png`:
   - Comprobar el reparto con el print `ZONAS`.
 - [ ] **F2b** Malla de juego con `bl_aura_retopo.py`:
   - Ajustar `DISPLAY` (colores finales), `names` y los nombres de material `<Pj>_ropa/pelo/mascara/piel`.
-  - Mantener `COLOR=face` y `NORMALS=smooth`.
+  - Mantener `COLOR=label` (zona por vértice + paleta en extras) y `NORMALS=smooth`.
+  - Añadir las zonas nuevas a `ZONE_SHADE` (`models.js`).
   - Objetivo: **30 k triángulos**.
 - [ ] **F5** Rig con `bl_aura_rig.py`:
   - **Mismos nombres de hueso** que el rig del juego.
@@ -163,7 +165,10 @@ Una **hoja de personaje** como `references/aura/aura_sheet_v3_rgb.png`:
 | Síntoma | Causa | Solución |
 |---|---|---|
 | Manchas y colores sucios | Sombras de la ilustración dentro de la textura | Color plano por zonas (F3) + color por cara (`COLOR=face`) |
-| Colores difuminados entre zonas | Textura de 1024 con UV automáticas | Color por cara, sin textura |
+| Colores difuminados entre zonas | Textura de 1024 con UV automáticas | Zona por vértice resuelta por píxel (`COLOR=label`) |
+| Fronteras de color en dientes de sierra | Color por cara (sigue las aristas) | `COLOR=label`: la frontera cruza los triángulos |
+| Chaqueta en sombra igual que el pantalón | Sombra lavanda común a toda la ropa | `ZONE_SHADE` por zona |
+| Polvo con picos negros | Tinta y rayas en el polvo | El polvo no lleva tinta; volumen con 3 tonos |
 | Sombras en dientes de sierra | Normales de malla decimada | `NORMALS=smooth` (difusión de normales) |
 | Manchas negras en prendas finas | El contorno atraviesa capas finas | Doble cara + `polygonOffset` y desplazamiento z en el contorno |
 | Picos en rodillas o muslos al saltar | Pesos de la mano en el muslo; tela trasera siguiendo a la espinilla | Separación mano/pierna + mezcla de rodilla desplazada (`bl_aura_rig.py`) |
@@ -173,7 +178,7 @@ Una **hoja de personaje** como `references/aura/aura_sheet_v3_rgb.png`:
 | Tinta invisible o sucia en zonas negras | Línea oscura sobre color oscuro | `INK.minLuma` |
 
 ### 5.4 Límites conocidos (trabajo para un artista)
-- La malla es triangulada (vóxeles + decimado): las líneas de color y tinta se ven algo dentadas de cerca. La solución es retopología a mano con loops en articulaciones.
+- La malla es triangulada (vóxeles + decimado). Las fronteras ya son suaves, pero siguen el detalle de 30 k triángulos; la retopología a mano con loops en articulaciones sigue siendo la mejora de fondo.
 - Máscara y pelo tienen material propio, pero son la misma malla: separarlos (Editar → por material → `P`) y remodelarlos.
 - Animación: los clips UAL son genéricos. El estilo final pide poses clave propias a 2 frames, pensadas para la cámara lateral (deformación deliberada, orientación de cabeza y hombros por legibilidad, arcos del arma cuidados).
 - Los scripts `bl_aura_*` llevan reglas propias de Aura. Para el siguiente personaje se copian y adaptan; generalizarlos (paleta y zonas en un JSON por personaje) es una mejora pendiente.
@@ -184,6 +189,6 @@ Una **hoja de personaje** como `references/aura/aura_sheet_v3_rgb.png`:
 - **Cel-shading:** sombreado en bandas duras, como dibujo animado.
 - **Inverted hull:** contorno hecho con una copia de la malla, inflada y con las caras invertidas, en negro.
 - **Tinta interior:** líneas dentro de la silueta. Aquí se calculan con coordenadas baricéntricas en el shader.
-- **Color por cara:** cada triángulo tiene un color fijo; no hay textura.
+- **Zona por vértice:** cada vértice guarda su zona; el shader decide en cada píxel qué zona pesa más y pinta su color de paleta (sin textura).
 - **Rim:** borde iluminado con el color de acento en el contorno del volumen.
 - **Animación limitada:** cambiar el dibujo a 12 fps (o mantener poses) en lugar de interpolar a 60.

@@ -98,8 +98,16 @@
 - **Polvo** más en pico, con contorno de tinta y rayas de velocidad negras.
 - Captura: `references/aura/f3/f4_tinta_comic.png`. Simulación sin cambios.
 
+## 2026-11-16 — Guía de estilo y Aura 3D: zonas por píxel, sombra por zona, polvo ondulado
+- Nueva guía [NEON_ART_STYLE.md](NEON_ART_STYLE.md) (PR #16).
+- **Zonas por píxel** (`COLOR=label` en `bl_aura_retopo.py` + `prepareLabels` en `models.js`): la zona de color se guarda por vértice y el shader la resuelve por píxel. Fronteras y tinta suaves en lugar de dientes de sierra. La paleta viaja en el GLB (`extras`).
+- **Sombra por zona** (`ZONE_SHADE`): la chaqueta oscurece a beige y el pantalón a violeta, así no se confunden.
+- Normales más suaves (30 pasadas) y tinta algo más gruesa (1,3 px por lado).
+- **Polvo** rehecho sin tinta ni picos: cuerpo pegado al suelo, volutas onduladas y volumen cel de tres tonos, como en la lámina.
+- Captura: `references/aura/f3/f4_zonas_por_pixel.png`. Simulación sin cambios.
+
 ## 2026-11-16 — Primer prototipo 3D de Sombra
 
 - [Fuente editable y notas de revisión](../art/sombra/README.md). Malla propia de Blender con materiales planos y pesos, basada en la lámina de Sombra.
-- Prueba experimental con `?sombra3d` en el modo Práctica. Comparte esqueleto y clips con Aura. La selección de arma sigue pasando por el socket de la mano.
+- Prueba experimental con `?aura3d` en el modo Práctica para Aura y Sombra. `?sombra3d` activa solo el prototipo de Sombra. Comparte esqueleto y clips con Aura. La selección de arma sigue pasando por el socket de la mano.
 - Capturas de Blender en `references/sombra/prototype/`. Pendiente de revisión visual en partida con WebGL y en un móvil real.

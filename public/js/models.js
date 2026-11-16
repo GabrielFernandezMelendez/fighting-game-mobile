@@ -48,11 +48,42 @@ export const CEL_PRESETS = {
   vendas:  { shade: '#b78a8b', band: 0.10, rim: 0.05 },
   piel:    { shade: '#c08680', band: 0.10, rim: 0.10 },
 };
-export const INK = { color: '#140f1c', width: 1.0, minLuma: 0.22, crease: -0.25 };   // crease: coseno del pliegue que también lleva tinta   // px a cada lado de la frontera (≈2 px en total)
+// Sombra por ZONA (multiplica al color base). Evita que la sombra de la chaqueta marfil se vuelva violeta
+// y se confunda con el pantalón: cada zona oscurece hacia su propio tono, como en la lámina.
+export const ZONE_SHADE = {
+  chaqueta: '#c9b6b4', pantalon: '#8f7bb4', gris: '#9a8fb0', grafito: '#8a7fa0', negro: '#9a90b0',
+  naranja: '#d8826e', pelo: '#a493d0', mascara: '#aaa3c0', piel: '#d39c90', metal: '#9f97b6',
+};
+export const INK = { color: '#140f1c', width: 1.3, minLuma: 0.22, minLumaLin: 0.04, crease: -0.25 };   // crease: coseno del pliegue que también lleva tinta   // px a cada lado de la frontera (≈2 px en total)
 
 // Marca las aristas donde cambia el color plano (por cara) entre todas las mallas del modelo, incluso entre
 // materiales distintos (pelo/máscara/piel/ropa son primitivas separadas en el GLB). Convierte a no indexado y
 // añade bary (baricéntricas) e inkE (1 = la arista opuesta a esa esquina lleva tinta).
+// Modo etiquetas (GLB con extras neon_labels/neon_palette, ver COLOR=label en bl_aura_retopo.py):
+// COLOR_0.r guarda la zona de cada vértice. Se pasa a no indexado con baricéntricas (bary) y las tres zonas
+// del triángulo (labs); el shader colorea y entinta por píxel → fronteras curvas y limpias.
+export function prepareLabels(scene) {
+  let n = 0;
+  scene.traverse(o => {
+    if (!o.isMesh || !o.geometry.attributes.color) return;
+    let a = o, ex = null; while (a && !ex) { if (a.userData && a.userData.neon_palette) ex = a.userData; a = a.parent; }
+    if (!ex) return;
+    let g = o.geometry; if (g.index) { g = g.toNonIndexed(); o.geometry = g; }
+    const col = g.attributes.color, cnt = col.count;
+    const bary = new Float32Array(cnt * 3), labs = new Float32Array(cnt * 3);
+    for (let t = 0; t < cnt / 3; t++) {
+      const L = [0, 1, 2].map(k => Math.floor(col.getX(t * 3 + k) * 16));
+      for (let k = 0; k < 3; k++) { bary[(t * 3 + k) * 3 + k] = 1; labs.set(L, (t * 3 + k) * 3); }
+    }
+    g.setAttribute('bary', new THREE.BufferAttribute(bary, 3)); g.setAttribute('labs', new THREE.BufferAttribute(labs, 3));
+    g.deleteAttribute('color');
+    g.userData.neonPalette = String(ex.neon_palette).split(',').map(h => new THREE.Color(h.trim()));
+    g.userData.neonZones = String(ex.neon_zones || '').split(',').map(z => z.trim());
+    n++;
+  });
+  return n;
+}
+
 export function prepareInk(scene) {
   const meshes = []; scene.traverse(o => { if (o.isMesh && o.geometry.attributes.color && !(o.material && o.material.map)) meshes.push(o); });
   if (!meshes.length) return 0;
@@ -87,31 +118,53 @@ export function prepareInk(scene) {
   return marked;
 }
 
-export function makeCel(mat, preset, rimColor = '#ff9a50') {
+export function makeCel(mat, preset, rimColor = '#ff9a50', palette = null, zones = null) {
   const P = preset || CEL_PRESETS.default;
+  const pal = Array.from({ length: 16 }, (_, i) => (palette && palette[i]) ? palette[i].clone() : new THREE.Color('#ff00ff'));
+  const shd = Array.from({ length: 16 }, (_, i) => new THREE.Color((zones && ZONE_SHADE[zones[i]]) || P.shade));
   mat.userData.cel = { uShade: { value: new THREE.Color(P.shade) }, uBand: { value: P.band }, uRim: { value: new THREE.Color(rimColor).multiplyScalar(P.rim) },
-    uInk: { value: new THREE.Color(INK.color) }, uInkW: { value: INK.width } };
+    uInk: { value: new THREE.Color(INK.color) }, uInkW: { value: INK.width }, uPal: { value: pal }, uShd: { value: shd }, uMinLuma: { value: INK.minLumaLin } };
+  if (palette) mat.defines = { ...(mat.defines || {}), NEON_LABELS: '' };
   mat.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, mat.userData.cel);
     // líneas de tinta interiores (cómic): aristas entre zonas de color marcadas por prepareInk()
-    sh.vertexShader = 'attribute vec3 bary; attribute vec3 inkE; varying vec3 vBary; varying vec3 vInkE;\n' +
-      sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vBary = bary; vInkE = inkE;');
-    sh.fragmentShader = 'uniform vec3 uShade; uniform float uBand; uniform vec3 uRim; uniform vec3 uInk; uniform float uInkW; varying vec3 vBary; varying vec3 vInkE;\n' + sh.fragmentShader.replace('#include <opaque_fragment>', `
-      vec3 alb = diffuseColor.rgb;
+    sh.vertexShader = 'attribute vec3 bary; attribute vec3 inkE; attribute vec3 labs; varying vec3 vBary; varying vec3 vInkE; varying vec3 vLabs;\n' +
+      sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vBary = bary; vInkE = inkE; vLabs = labs;');
+    sh.fragmentShader = 'uniform vec3 uShade; uniform float uBand; uniform vec3 uRim; uniform vec3 uInk; uniform float uInkW; uniform vec3 uPal[16]; uniform vec3 uShd[16]; uniform float uMinLuma; varying vec3 vBary; varying vec3 vInkE; varying vec3 vLabs;\n' + sh.fragmentShader.replace('#include <opaque_fragment>', `
+      vec3 alb = diffuseColor.rgb, shadeC = uShade;
+      float inkL = 0.0;
+      #ifdef NEON_LABELS
+        // zona con más peso en este punto del triángulo (las esquinas con la misma zona suman)
+        vec3 w = vBary, L = vLabs;
+        float e01 = step(abs(L.x - L.y), 0.5), e02 = step(abs(L.x - L.z), 0.5), e12 = step(abs(L.y - L.z), 0.5);
+        vec3 W = vec3(w.x + e01 * w.y + e02 * w.z, w.y + e01 * w.x + e12 * w.z, w.z + e02 * w.x + e12 * w.y);
+        float lb = L.x, wb = W.x; if (W.y > wb) { lb = L.y; wb = W.y; } if (W.z > wb) { lb = L.z; wb = W.z; }
+        float ws = -1.0, ls = 0.0;
+        if (abs(L.x - lb) > 0.5 && W.x > ws) { ws = W.x; ls = L.x; }
+        if (abs(L.y - lb) > 0.5 && W.y > ws) { ws = W.y; ls = L.y; }
+        if (abs(L.z - lb) > 0.5 && W.z > ws) { ws = W.z; ls = L.z; }
+        alb = uPal[int(lb + 0.5)]; shadeC = uShd[int(lb + 0.5)];
+        if (ws >= 0.0) {
+          vec3 other = uPal[int(ls + 0.5)];
+          float lum = min(dot(alb, vec3(0.2126, 0.7152, 0.0722)), dot(other, vec3(0.2126, 0.7152, 0.0722)));
+          float dd = wb - ws, px = dd / max(fwidth(dd), 1e-5);   // distancia a la frontera en píxeles
+          inkL = (1.0 - smoothstep(uInkW - 0.6, uInkW + 0.6, px)) * step(uMinLuma, lum);
+        }
+      #endif
       // luz clave fija respecto a la cámara (arriba y a un lado): sombras legibles en la vista lateral
       float nl = dot(normal, normalize(vec3(0.62, 0.58, 0.52)));
       float lit = smoothstep(uBand - 0.015, uBand + 0.015, nl);
-      vec3 cel = mix(alb * uShade, alb, lit);
+      vec3 cel = mix(alb * shadeC, alb, lit);
       float fres = 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
       cel += uRim * step(0.62, fres) * lit;
       vec3 bd = vBary / max(fwidth(vBary), vec3(1e-5));              // distancia a cada arista en píxeles
       bd += (1.0 - step(0.5, vInkE)) * 1e4;                           // solo las aristas de frontera
       float ink = 1.0 - smoothstep(uInkW - 0.6, uInkW + 0.6, min(bd.x, min(bd.y, bd.z)));
-      cel = mix(cel, uInk, ink);
+      cel = mix(cel, uInk, max(ink, inkL));
       outgoingLight = cel + totalEmissiveRadiance;
       #include <opaque_fragment>`);
   };
-  mat.customProgramCacheKey = () => 'neon-cel-ink';
+  mat.customProgramCacheKey = () => palette ? 'neon-cel-labels' : 'neon-cel-ink';
   mat.needsUpdate = true;
   return mat;
 }
@@ -157,7 +210,7 @@ export class ModelLibrary {
 }
 
 function prepare(scene) {
-  prepareInk(scene);   // antes del contorno: cambia la geometría a no indexada
+  prepareLabels(scene); prepareInk(scene);   // antes del contorno: cambia la geometría a no indexada
   scene.traverse(o => {
     if (!o.isMesh) return;
     addOutlineNormals(o.geometry);
@@ -218,7 +271,7 @@ export class ModelFighter {
     if (cel) this.model.traverse(o => {
       if (!o.isMesh || o.userData.outline || !o.material.isMeshToonMaterial) return;
       const key = Object.keys(CEL_PRESETS).find(k => (o.userData.srcMat || '').toLowerCase().includes(k));
-      makeCel(o.material, CEL_PRESETS[key] || CEL_PRESETS.default, rimColor);
+      makeCel(o.material, CEL_PRESETS[key] || CEL_PRESETS.default, rimColor, o.geometry.userData.neonPalette || null, o.geometry.userData.neonZones || null);
     });
     this.mixer = new THREE.AnimationMixer(this.model);
     const set = lib.animsFor(model); this.meta = set.meta;

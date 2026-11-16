@@ -3,7 +3,7 @@
 Primera malla volumétrica editable de Sombra, con capucha de rostro oculto, bufanda, bolsa asimétrica, vendaje y pantalón ancho. Referencia de forma y paleta en la [lámina de Sombra](https://chatgpt.com/library?file_id=libfile_a409e672cfa48191b5bc6bd36f43d025&account_id=personal). Se aplicaron las pautas de [NEÓN Art Style](https://github.com/GabrielFernandezMelendez/fighting-game-mobile/pull/16) para las masas de color, la silueta lateral y el cel-shading.
 
 - `sombra_prototype.blend` contiene piezas editables, nueve colores de material y el esqueleto del juego. La base se construyó directamente en Blender. El exportador usa una sola malla con grupos de material y color plano por cara para la tinta interior. El arma se monta durante la partida.
-- `public/assets/chars/sombra.glb` se activa con `index.html?sombra3d` en **Práctica → Sombra**. Comparar con una partida sin el parámetro.
+- `public/assets/chars/sombra.glb` se activa con `/?aura3d` en **Campo de práctica → Sombra**. El mismo enlace activa el modelo de Aura al elegirla. `/?sombra3d` sigue disponible para revisar solo a Sombra.
 - Comparación en Blender desde [tres cuartos](../../character-documentation/references/sombra/prototype/tres-cuartos.png) y [perfil](../../character-documentation/references/sombra/prototype/perfil.png). Estas capturas muestran geometría y materiales en Blender Workbench.
 
 ## Regenerar

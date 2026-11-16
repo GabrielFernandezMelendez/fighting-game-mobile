@@ -156,5 +156,5 @@ bpy.ops.wm.save_as_mainfile(filepath=out + '.blend')
 bpy.ops.object.select_all(action='SELECT')
 has_col = any(o.type == 'MESH' and o.data.color_attributes for o in bpy.data.objects)
 bpy.ops.export_scene.gltf(filepath=out + '.glb', use_selection=True, export_animations=False, export_skins=True,
-                          export_image_format='WEBP', export_image_quality=90, export_vertex_color='ACTIVE' if has_col else 'MATERIAL')
+                          export_image_format='WEBP', export_image_quality=90, export_vertex_color='ACTIVE' if has_col else 'MATERIAL', export_extras=True)
 print('OK')
