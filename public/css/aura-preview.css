@@ -28,3 +28,9 @@
 .aura-preview-doc{align-self:flex-start;font-size:14px}
 @media(max-width:760px){.aura-preview-header{flex-wrap:wrap;gap:10px}.aura-preview-phase{display:none}.aura-preview-content{grid-template-columns:1fr}.aura-preview-stage{height:62dvh;min-height:310px}.aura-preview-panel{padding:13px}.aura-preview-layout{gap:10px}}
 @media(max-height:430px) and (orientation:landscape){.aura-preview-content{grid-template-columns:minmax(0,1fr) 235px}.aura-preview-stage{height:75dvh;min-height:240px}.aura-preview-header h1{font-size:21px}}
+
+/* Iteración V2: estados de comparación y daga en el laboratorio de Aura. */
+.aura-preview-controls button[disabled]{opacity:.38;cursor:not-allowed}
+.aura-preview-controls button[aria-pressed="true"]{border-color:#ff7a1a;background:rgba(91,46,23,.96)}
+.aura-preview-stage{isolation:isolate}
+@media(max-width:760px){.aura-preview-controls{gap:4px;left:6px;right:6px;bottom:6px}.aura-preview-controls button{font-size:12px;padding:7px 8px}}
