@@ -164,6 +164,12 @@ button { font-family:inherit; }
 /* ---------- Ajustes ---------- */
 .settings { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; max-width:820px; margin:0 auto; width:100%; overflow:auto; }
 .settings label { display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-weight:600; font-size:16px; }
+#bInstall { grid-column:1/-1; }
+#installGuide { width:min(440px, 88vw); max-height:80vh; max-height:80dvh; overflow:auto; touch-action:pan-y;
+  padding:16px 20px; background:#151326; color:#eceef4; border:1px solid var(--line); border-radius:14px; }
+#installGuide::backdrop { background:rgba(6,6,12,.72); }
+#installGuide h2 { margin:0 0 8px; }
+#installGuide ol { padding-left:1.35em; }
 .settings select, .settings input[type=range] { font:inherit; background:#0e0c1c; color:#fff; border:1px solid var(--line); border-radius:8px; padding:4px 6px; max-width:50%; }
 .settings input[type=checkbox] { width:22px; height:22px; accent-color:var(--naranja); }
 
