@@ -45,7 +45,7 @@ export class LocalInput {
         const x = t.clientX, y = t.clientY;
         if (hitBtn(grab, x, y)) { this.push('grab'); grab.classList.add('on'); this.touches.set(t.identifier, { zone: 'grab' }); this.haptic(8); continue; }
         if (hitBtn(block, x, y)) { this.block = true; block.classList.add('on'); this.touches.set(t.identifier, { zone: 'block', x0: x, y0: y }); continue; }
-        if (x < innerWidth / 2) {
+        if (x < root.clientWidth / 2) {
           this.touches.set(t.identifier, { zone: 'stick', x0: x, y0: y });
           base.style.display = knob.style.display = 'block'; base.style.left = knob.style.left = x + 'px'; base.style.top = knob.style.top = y + 'px';
         } else this.touches.set(t.identifier, { zone: 'swipe', x0: x, y0: y, t0: performance.now(), swiped: false, pts: [[x, y]] });
@@ -90,8 +90,12 @@ export class LocalInput {
     root.addEventListener('touchcancel', end, { passive: false });
     this.drawTrails = () => {
       const dpr = devicePixelRatio || 1;
-      if (trail.width !== innerWidth * dpr) { trail.width = innerWidth * dpr; trail.height = innerHeight * dpr; }
-      tctx.setTransform(dpr, 0, 0, dpr, 0, 0); tctx.clearRect(0, 0, innerWidth, innerHeight);
+      const w = root.clientWidth, h = root.clientHeight;
+      const pixelWidth = Math.round(w * dpr), pixelHeight = Math.round(h * dpr);
+      if (trail.width !== pixelWidth || trail.height !== pixelHeight) {
+        trail.width = pixelWidth; trail.height = pixelHeight;
+      }
+      tctx.setTransform(dpr, 0, 0, dpr, 0, 0); tctx.clearRect(0, 0, w, h);
       const live = [...this.touches.values()].filter(s => s.zone === 'swipe').map(s => ({ pts: s.pts, life: 1 }));
       for (const tr of [...this.trails, ...live]) {
         if (tr.pts.length < 2) continue;
