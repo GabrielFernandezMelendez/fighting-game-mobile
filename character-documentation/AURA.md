@@ -1,6 +1,6 @@
 # AURA — La Centella
 
-**Versión:** 1.1 · **Fecha:** 2026-11-16  
+**Versión:** 1.2 · **Fecha:** 2026-11-16  
 **Estado:** A (dirección funcional definida); B (concept visual propuesto); C (blockout Blender programado, todavía sin exportación validada); D (integración pendiente).
 
 ## 1. Línea base implementada — no confundir con propuestas
@@ -120,3 +120,21 @@ Esta ilustración es una **referencia de dirección de arte**, no una lámina t�
 - `tools/bl_aura_blockout.py`: generador preliminar, no sustituye el asset que actualmente usa el juego.
 - `character-documentation/images/aura-turnaround-preview.svg`: vista previa del turnaround en el repositorio.
 - `character-documentation/images/aura-turnaround.png`: fuente a resolución completa, **pendiente de incorporar**.
+
+## 7. Iteración de detalle visual V2 (2026-11-16)
+
+**Estado:** prototipo de vista 3D, no modelo final ni implementación jugable. Versión anterior archivada en [history/AURA-v1.1.md](history/AURA-v1.1.md).
+
+- Implementación del visor: `public/js/aura-detail.js`; integrador y cámara: `public/js/aura-preview.js`.
+- Vista V2 por defecto, botón para alternar con el blockout V1, interruptor para visualizar la daga como objeto independiente.
+- Se añadieron superficies facetadas de máscara, ojos estrechos, mechones de cabello blanco-lila, cuello alto y bufanda en varias capas, chaqueta marfil recortada, hombreras, hebillas, cinturones y telas asimétricas, pantalones gris-violeta angulares y botas con paneles naranjas.
+- El prototipo reutiliza `MeshToonMaterial` y mapa de tres bandas; su geometría es procedural, con piezas separadas. **No tiene rig/skin/animaciones ni exportación GLB final.**
+- Los colores se aproximan a la hoja técnica aprobada, pero la fidelidad definitiva se evaluará en el visor y después sobre una malla de producción con retopología.
+- No cambia el personaje activo del combate ni el arma elegida por partida.
+
+### Validación pendiente en el navegador
+1. Arrancar el menú; entrar en Ajustes → Ver personaje Aura.
+2. Comprobar que se vea V2, que los botones cambien V1/V2 y vistas de frente, perfil, espalda y zoom.
+3. Activar/desactivar la daga; no debe mostrarse si se ha seleccionado el blockout V1.
+4. Verificar que las caras de máscara y ropa se ven desde delante y que las siluetas son legibles en móvil horizontal.
+5. Comparar con el turnaround y anotar problemas concretos antes de iteración V3.
