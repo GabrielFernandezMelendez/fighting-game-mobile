@@ -127,8 +127,8 @@ button { font-family:inherit; }
   display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:#fff;
   background:rgba(16,14,28,.7); border:3px solid rgba(255,255,255,.45); }
 .rbtn.on { background:rgba(255,122,26,.6); border-color:#fff; }
-#bGrab { left:10%; top:42%; border-color:rgba(255,210,63,.85); }
-#bBlock { left:90%; top:42%; border-color:rgba(70,200,255,.85); }
+#bGrab { left:max(10%, calc(env(safe-area-inset-left, 0px) + var(--btn-size) / 2 + 8px)); top:42%; border-color:rgba(255,210,63,.85); }
+#bBlock { left:min(90%, calc(100% - env(safe-area-inset-right, 0px) - var(--btn-size) / 2 - 8px)); top:42%; border-color:rgba(70,200,255,.85); }
 
 /* ---------- Panel de movimientos ---------- */
 #movesPanel { position:fixed; z-index:15; right:0; top:calc(max(8px, env(safe-area-inset-top)) + 80px); bottom:0; border-top-left-radius:14px; width:min(360px, 46vw); background:var(--panel); border-left:1px solid var(--line);
@@ -199,8 +199,16 @@ button { font-family:inherit; }
 
 #toast { position:fixed; left:50%; top:16px; transform:translateX(-50%); z-index:40; background:#1b1830; border:1px solid var(--naranja); border-radius:10px; padding:8px 14px; font-weight:700; display:none; }
 #rotate { position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; flex-direction:column; gap:10px; background:#0c0d14; font-size:22px; font-weight:700; text-align:center; }
+/* Alinear el juego y sus capas cuando las barras del navegador cambian la altura visible. */
+@supports (height: 100dvh) {
+  #game, #hud, #touch, .screen, .overlay, #rotate { bottom:auto; height:100dvh; }
+  #movesPanel { bottom:auto; height:calc(100dvh - max(8px, env(safe-area-inset-top)) - 80px); }
+}
+#movesPanel { padding-right:env(safe-area-inset-right, 0px); padding-bottom:env(safe-area-inset-bottom, 0px); }
+.overlay { padding:env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
 @media (orientation: portrait) and (pointer: coarse) { body.playing #rotate { display:flex; } }
 @media (max-height: 430px) {
+  .menu-right { gap:6px; }
   .bar-top h2 { font-size:20px; } .mbtn { font-size:17px; padding:9px 16px; } .mbtn.sm { font-size:13px; padding:7px 10px; }
   .card .cname b { font-size:18px; } .detail h3 { font-size:24px; } .code { font-size:34px; }
   .wcard svg { height:70px; } .detail > p { display:none; } .detail { gap:5px; padding:10px; } .stat { font-size:12px; } .passive { font-size:12px; padding:4px 8px; } .skins { grid-template-columns:repeat(4, 1fr); } .stage { min-height:110px; }
