@@ -186,7 +186,38 @@ fallbackButton.addEventListener('click', () => {
     ? 'Comparación: prototipo V3 (no es malla de producción)'
     : 'Modelo GLB cargado — cámara lateral fija';
 });
+// Render review: convert standard PBR GLB materials into a readable 3-band
+// toon preview, preserving base color, texture, alpha and emissive maps.
+// Final authored materials/shading still require separate art approval.
+function applyToonReview(model) {
+  const cache = new Map();
+  model.traverse(object => {
+    if (!object.isMesh || !object.material) return;
+    const convert = original => {
+      if (original.isMeshToonMaterial) return original;
+      if (cache.has(original)) return cache.get(original);
+      const shaded = new THREE.MeshToonMaterial({
+        color: original.color ? original.color.clone() : new THREE.Color(0xffffff),
+        map: original.map || null,
+        gradientMap: ramp,
+        emissive: original.emissive ? original.emissive.clone() : new THREE.Color(0x000000),
+        emissiveMap: original.emissiveMap || null,
+        transparent: original.transparent === true,
+        opacity: original.opacity ?? 1,
+        alphaTest: original.alphaTest ?? 0,
+        side: original.side ?? THREE.FrontSide,
+        vertexColors: original.vertexColors === true
+      });
+      cache.set(original, shaded);
+      return shaded;
+    };
+    object.material = Array.isArray(object.material)
+      ? object.material.map(convert)
+      : convert(object.material);
+  });
+}
 function acceptGLTF(gltf, label) {
+  applyToonReview(gltf.scene);
   const normalized = normalizeModel(gltf.scene);
   if (imported) scene.remove(imported);
   if (importedMixer) importedMixer.stopAllAction();
