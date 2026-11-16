@@ -126,3 +126,8 @@
 - El dash no cambia: dos swipes soltando entre ellos. Mantener no genera dash (no hay flanco de subida).
 - Test nuevo `test/swipe-hold.mjs` (en CI). Ayuda de controles actualizada. Simulación y online sin cambios: solo cambia cómo se genera `dx`/`down` en `input.js`.
 
+## 2026-11-16 — Modo contra la CPU (PvE)
+- Botón **Contra la CPU** en el menú; pantalla **Elige rival** con 4 dificultades (Aprendiz, Luchador, Veterano, Leyenda); combate al mejor de 3 con revancha y cambio de rival.
+- `public/js/cpu.js`: CPU por cartas/tácticas con capacidad de ejecución y presión (modelo de Street Fighter 6), niveles con puntos débiles claros (Skullgirls) y sin lectura de botones. Ver `docs/CPU.md`.
+- Test `test/cpu.mjs` (en CI). La simulación y el online no cambian.
+

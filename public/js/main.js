@@ -7,12 +7,13 @@ import { Renderer3D } from './render.js';
 import { LocalInput } from './input.js';
 import { Lockstep, PeerLink } from './net.js';
 import { ComboPlayer } from './combo.js';
+import { CpuPlayer, CPU_LEVELS } from './cpu.js';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const coarse = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 
 // ---------- Ajustes persistentes ----------
-const settings = Object.assign({ quality: coarse ? 1 : 2, fps: true, vibration: true, opacity: 55, btn: 78, delay: 0 }, (() => { try { return JSON.parse(localStorage.getItem('neon-settings') || '{}'); } catch { return {}; } })());
+const settings = Object.assign({ quality: coarse ? 1 : 2, fps: true, vibration: true, opacity: 55, btn: 78, delay: 0, cpuLevel: 1, cpuRival: 'sombra' }, (() => { try { return JSON.parse(localStorage.getItem('neon-settings') || '{}'); } catch { return {}; } })());
 const saveSettings = () => { try { localStorage.setItem('neon-settings', JSON.stringify(settings)); } catch {} };
 function applySettings() {
   document.documentElement.style.setProperty('--ctl-opacity', settings.opacity / 100);
@@ -50,6 +51,7 @@ $$('[data-go]').forEach(b => b.addEventListener('click', () => {
   const g = b.dataset.go;
   if (g === 'online') { resetLobby(); go('s-lobby'); }
   else if (g === 'practice') { app.mode = 'practice'; buildSelect(); go('s-select'); }
+  else if (g === 'cpu') { app.mode = 'cpu'; buildSelect(); go('s-select'); }
   else if (g === 'armory') { buildArmory(); go('s-armory'); }
   else go('s-' + g);
 }));
@@ -84,13 +86,14 @@ function pickChar(id, weapon) {
     <div class="passive"><b>Habilidad: ${C.passive}</b>${C.passiveDesc}</div>
     <div class="wpick-t">Arma</div>
     <div class="wpick">${WKEYS.map(w => { const W = WEAPONS[w]; return `<button class="wchip${w === app.myWeapon ? ' on' : ''}" data-w="${w}">${WSVG[w]}<b>${W.name}${w === C.weapon ? ' <i title="Arma insignia">◆</i>' : ''}</b><span>Fue ${scaleDots(W.scale.str)}<br>Des ${scaleDots(W.scale.dex)}</span></button>`; }).join('')}</div>
-    <button class="mbtn hot" id="bConfirm">${app.mode === 'online' ? (app.myReady ? 'Esperando rival…' : 'Listo') : 'Luchar'}</button>`;
+    <button class="mbtn hot" id="bConfirm">${app.mode === 'online' ? (app.myReady ? 'Esperando rival…' : 'Listo') : app.mode === 'cpu' ? 'Elegir rival ›' : 'Luchar'}</button>`;
   d.querySelectorAll('.wchip').forEach(b => b.addEventListener('click', () => { if (!app.myReady) { app.myWeapon = b.dataset.w; pickChar(id, b.dataset.w); } }));
   $('#bConfirm').addEventListener('click', confirmChar);
   if (app.mode === 'online') app.link.send({ t: 'pick', c: id, w: app.myWeapon, ready: false });
 }
 function confirmChar() {
   if (app.mode === 'practice') { startPractice({ c: app.myChar, w: app.myWeapon }); return; }
+  if (app.mode === 'cpu') { buildRival(); go('s-rival'); return; }
   app.myReady = true; $('#bConfirm').textContent = 'Esperando rival…'; $('#bConfirm').disabled = true;
   app.link.send({ t: 'pick', c: app.myChar, w: app.myWeapon, ready: true });
   if (app.role === 0) maybeStartOnline();
@@ -165,6 +168,51 @@ function resetPositions(close = false) {
   const chars = app.M.chars; app.M = createMatch({ mode: 'training', chars });
   if (close) { app.M.fighters[0].x = -0.45; app.M.fighters[1].x = 0.35; }
   app.cp = null; input.enabled = true;
+}
+
+// ---------- Contra la CPU ----------
+function buildRival() {
+  app.cpuLevel = settings.cpuLevel ?? 1;
+  const rival = ROSTER.includes(settings.cpuRival) ? settings.cpuRival : ROSTER.find(id => id !== app.myChar);
+  $('#rivMe').textContent = 'Tú: ' + CHARS[app.myChar].name; $('#rivMe').style.display = '';
+  const box = $('#rivCards'); box.innerHTML = '';
+  for (const id of ROSTER) {
+    const C = CHARS[id];
+    const c = document.createElement('div'); c.className = 'card'; c.dataset.id = id; c.style.setProperty('--acc', C.accent);
+    c.innerHTML = `<img src="${C.portrait}" alt=""><div class="cname"><b>${C.name}</b><span>${C.title}</span></div>`;
+    c.addEventListener('click', () => pickRival(id));
+    box.appendChild(c);
+  }
+  pickRival(rival);
+}
+function pickRival(id) {
+  settings.cpuRival = id; saveSettings();
+  const C = CHARS[id], lv = app.cpuLevel;
+  $$('#rivCards .card').forEach(c => c.classList.toggle('on', c.dataset.id === id));
+  const d = $('#rivDetail'); d.style.setProperty('--acc', C.accent);
+  d.innerHTML = `<h3>${C.name}</h3><div class="ttl">rival · controlado por la CPU</div>
+    <div class="wpick-t">Dificultad</div>
+    <div class="lvl-grid">${CPU_LEVELS.map((L, i) => `<button class="lvl${i === lv ? ' on' : ''}" data-lv="${i}"><b><i>${'◆'.repeat(i + 1)}${'◇'.repeat(3 - i)}</i> ${L.name}</b><span>${L.desc}</span></button>`).join('')}</div>
+    <p class="lvl-lesson">${CPU_LEVELS[lv].lesson}</p>
+    <button class="mbtn hot" id="bCpuFight">Luchar</button>`;
+  d.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => { app.cpuLevel = settings.cpuLevel = +b.dataset.lv; saveSettings(); pickRival(id); }));
+  $('#bCpuFight').addEventListener('click', startCpuMatch);
+}
+async function startCpuMatch() {
+  app.mode = 'cpu';
+  $$('.overlay').forEach(o => o.classList.remove('on'));
+  const chars = [{ c: app.myChar, w: app.myWeapon || CHARS[app.myChar].weapon }, { c: settings.cpuRival, w: CHARS[settings.cpuRival].weapon }];
+  const side = sel => `<img src="${CHARS[sel.c].portrait}" alt=""><div class="vname">${CHARS[sel.c].name}<small>${WNAMES[sel.w]}</small></div>`;
+  $('#vsL').innerHTML = side(chars[0]); $('#vsR').innerHTML = side(chars[1]);
+  $('#vsInfo').textContent = `CPU · ${CPU_LEVELS[app.cpuLevel].name} · al mejor de 3`;
+  exitGame(); show('s-vs');
+  await ensureRenderer(); R.setFighters(chars);
+  await new Promise(r => setTimeout(r, 1600));
+  if (app.mode !== 'cpu') return;
+  app.M = createMatch({ mode: 'versus', chars });
+  app.cpu = new CpuPlayer({ level: app.cpuLevel, idx: 1, chars, seed: (Date.now() & 0xffff) + 1 });
+  app.lag = [1000, 1000];
+  await enterGame();
 }
 
 // ---------- Panel de movimientos y combos ----------
@@ -294,7 +342,10 @@ function loop(now) {
   acc += dt; let n = 0;
   while (acc >= DT && n < 5) {
     acc -= DT; n++;
-    if (app.mode === 'practice') {
+    if (app.mode === 'cpu') {
+      if (app.paused) continue;
+      step(app.M, [input.sample(), app.cpu.input(app.M)]);
+    } else if (app.mode === 'practice') {
       if (app.paused) continue;
       const F = app.M.fighters[0];
       const inp = app.cp ? app.cp.input(F) : input.sample();
@@ -326,7 +377,7 @@ function updateHUD(M) {
     $('#hp' + i).style.width = (F.hp / F.maxHp * 100) + '%';
     if (F.comboHits === 0) app.lag[i] = F.hp;
     $('#lag' + i).style.width = (app.lag[i] / F.maxHp * 100) + '%';
-    const nm = CHARS[F.charId].name + (app.mode === 'online' && i === local ? ' (TÚ)' : '');
+    const nm = CHARS[F.charId].name + (app.mode === 'online' && i === local ? ' (TÚ)' : '') + (app.mode === 'cpu' && i === 1 ? ' · CPU' : '');
     if ($('#nm' + i).textContent !== nm) $('#nm' + i).textContent = nm;
     const pips = '<i class="' + (M.wins[i] >= 1 ? 'w' : '') + '"></i><i class="' + (M.wins[i] >= 2 ? 'w' : '') + '"></i>';
     if ($('#pips' + i).innerHTML !== pips) $('#pips' + i).innerHTML = pips;
@@ -355,17 +406,21 @@ function showResults(M, local) {
   $('#resTitle').textContent = M.matchWinner === local ? '¡Victoria!' : 'Derrota';
   $('#resScore').textContent = `${M.wins[local]} — ${M.wins[1 - local]}`;
   $('#resChars').innerHTML = M.fighters.map((F, i) => `<div class="${i === M.matchWinner ? 'win' : ''}"><img src="${CHARS[F.charId].portrait}" alt=""></div>`).join('');
+  $('#bReselect').textContent = app.mode === 'cpu' ? 'Cambiar rival' : 'Cambiar luchador';
   updateResultsHint();
   $('#s-results').classList.add('on');
 }
-function updateResultsHint() { $('#resHint').textContent = app.rematch.rival ? 'Tu rival quiere la revancha' : app.rematch.me ? 'Esperando a tu rival…' : ''; }
-$('#bRematch').addEventListener('click', () => { if (app.rematch.me) return; app.rematch.me = true; app.link.send({ t: 'rematch' }); updateResultsHint(); maybeRematch(); });
-$('#bReselect').addEventListener('click', () => { app.link.send({ t: 'reselect' }); app.rivalSel = null; exitGame(); app.myReady = false; app.rivalReady = false; buildSelect(); show('s-select'); });
+function updateResultsHint() {
+  if (app.mode === 'cpu') { $('#resHint').textContent = `CPU · ${CPU_LEVELS[app.cpuLevel].name}`; return; }
+  $('#resHint').textContent = app.rematch.rival ? 'Tu rival quiere la revancha' : app.rematch.me ? 'Esperando a tu rival…' : '';
+}
+$('#bRematch').addEventListener('click', () => { if (app.mode === 'cpu') { startCpuMatch(); return; } if (app.rematch.me) return; app.rematch.me = true; app.link.send({ t: 'rematch' }); updateResultsHint(); maybeRematch(); });
+$('#bReselect').addEventListener('click', () => { if (app.mode === 'cpu') { exitGame(); buildRival(); app.stack = ['s-menu', 's-select']; show('s-rival'); return; } app.link.send({ t: 'reselect' }); app.rivalSel = null; exitGame(); app.myReady = false; app.rivalReady = false; buildSelect(); show('s-select'); });
 $('#bResMenu').addEventListener('click', toMenu);
 
 // ---------- Pausa ----------
 $('#bPause').addEventListener('click', () => {
-  app.paused = app.mode === 'practice';
+  app.paused = app.mode === 'practice' || app.mode === 'cpu';
   $('#pauseHint').textContent = app.mode === 'online' ? 'La partida sigue en curso: salir cuenta como rendición.' : '';
   $('#s-pause').classList.add('on');
 });
