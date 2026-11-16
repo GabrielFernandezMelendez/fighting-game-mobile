@@ -252,6 +252,7 @@ export function createAuraSkinned3D(THREE, materialRamp) {
       bones.UpperArmR.rotation.x=0;
       bones.ForearmR.rotation.z=0;
     }
+    root.updateMatrixWorld(true);
     skeleton.update();
   }
   // A real SkinnedMesh system: positions deform under bone transforms.
