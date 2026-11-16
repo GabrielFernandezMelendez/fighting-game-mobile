@@ -1,0 +1,40 @@
+name: Desplegar en Firebase (peleasdemo)
+# - Al hacer merge en main: tests + deploy a https://peleasdemo.web.app (canal "live").
+# - En cada PR: tests + vista previa en un canal temporal (7 días); el bot comenta la URL en el PR,
+#   así se pueden revisar los cambios desde el móvil ANTES de hacer el merge.
+# Requiere el secreto FIREBASE_SERVICE_ACCOUNT_PELEASDEMO (ver docs/DEPLOY.md). Sin él, el job se salta el deploy.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: firebase-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  deploy:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    env:
+      HAS_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PELEASDEMO != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Tests
+        run: node test/combos.mjs && node test/moves.mjs && node test/online.mjs && node test/ui-shell.mjs && node test/dash.mjs
+      - name: Aviso si falta el secreto
+        if: env.HAS_SA != 'true'
+        run: echo "::warning::Falta el secreto FIREBASE_SERVICE_ACCOUNT_PELEASDEMO; no se despliega (ver docs/DEPLOY.md)."
+      - name: Deploy (live en main, vista previa en PR)
+        if: env.HAS_SA == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PELEASDEMO }}
+          projectId: peleasdemo
+          channelId: ${{ github.event_name == 'pull_request' && '' || 'live' }}
