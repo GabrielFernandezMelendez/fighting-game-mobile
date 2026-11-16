@@ -99,7 +99,7 @@ cp out/aura_rig.glb public/assets/chars/aura.glb && cp out/aura_anims.glb public
 Integración (`models.js` / `render.js`): juego de clips por modelo (`MODEL_ANIMS`), material a doble cara y contorno más fino para Aura, contorno con desplazamiento de profundidad para evitar manchas negras en prendas finas. Simulación, hitboxes y online sin cambios; tests en verde.
 
 **Limitaciones conocidas (para F2 manual en Blender):**
-- El remallado por vóxeles **une las perneras** en una "falda" que se ve al abrir las piernas (salto, guardia baja). Hay que separar piernas y la correa colgante.
+- ~~Perneras como falda~~: no era una membrana (los cortes horizontales muestran las piernas separadas) sino **pesos**: el bone heat dejaba el pantalón ancho en Body/Hips. `bl_aura_rig.py` ahora pasa ese peso a las piernas por debajo de la entrepierna, repartido por cercanía (`LEG_WEIGHTS=1`, por defecto). Quedan picos pequeños en la parte trasera del muslo con la pierna muy levantada. Captura: `references/aura/f2/f2c_pesos_perneras.png`.
 - Malla triangulada sin loops de articulación: los codos y rodillas se deforman de forma blanda.
 - Máscara y pelo no son piezas separadas (van al hueso de la cabeza por peso).
 - UV fragmentadas (Smart UV sobre triángulos): desperdicia textura; con retopo manual se rehacen.
