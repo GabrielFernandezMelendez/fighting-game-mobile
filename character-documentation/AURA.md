@@ -1,6 +1,6 @@
 # AURA — La Centella
 
-**Versión:** 1.2 · **Fecha:** 2026-11-16  
+**Versión:** 1.3 · **Fecha:** 2026-11-16  
 **Estado:** A (dirección funcional definida); B (concept visual propuesto); C (blockout Blender programado, todavía sin exportación validada); D (integración pendiente).
 
 ## 1. Línea base implementada — no confundir con propuestas
@@ -138,3 +138,23 @@ Esta ilustración es una **referencia de dirección de arte**, no una lámina t�
 3. Activar/desactivar la daga; no debe mostrarse si se ha seleccionado el blockout V1.
 4. Verificar que las caras de máscara y ropa se ven desde delante y que las siluetas son legibles en móvil horizontal.
 5. Comparar con el turnaround y anotar problemas concretos antes de iteración V3.
+
+## 8. V3 — Carácter, postura y secondary motion (16-11-2026)
+
+**Estado:** prototipo de visor experimental. Versión anterior preservada en [history/AURA-v1.2.md](history/AURA-v1.2.md).
+
+- Se conserva el aspecto marfil, gris violeta, blanco-lila, grafito y naranja aprobado en la hoja de referencia.
+- Se añadió `public/js/aura-personality.js`, que **reagrupa mallas del prototipo V2 en pivotes de presentación** sin modificar `public/js/data.js` o el personaje del combate.
+- Dos actitudes intercambiables: **relajada** (respiración y cambios de peso) y **guardia** (postura asimétrica, hombros/brazos elevados, cabeza desafiante).
+- Cabello y dos puntas de bufanda reaccionan de forma procedural; ojos con brillo naranja sutil en guardia.
+- Botón de pausar/reanudar movimiento para comparar el volumen inmóvil y animado.
+- El visor conserva comparación V1/V2 (el detalle actual incorpora V3); las acciones de guardia no son comandos ni animaciones del juego.
+- Estos movimientos son transformaciones de grupos rígidos, **NO una animación de esqueleto/skinning ni un resultado final en Blender/GLB**. Falta retopología, rigging, idle autoral, expresiones de máscara, ajustes de deformación y validación de rendimiento.
+- **Objetivo artístico:** transmitir a Aura una personalidad ágil, alerta y algo desafiante, mediante asimetría y *secondary motion*, sin reproducir assets de 2XKO o MARVEL Tōkon.
+
+### Lista de revisión para la PR
+1. Abrir Ajustes → Ver personaje Aura y confirmar que el menú principal funciona.
+2. Activar `Pose de combate` y observar cambios de hombros, torso y dirección de la cabeza.
+3. Pausar/Reanudar y comprobar respiración y movimiento de prendas/cabello.
+4. Comparar V1 y V3, y activar/ocultar daga.
+5. Confirmar controles en navegador de escritorio y móvil horizontal y revisar clipping/articulaciones.
