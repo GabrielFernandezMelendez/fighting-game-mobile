@@ -33,6 +33,14 @@
 - Se congela el enfoque procedural V3 como referencia de comparación, no como asset de producción.
 - Guía [Blender → GLB → Three.js](AURA_GLB_PIPELINE.md); sin GLB definitivo ni alteraciones de gameplay.
 
+## 2026-11-16 — Aura v1.5: referencia PNG nítida y relieve 2.5D
+- Archivada [v1.4](history/AURA-v1.4.md).
+- Publicado PNG 1672 × 941 de concept V3 y un GLB de relieve lateral texturizado.
+- El visor diferencia el **relieve de referencia** del modelo 3D riggeado, todavía inexistente.
+- Se añadió generador reproducible del relieve y controles para mostrar PNG local.
+- Sin alteraciones de mecánicas ni asset usado en combate.
+- Ver [guía del relieve](AURA_CONCEPT_RELIEF.md).
+
 ## Plantilla para revisiones
 ### FECHA — PERSONAJE vX.Y
 - Estado: propuesto / aprobado / implementado
