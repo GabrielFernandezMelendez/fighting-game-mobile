@@ -1,7 +1,7 @@
 # AURA — La Centella
 
-**Versión:** 1.0 · **Fecha:** 2026-11-16  
-**Estado:** A (dirección funcional definida); B (concept visual propuesto); C/D (producción 3D e integración pendientes).
+**Versión:** 1.1 · **Fecha:** 2026-11-16  
+**Estado:** A (dirección funcional definida); B (concept visual propuesto); C (blockout Blender programado, todavía sin exportación validada); D (integración pendiente).
 
 ## 1. Línea base implementada — no confundir con propuestas
 
@@ -91,4 +91,31 @@ Posible personaje `point` para abrir defensas, con assist rápido y extensiones 
 
 **v1.0 — 2026-11-16:** documentada línea base de Aura, dirección funcional A y propuesta artística B. Ningún cambio jugable incluido.
 
-**Para v1.1 o posteriores:** archivar esta ficha íntegra en `history/AURA-v1.0.md`, actualizar esta ficha y registrar motivo, diferencias y pruebas en `CHANGELOG.md`.
+**v1.1 — 2026-11-16:** añadido contrato de referencia artística y generador de blockout no riggeado. v1.0 archivada en [history/AURA-v1.0.md](history/AURA-v1.0.md).
+
+## 6. Identidad visual oficial y blockout — v1.1
+
+**Dirección visual aprobada:** turnaround generado para Aura, con cuatro presentaciones: pose 3/4, frontal, perfil izquierdo y posterior, además de la daga insignia y paleta de colores. Archivo original: `hoja_técnica_de_giro_de_aura.png` (1448 × 1086, entregado junto a esta propuesta). **La imagen binaria debe incluirse en `character-documentation/images/aura-turnaround.png` antes de considerar cerrada la tarea documental.** Mientras no esté subida, este documento no debe anunciarla como archivo presente en GitHub.
+
+Esta ilustración es una **referencia de dirección de arte**, no una lámina técnica perfectamente ortográfica: hay perspectivas y variaciones de pose. El modelador debe normalizar proporciones entre vistas antes de usarla como plano de modelado. La daga se presenta como arma insignia, pero su malla no debe fusionarse con el cuerpo.
+
+### Blockout programático
+- Archivo: `tools/bl_aura_blockout.py`.
+- Comando: `blender -b --python tools/bl_aura_blockout.py -- --out aura-blockout.glb`.
+- Genera piezas independientes de máscara, mechones, chaqueta, pantalones, botas, protección y manos, utilizando materiales planos y formas estilizadas.
+- Los sockets de mano son **referencias espaciales**, no huesos de rig.
+- **No es un modelo animable todavía**: no hay skinning, armature, topología final, texturas de producción ni evaluación de rendimiento real.
+- No sustituir `public/assets/chars/cleric.glb` por este GLB. El juego continuará usando el modelo actual hasta superar pruebas de rig, animación y compatibilidad por arma.
+- La escena define el color por material. En Three.js, el cel-shading y contorno deben aplicarse en `models.js` conforme a la versión de Three.js incluida en el proyecto.
+
+### Criterios de aceptación de C
+1. Reproducir y revisar las cuatro vistas con escala 2.76 del rig de referencia y centrarlo en X.
+2. Verificar uso de máscara, mechones blancos, cuello oscuro/naranja, chaqueta crema, pantalón gris-violeta, botas oscuras.
+3. Conservar ambas manos sin geometría de arma integrada y dejar clearance para lanza y martillo.
+4. Después del blockout, **retopología, armature y retarget** sobre el esqueleto compartido: este paso aún no está hecho.
+5. Comparar el archivo exportado con los tiempos de frames activos, y medir carga / draw calls sobre dispositivos objetivo antes de integrar.
+
+### Estado de los ficheros
+- `public/img/aura.jpg`: splash antiguo, conservar para comparar.
+- `tools/bl_aura_blockout.py`: generador preliminar, no sustituye el asset que actualmente usa el juego.
+- `character-documentation/images/aura-turnaround.png`: **pendiente de subir archivo original**.
