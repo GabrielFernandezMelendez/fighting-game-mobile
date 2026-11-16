@@ -45,8 +45,16 @@
       </div>
       <div class="aura-preview-reference">
         <h3>Concept aprobado</h3>
-        <img src="https://raw.githubusercontent.com/GabrielFernandezMelendez/fighting-game-mobile/main/character-documentation/images/aura-turnaround-preview.svg" onerror="this.src='img/aura.jpg'" alt="Referencia visual de Aura (turnaround reducido o retrato antiguo si no carga)">
-        <a href="https://github.com/GabrielFernandezMelendez/fighting-game-mobile/blob/main/character-documentation/images/aura-turnaround-preview.svg" target="_blank" rel="noopener">Ampliar turnaround ↗</a>
+        <a id="aura-concept-open" href="assets/previews/aura_concept_v3.png" target="_blank" rel="noopener" aria-label="Abrir concepto visual a tamaño original">
+          <img id="aura-concept-image" src="assets/previews/aura_concept_v3.png" alt="Concept art de Aura V3. Referencia aprobada en alta resolución.">
+        </a>
+        <div class="aura-preview-reference-actions">
+          <label for="preview-concept-upload" class="aura-preview-upload">Ver PNG original</label>
+          <input id="preview-concept-upload" type="file" accept="image/png">
+          <button id="preview-concept-zoom" type="button">Ampliar imagen</button>
+        </div>
+        <p id="preview-concept-status" class="aura-preview-status">Comprobando PNG de alta resolución…</p>
+        <p class="aura-preview-hint">Si no está publicado, selecciona el PNG original para verlo nítido. El archivo se muestra solo en tu navegador, sin subirlo a ningún servidor.</p>
       </div>
       <h3>Materiales base</h3>
       <div class="aura-preview-swatches">

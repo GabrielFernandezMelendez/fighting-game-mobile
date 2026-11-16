@@ -1,7 +1,9 @@
 {
   "character": "aura",
-  "modelUrl": null,
-  "note": "Set modelUrl to assets/previews/aura-production.glb only after adding a reviewed GLB in the same PR. Null intentionally selects the V3 fallback.",
+  "modelUrl": "assets/previews/aura-concept-relief.glb",
+  "previewType": "concept-relief",
+  "productionModelUrl": null,
+  "note": "This GLB is a textured 2.5D relief derived from the approved concept art for static silhouette comparison. It is NOT a rigged production 3D model.",
   "camera": "fixed-side-orthographic",
   "forwardAxis": "+Z",
   "upAxis": "+Y"

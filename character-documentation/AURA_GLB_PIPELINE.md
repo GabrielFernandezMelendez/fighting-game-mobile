@@ -49,3 +49,12 @@ La hoja de concepto aprobada es la referencia de identidad (cabello blanco-lila,
 - La hoja gráfica V3 dice “game ready”, pero esa frase forma parte del **concept art**; no significa que exista una malla riggeada ni assets de producción.
 - La carga de un archivo local utiliza `GLTFLoader.parseAsync` y solo acepta `.glb` de hasta 35 MB, pensado para modelos con texturas embebidas.
 - La comparación lateral es una prueba de arte, no un simulador de gameplay ni un sistema de animación de combate.
+
+## Vista V5: referencia visual publicada
+
+- `public/assets/previews/aura_concept_v3.png` contiene el concept V3 a **1672×941 px** con paleta PNG optimizada.
+- `public/assets/previews/aura-concept-relief.glb` es un **relieve 2.5D que copia la vista lateral del concept**, sin rigging. Se usa para fijar el objetivo visual y comparar con V3.
+- El manifiesto `aura.json` indica `previewType: concept-relief` y `productionModelUrl: null`; **no es un modelo de producción**.
+- Para el primer GLB orgánico en Blender, sustituir la referencia por un modelo 3D real y actualizar tipo/estado tras validación artística y técnica.
+
+Ver [AURA_CONCEPT_RELIEF.md](AURA_CONCEPT_RELIEF.md).

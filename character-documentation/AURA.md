@@ -1,6 +1,6 @@
 # AURA — La Centella
 
-**Versión:** 1.4 · **Fecha:** 2026-11-16  
+**Versión:** 1.5 · **Fecha:** 2026-11-16  
 **Estado:** A (dirección funcional definida); B (concept visual propuesto); C (blockout Blender programado, todavía sin exportación validada); D (integración pendiente).
 
 ## 1. Línea base implementada — no confundir con propuestas
@@ -172,3 +172,16 @@ Esta ilustración es una **referencia de dirección de arte**, no una lámina t�
 - No se modifica selección personaje/arma, lucha 1v1, modelos GLB del combate ni simulación determinista.
 
 **Pasos de producción y criterios de aceptación:** [AURA_GLB_PIPELINE.md](AURA_GLB_PIPELINE.md). La pantalla V4 **no implica que exista ya un personaje de calidad 2XKO/Tōkon**.
+
+## 10. V5 — PNG de alta resolución y relieve 2.5D (2026-11-16)
+
+**Implementado como material de revisión, no como personaje riggeado.** Versión anterior en [history/AURA-v1.4.md](history/AURA-v1.4.md).
+
+- [PNG de concepto V3](../public/assets/previews/aura_concept_v3.png) de **1672 × 941 px**, optimizado a paleta de 256 colores para publicación web. No es una transcodificación exacta byte a byte del RGB original.
+- [Relieve GLB lateral](../public/assets/previews/aura-concept-relief.glb): superficie texturizada con pequeña profundidad, generada a partir del perfil del concept. **No hay anatomía 3D completa, armature ni clips de combate.**
+- `public/assets/previews/aura.json` declara `previewType: concept-relief`; la referencia puede compararse con el prototipo rígido V3 desde el botón del visor.
+- La visualización del relieve usa un material sin luces para preservar los colores ya pintados. **No demuestra la calidad de un MeshToonMaterial en una escultura real.**
+- El visor presenta el PNG completo del proyecto y admite PNG local sin subirlo a un servidor.
+- Sigue pendiente modelar, riggear, animar y probar el personaje verdaderamente tridimensional para las cuatro armas.
+
+[Detalles y procedimiento](AURA_CONCEPT_RELIEF.md).

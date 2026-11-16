@@ -107,6 +107,7 @@ let dagger = false;
 
 // GLB cargado desde public/assets/previews/ o arrastrado por el usuario.
 let imported = null;
+let referenceOnly = false;
 let importedMixer = null;
 let clips = [];
 let activeAction = null;
@@ -156,8 +157,12 @@ function syncControls() {
   fallback.root.visible = showingFallback;
   if (imported) imported.visible = !showingFallback;
   fallbackButton.disabled = !imported;
-  fallbackButton.textContent = showingFallback ? 'Mostrar modelo GLB' : 'Comparar con V3';
+  fallbackButton.textContent = showingFallback
+    ? (referenceOnly ? 'Ver relieve de Aura' : 'Mostrar modelo GLB')
+    : 'Comparar con V3';
   weaponButton.disabled = !showingFallback;
+  poseButton.disabled = !showingFallback && referenceOnly;
+  motionButton.disabled = !showingFallback && referenceOnly;
   fallback.weapon.visible = showingFallback && dagger;
   weaponButton.setAttribute('aria-pressed', String(dagger && showingFallback));
   poseButton.textContent = currentPose === 'guard' ? 'Pose relajada' : 'Pose de combate';
@@ -183,8 +188,10 @@ fallbackButton.addEventListener('click', () => {
   if (!showingFallback) applyClip();
   syncControls();
   assetStatus.textContent = showingFallback
-    ? 'Comparación: prototipo V3 (no es malla de producción)'
-    : 'Modelo GLB cargado — cámara lateral fija';
+    ? 'Comparación: prototipo 3D V3 (no es malla de producción)'
+    : (referenceOnly
+      ? 'Relieve 2.5D de referencia · es una ilustración con profundidad, sin rigging'
+      : 'Modelo GLB cargado — cámara lateral fija');
 });
 // Render review: convert standard PBR GLB materials into a readable 3-band
 // toon preview, preserving base color, texture, alpha and emissive maps.
@@ -216,8 +223,32 @@ function applyToonReview(model) {
       : convert(object.material);
   });
 }
-function acceptGLTF(gltf, label) {
-  applyToonReview(gltf.scene);
+// A concept relief has a color texture that must be preserved without changing
+// its painted shadows. Only actual 3D models get the basic toon test shader.
+function preserveReferenceColors(root) {
+  root.traverse(obj => {
+    if (!obj.isMesh || !obj.material) return;
+    const convert = old => new THREE.MeshBasicMaterial({
+      color: old.color ? old.color.clone() : new THREE.Color(0xffffff),
+      map: old.map || null,
+      transparent: true, opacity: old.opacity ?? 1,
+      alphaTest: 0.1, side: THREE.DoubleSide,
+      depthWrite: false, toneMapped: false
+    });
+    obj.material = Array.isArray(obj.material) ? obj.material.map(convert) : convert(obj.material);
+  });
+}
+function acceptGLTF(gltf, label, {conceptRelief = false} = {}) {
+  referenceOnly = conceptRelief;
+  if (conceptRelief) {
+    // The source texture is projected toward +X; flip Z so it reads correctly
+    // from the established camera on +X, without allowing free rotation.
+    gltf.scene.rotation.y = Math.PI;
+    gltf.scene.updateMatrixWorld(true);
+    preserveReferenceColors(gltf.scene);
+  } else {
+    applyToonReview(gltf.scene);
+  }
   const normalized = normalizeModel(gltf.scene);
   if (imported) scene.remove(imported);
   if (importedMixer) importedMixer.stopAllAction();
@@ -231,7 +262,9 @@ function acceptGLTF(gltf, label) {
   applyClip();
   syncControls();
   assetStatus.textContent = label + ' · ' + clips.length + ' animaciones';
-  notice('GLB cargado. Revisa la silueta y la fidelidad al concept desde el lateral.');
+  notice(conceptRelief
+    ? 'Referencia 2.5D cargada: imagen del concept sobre un relieve superficial. No es el personaje 3D definitivo.'
+    : 'GLB 3D cargado. Revisa silueta, rigging y fidelidad al concept desde el lateral.');
 }
 // File input requires a self-contained GLB (embedded textures).
 fileInput.addEventListener('change', async (event) => {
@@ -252,6 +285,50 @@ fileInput.addEventListener('change', async (event) => {
     fileInput.value = '';
   }
 });
+// Full-resolution concept reference. Prefer a published PNG, but never hide
+// a missing asset: let the user load the original PNG locally without upload.
+const conceptImage = get('aura-concept-image');
+const conceptLink = get('aura-concept-open');
+const conceptStatus = get('preview-concept-status');
+const conceptInput = get('preview-concept-upload');
+const conceptZoom = get('preview-concept-zoom');
+const conceptPath = './assets/previews/aura_concept_v3.png';
+const conceptFallback = './img/aura.jpg';
+let localConceptUrl = null;
+let conceptFailed = false;
+conceptImage.addEventListener('error', () => {
+  if (conceptFailed) return;
+  conceptFailed = true;
+  conceptImage.src = conceptFallback;
+  conceptLink.href = conceptFallback;
+  conceptStatus.textContent = 'Falta el PNG original en GitHub. Selecciona «Ver PNG original» para usar la versión de alta resolución de tu ordenador.';
+});
+conceptImage.addEventListener('load', () => {
+  if (!conceptFailed) conceptStatus.textContent = 'Referencia PNG de alta resolución cargada.';
+});
+conceptInput.addEventListener('change', () => {
+  const image = conceptInput.files?.[0];
+  if (!image) return;
+  if (image.type !== 'image/png' || image.size > 15 * 1024 * 1024) {
+    conceptStatus.textContent = 'Selecciona un archivo PNG de menos de 15 MB.';
+    conceptInput.value = '';
+    return;
+  }
+  if (localConceptUrl) URL.revokeObjectURL(localConceptUrl);
+  localConceptUrl = URL.createObjectURL(image);
+  conceptFailed = false;
+  conceptImage.src = localConceptUrl;
+  conceptLink.href = localConceptUrl;
+  conceptStatus.textContent = 'Concept original: ' + image.name + ' — visualización local a resolución completa.';
+  conceptInput.value = '';
+});
+conceptZoom.addEventListener('click', () => {
+  if (conceptLink.href) window.open(conceptLink.href, '_blank', 'noopener');
+});
+window.addEventListener('pagehide', () => {
+  if (localConceptUrl) URL.revokeObjectURL(localConceptUrl);
+});
+
 // Deployable config: modelUrl is null until an authored/rigged file is supplied.
 // No intentional 404s or fake production assets.
 async function loadConfiguredGLB() {
@@ -269,7 +346,9 @@ async function loadConfiguredGLB() {
     }
     notice('Cargando modelo 3D desde el repositorio…');
     const gltf = await loader.loadAsync('./' + config.modelUrl);
-    acceptGLTF(gltf, 'Asset del repositorio: ' + config.modelUrl);
+    acceptGLTF(gltf, config.previewType === 'concept-relief'
+      ? 'Relieve de concept 2.5D' : 'Asset del repositorio: ' + config.modelUrl,
+      {conceptRelief: config.previewType === 'concept-relief'});
   } catch (error) {
     assetStatus.textContent = 'Modo de reserva: prototipo V3';
     notice('No hay GLB utilizable. Se conserva la vista V3: ' + error.message, true);
