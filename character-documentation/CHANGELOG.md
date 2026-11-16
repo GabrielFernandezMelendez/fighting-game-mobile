@@ -8,6 +8,13 @@
 - Establecido protocolo de archivo de versiones previas en `history/`.
 - **Sin cambios al gameplay.**
 
+## 2026-11-16 — Aura v1.1 (PR de preproducción 3D)
+- Versión anterior archivada en [history/AURA-v1.0.md](history/AURA-v1.0.md).
+- Se añadió una **vista previa comprimida y reducida** del turnaround aprobado en `images/aura-turnaround-preview.svg`; original de alta resolución aún pendiente de subir.
+- Se añadió un script de **blockout no riggeado** de Aura en `tools/bl_aura_blockout.py`.
+- Se documentó el uso previsto del cel-shading existente `MeshToonMaterial`; el juego y la simulación permanecen intactos.
+- Blender y las validaciones de exportación/rig/móvil siguen pendientes.
+
 ## Plantilla para revisiones
 ### FECHA — PERSONAJE vX.Y
 - Estado: propuesto / aprobado / implementado
