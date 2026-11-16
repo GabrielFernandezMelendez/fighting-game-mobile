@@ -15,30 +15,39 @@
     <a class="aura-preview-back" href="index.html#settings" aria-label="Volver a ajustes">‹ Volver a ajustes</a>
     <div>
       <div class="aura-preview-kicker">NEÓN / Taller de personajes</div>
-      <h1>Aura <span>· Personalidad V3</span></h1>
+      <h1>Aura <span>· Visor lateral GLB</span></h1>
     </div>
-    <span class="aura-preview-phase">Fase C · Iteración visual 3</span>
+    <span class="aura-preview-phase">Fase C · Pipeline de producción</span>
   </header>
   <div class="aura-preview-content">
     <div class="aura-preview-stage" id="preview-stage">
-      <canvas id="aura-canvas" aria-label="Visor tridimensional interactivo de Aura"></canvas>
-      <div class="aura-preview-legend">Arrastra para girar · Rueda o botones para zoom</div>
+      <canvas id="aura-canvas" aria-label="Vista lateral fija del personaje Aura, sin rotación"></canvas>
+      <div class="aura-preview-legend">Cámara lateral fija · 2.5D · sin rotación</div>
       <div class="aura-preview-controls">
-        <button id="preview-front" type="button">Frente</button>
-        <button id="preview-side" type="button">Perfil</button>
-        <button id="preview-back" type="button">Espalda</button>
-        <button id="preview-reset" type="button">Restablecer</button>
-        <button id="preview-mode" type="button">Ver blockout V1</button>
-        <button id="preview-weapon" type="button" aria-pressed="false">Mostrar daga</button>
+        <button id="preview-fallback" type="button" disabled>Mostrar modelo GLB</button>
         <button id="preview-pose" type="button">Pose de combate</button>
         <button id="preview-motion" type="button">Pausar movimiento</button>
+        <button id="preview-weapon" type="button" aria-pressed="false">Mostrar daga</button>
+        <button id="preview-reset" type="button">Zoom inicial</button>
         <button id="preview-zoom-in" type="button" aria-label="Acercar">+</button>
         <button id="preview-zoom-out" type="button" aria-label="Alejar">−</button>
       </div>
     </div>
     <aside class="aura-preview-panel">
       <h2>La Centella</h2>
-      <p>Iteración 3: Aura adopta una actitud de combate, respiración, cambios de peso, inclinación de cabeza y movimiento secundario en cabello y bufanda. Cambia entre pose relajada y guardia para evaluar su personalidad.</p>
+      <p>La presentación del personaje ahora usa una cámara lateral fija, como en un fighting game 2.5D. Estamos preparando el paso de los prototipos a un modelo creado en Blender.</p>
+      <div class="aura-preview-import">
+        <h3>Probar modelo GLB</h3>
+        <label for="preview-upload" class="aura-preview-upload">Probar GLB local</label>
+        <input type="file" id="preview-upload" accept=".glb,model/gltf-binary">
+        <p>Elige un GLB exportado desde Blender (máx. 35 MB). Se previsualiza solo en tu navegador: no se sube a GitHub ni Firebase.</p>
+        <p id="preview-asset-status" class="aura-preview-asset-status">Comprobando si hay un modelo 3D publicado…</p>
+      </div>
+      <div class="aura-preview-reference">
+        <h3>Concept aprobado</h3>
+        <img src="https://raw.githubusercontent.com/GabrielFernandezMelendez/fighting-game-mobile/main/character-documentation/images/aura-turnaround-preview.svg" onerror="this.src='img/aura.jpg'" alt="Referencia visual de Aura (turnaround reducido o retrato antiguo si no carga)">
+        <a href="https://github.com/GabrielFernandezMelendez/fighting-game-mobile/blob/main/character-documentation/images/aura-turnaround-preview.svg" target="_blank" rel="noopener">Ampliar turnaround ↗</a>
+      </div>
       <h3>Materiales base</h3>
       <div class="aura-preview-swatches">
         <span style="--swatch:#e7ddd5">Marfil</span>
@@ -47,7 +56,7 @@
         <span style="--swatch:#202027">Grafito</span>
         <span style="--swatch:#ff7a1a">Naranja</span>
       </div>
-      <p class="aura-preview-warning"><strong>Modelo experimental.</strong> Esta vista es un prototipo procedural en Three.js con MeshToonMaterial y animación de presentación por grupos rígidos. No es una malla GLB terminada, ni tiene esqueleto deformable, ni clips de combate. La daga es una referencia visual independiente. El personaje del combate no cambia.</p>
+      <p class="aura-preview-warning"><strong>Modelo experimental.</strong> Si no hay un GLB de producción, verás el modelo V3, que es solo una referencia provisional. Al cargar un GLB se usan sus materiales y clips, si existen. Esta página no modifica el personaje jugable, hitboxes ni la selección de arma.</p>
       <p id="preview-status" class="aura-preview-status" role="status">Preparando la vista 3D…</p>
       <a href="https://github.com/GabrielFernandezMelendez/fighting-game-mobile/blob/main/character-documentation/AURA.md" target="_blank" rel="noopener" class="aura-preview-doc">Consultar ficha de personaje ↗</a>
     </aside>
