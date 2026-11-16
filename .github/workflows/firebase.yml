@@ -37,4 +37,5 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PELEASDEMO }}
           projectId: peleasdemo
-          channelId: ${{ github.event_name == 'pull_request' && '' || 'live' }}
+          # ojo: en expresiones de GitHub '' es falso, así que `cond && '' || 'live'` daba siempre 'live'
+          channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || 'live' }}
