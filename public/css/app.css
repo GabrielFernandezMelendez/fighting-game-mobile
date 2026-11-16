@@ -221,3 +221,13 @@ button { font-family:inherit; }
 .aura-preview-setting{grid-column:1/-1;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px;border:1px solid #70472c;background:rgba(55,31,20,.55);border-radius:12px}
 .aura-preview-setting .mbtn{font-size:16px}
 .aura-preview-setting small{font-size:13px;max-width:440px;color:#dfcbbb}
+
+/* ---- Contra la CPU: dificultad ---- */
+.lvl-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0 10px; }
+.lvl { background:#1b1830; border:2px solid var(--line); border-radius:10px; color:#fff; padding:7px 9px; cursor:pointer; text-align:left; font:inherit; }
+.lvl b { display:block; font-size:13px; letter-spacing:.04em; white-space:nowrap; }
+.lvl b i { font-style:normal; color:var(--acc, var(--naranja, #ff7a1a)); }
+.lvl span { display:block; opacity:.8; font-size:11px; margin-top:2px; line-height:1.25; }
+.lvl.on { border-color:var(--acc, #ff7a1a); box-shadow:0 0 12px color-mix(in srgb, var(--acc, #ff7a1a) 45%, transparent); }
+.lvl-lesson { font-size:12px; opacity:.85; margin:0 0 8px; }
+
