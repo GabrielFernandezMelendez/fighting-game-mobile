@@ -20,19 +20,19 @@ import { WEAPONS } from './data.js';
 // lowRead: acierta alto/bajo · antiAir · punish · antiTurtle: agarra si te cubres mucho
 // combo: golpes de su ruta de combo · think: fotogramas entre decisiones · exec: capacidad de ejecución
 export const CPU_LEVELS = [
-  { id: 'aprendiz', name: 'Aprendiz', desc: 'Reacciona tarde y casi no se cubre. Golpes sueltos.',
+  { id: 'aprendiz', name: 'Aprendiz', desc: 'Reacciona tarde y casi no se cubre.',
     lesson: 'Golpea y encadena: apenas se defiende.',
     react: 28, think: 26, exec: 0.6, block: 0.12, fast: 0.2, lowRead: 0.3, antiAir: 0.05, punish: 0.1, antiTurtle: 0,
     combo: 1, dash: 0, jumpIn: 0.03, backoff: 0.05, aggression: 0.5, mixup: 0 },
-  { id: 'luchador', name: 'Luchador', desc: 'Se cubre de los golpes lentos. Combos cortos.',
+  { id: 'luchador', name: 'Luchador', desc: 'Bloquea lo lento. Combos cortos.',
     lesson: 'Usa golpes rápidos y mezcla alto/bajo: bloquea lo lento.',
     react: 18, think: 18, exec: 0.78, block: 0.42, fast: 0.35, lowRead: 0.5, antiAir: 0.3, punish: 0.35, antiTurtle: 0.2,
     combo: 2, dash: 0.12, jumpIn: 0.08, backoff: 0.12, aggression: 0.55, mixup: 0.15 },
-  { id: 'veterano', name: 'Veterano', desc: 'Bloquea alto y bajo, castiga y agarra si te cubres.',
+  { id: 'veterano', name: 'Veterano', desc: 'Si te cubres mucho, te agarra.',
     lesson: 'No te quedes cubriéndote: el agarre rompe el bloqueo.',
     react: 11, think: 12, exec: 0.9, block: 0.7, fast: 0.65, lowRead: 0.75, antiAir: 0.6, punish: 0.65, antiTurtle: 0.6,
     combo: 3, dash: 0.25, jumpIn: 0.1, backoff: 0.15, aggression: 0.6, mixup: 0.35 },
-  { id: 'leyenda', name: 'Leyenda', desc: 'Reacción rápida, combos largos, dash y mezclas.',
+  { id: 'leyenda', name: 'Leyenda', desc: 'Bloquea casi todo y castiga fallos.',
     lesson: 'Bloquea bien, castiga sus fallos y varía tu ataque.',
     react: 7, think: 7, exec: 0.97, block: 0.9, fast: 0.9, lowRead: 0.88, antiAir: 0.85, punish: 0.9, antiTurtle: 0.85,
     combo: 4, dash: 0.4, jumpIn: 0.12, backoff: 0.15, aggression: 0.65, mixup: 0.6 },
