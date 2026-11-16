@@ -15,6 +15,17 @@ Three.js + cel-shading. Online 1 vs 1 P2P (PeerJS / WebRTC) con lockstep determi
 - `public/js/main.js`   pantallas, práctica, online y HUD
 - `test/`               pruebas en Node (combos, determinismo, online simulado)
 
+## Documentación de personajes y reglas de colaboración
+
+**Antes de cambiar personajes, armas, animaciones, balance o arte**, leer [character-documentation/README.md](character-documentation/README.md).
+
+- [Estado actual del roster](character-documentation/ROSTER.md): estadísticas y pasivas verificadas de Aura, Vega, Kai y Sombra.
+- [Ficha de Aura v1.0](character-documentation/AURA.md): diseño funcional A y dirección artística B.
+- [Registro de decisiones](character-documentation/CHANGELOG.md): cambios documentados; las versiones anteriores se conservan en `character-documentation/history/` antes de cada revisión.
+- **Regla actual:** 1v1; cada jugador escoge personaje y **una arma fija para todo el combate**, de entre las compatibles, no necesariamente su arma insignia.
+- **Futuro, NO implementado:** modo con dos personajes por equipo, arma fija por personaje y botones de tag/assist.
+- **Workflow de equipo:** cada modificación se propone en una rama y Pull Request a `main`; el responsable revisa y realiza el merge. Diferenciar lo implementado de lo propuesto; actualizar las fichas al tocar gameplay o arte.
+
 ## Desplegar
 - **GitHub Pages**: automático en cada push a `main` (`.github/workflows/pages.yml`, pasa antes los tests).
 - **Firebase** (opcional): `firebase deploy --only hosting`
