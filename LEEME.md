@@ -30,11 +30,11 @@ Three.js + cel-shading. Online 1 vs 1 P2P (PeerJS / WebRTC) con lockstep determi
 - **GitHub Pages**: automático en cada push a `main` (`.github/workflows/pages.yml`, pasa antes los tests).
 - **Firebase** (opcional): `firebase deploy --only hosting`
 
-## Ver el blockout experimental de Aura
+## Ver Aura en el visor lateral fijo (pipeline GLB)
 
 En el menú principal, entra en **Ajustes → Ver personaje Aura · Vista 3D**. También puedes abrir directamente `aura_preview.html` una vez desplegada la web.
 
-La vista 3D tiene giro con ratón o dedo, zoom, botones para frente, perfil y espalda, y controles **Ver blockout V1 / Ver detalle V2** y **Mostrar daga**. La V2 se muestra por defecto e incorpora una geometría procedural de mayor detalle; la **capa V3 de personalidad** añade pose de combate, respiración, movimiento de cabello y bufanda y botón de pausa. No modifica la animación jugable. Utiliza `MeshToonMaterial` en un **modelo procedural simplificado** que representa el blockout, **no** el GLB final ni el personaje animado del juego. Este visor es independiente del renderizador de combate y no afecta a `cleric.glb`, las hitboxes ni la simulación. Código: `public/js/aura-preview.js`; estilos: `public/css/aura-preview.css`.
+El visor utiliza **cámara lateral fija ortográfica**, botones de zoom, pose y movimiento. Permite probar un **GLB local** (máximo 35 MB) y, cuando exista, cargar el GLB aprobado desde `public/assets/previews/aura.json`. Hoy `modelUrl` es `null`: se muestra el prototipo procedural V3 como fallback, no como malla final. Leer [guía del pipeline](character-documentation/AURA_GLB_PIPELINE.md).
 
 ## Regenerar modelos y animaciones
 1. Descarga RPG Characters, UAL1 y UAL2 (Standard) de Quaternius y descomprímelos en `assets_raw/rpg`, `assets_raw/ual1`, `assets_raw/ual`.
