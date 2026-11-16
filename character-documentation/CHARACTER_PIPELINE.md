@@ -59,6 +59,8 @@ Licencias: TRELLIS.2 (MIT) ✅. **Hunyuan3D descartado**: su licencia excluye la
 - Escribe `Col` (plano), `Col_src` (original) y `LblCol` (etiqueta de zona codificada en el canal rojo, `(id+0,5)/16`).
 - Para otro personaje: copiar el script, cambiar `PALETTE` y las reglas de zona. Revisar con `dev_f1_compare.html`.
 
+Regla de manos: en la zona de la mano solo hay guante grafito, acento naranja y dedos de piel (nada gris ni beige).
+
 Paleta de Aura: chaqueta `#E8DACB`, pantalón `#8E7686`, gris `#776471`, grafito `#3B313E`, negro `#1B171F`, naranja `#FF7A1A`, pelo `#E3D9EE`, máscara `#D5CFD3`, piel `#E2B39E`, metal `#A6A1AA`.
 
 ## 5. F2b — Malla de juego
@@ -94,8 +96,9 @@ cp out/<pj>_anims.glb public/assets/chars/
 - `models.js`:
   - `MODEL_ANIMS` asocia el modelo con su juego de clips.
   - **Cel shader NEÓN** (`makeCel`, `CEL_PRESETS`): dos bandas duras con **color de sombra propio por material** (lavanda para ropa, más claro en pelo y máscara, rosado en piel), luz clave fija respecto a la cámara (sombras legibles en vista lateral) y rim con el color de acento.
-  - Contorno de casco invertido con desplazamiento de profundidad (sin manchas negras en prendas finas).
-- `vfx.js`: estela del arma con el color de acento, estrella de impacto plana y **polvo cel-shading** como en la lámina (dos tonos duros, lenguas afiladas hacia atrás, 12 fps, se rompe en huecos). Revisión aislada: `public/dev_vfx.html`.
+  - Contorno de casco invertido con desplazamiento de profundidad (sin manchas negras en prendas finas). Aura: 0,016.
+  - **Tinta interior de cómic** (`prepareInk` + `INK`): al cargar el GLB se marcan las aristas donde cambia el color plano (también entre materiales) y los pliegues de más de ~105°; el shader las dibuja a ~2 px con baricéntricas y `fwidth`. Se omiten junto a zonas casi negras (`minLuma`), donde no se verían.
+- `vfx.js`: estela del arma con el color de acento, estrella de impacto plana y **polvo cel-shading** como en la lámina (dos tonos duros, corona de picos, lenguas afiladas hacia atrás, contorno de tinta y rayas de velocidad de cómic, 12 fps, se rompe en huecos). Revisión aislada: `public/dev_vfx.html`.
 
 ## 9. Revisión visual
 - `public/dev_f1_compare.html?glb=<ruta>&outline=0`: 5 vistas de un GLB (color por vértice o textura).

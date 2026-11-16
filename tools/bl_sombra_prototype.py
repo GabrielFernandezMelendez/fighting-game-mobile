@@ -271,6 +271,18 @@ body.data.calc_loop_triangles()
 assert len(body.data.loop_triangles) <= 30000
 assert all(abs(sum(g.weight for g in v.groups) - 1) < .001 for v in body.data.vertices)
 print(f'Sombra: {len(body.data.loop_triangles)} triángulos; todos con pesos normalizados a nivel de vértice')
+# COLOR_0 plano por cara para la detección de aristas de tinta de Three.js.
+colors = body.data.color_attributes.new(name='Col', type='FLOAT_COLOR', domain='CORNER')
+body.data.color_attributes.active_color = colors
+for face in body.data.polygons:
+    color = body.data.materials[face.material_index].diffuse_color
+    for index in face.loop_indices:
+        colors.data[index].color = color
+# Los nombres siguen escogiendo el preset toon. Dejar blanco el factor base
+# del GLB evita multiplicar la paleta dos veces en visores glTF.
+for material in body.data.materials:
+    material.node_tree.nodes.get('Principled BSDF').inputs['Base Color'].default_value = (1, 1, 1, 1)
 arm.select_set(True)
 bpy.ops.export_scene.gltf(filepath=str(ROOT / 'public/assets/chars/sombra.glb'),
-                         use_selection=True, export_animations=False, export_skins=True)
+                         use_selection=True, export_animations=False, export_skins=True,
+                         export_vertex_color='ACTIVE')

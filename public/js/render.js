@@ -10,7 +10,7 @@ import { VFX } from './vfx.js';
 
 // Prueba de la Aura imagen→3D (pipeline F2) sin sustituir al personaje jugable: añadir ?aura3d a la URL
 const AURA3D = typeof location !== 'undefined' && new URLSearchParams(location.search).has('aura3d');
-const AURA3D_OVERRIDE = { model: 'aura', outline: 0.012, doubleSide: true, modelHeight: 1.78, cel: true };
+const AURA3D_OVERRIDE = { model: 'aura', outline: 0.016, doubleSide: true, modelHeight: 1.78, cel: true };
 const SOMBRA3D = typeof location !== 'undefined' && new URLSearchParams(location.search).has('sombra3d');
 const SOMBRA3D_OVERRIDE = { model: 'sombra', outline: 0.012, modelHeight: 1.78, cel: true };
 
