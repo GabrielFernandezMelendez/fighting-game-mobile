@@ -60,4 +60,18 @@ assert.ok(preview.includes('createAuraDetail(THREE, materials)'), 'V3 fallback m
 assert.ok(preview.includes('installAuraPersonality(THREE, fallback)'), 'V3 fallback idle missing');
 assert.ok(personality.includes('export function installAuraPersonality'), 'personality factory missing');
 assert.ok(detail.includes('AURA_SIGNATURE_DAGGER'), 'signature dagger must remain separate');
-console.log('UI shell / Aura sideview GLB preview checks passed');
+const rigFile = readFileSync(new URL('../public/js/aura-skinned3d.js', import.meta.url), 'utf8');
+for (const id of ['preview-rig','preview-slash']) {
+  assert.ok(viewer.includes('id="' + id + '"'), 'skinned 3D control missing: ' + id);
+}
+assert.ok(rigFile.includes('new THREE.SkinnedMesh('), '3D rig must use real SkinnedMesh');
+assert.ok(rigFile.includes('new THREE.Skeleton('), '3D rig must have a Skeleton');
+assert.ok(rigFile.includes('new THREE.Bone('), '3D rig must define bones');
+assert.ok(rigFile.includes("m.setAttribute('skinIndex'") === false,
+  'rig should define skin attributes on geometry, not attach them to mesh');
+assert.ok(rigFile.includes("g.setAttribute('skinIndex'"), 'rig skinIndex buffer missing');
+assert.ok(rigFile.includes("g.setAttribute('skinWeight'"), 'rig skinWeight buffer missing');
+assert.ok(rigFile.includes('triggerSlash()'), 'test attack animation missing');
+assert.ok(preview.includes('createAuraSkinned3D(THREE, ramp)'), 'skinned rig not wired to viewer');
+assert.ok(preview.includes('rigged.update(dt)'), 'rigged animation update missing');
+console.log('UI shell / Aura sideview / V6 skinned 3D checks passed');
