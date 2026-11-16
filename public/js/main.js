@@ -38,7 +38,7 @@ function back() {
   if (current === 's-lobby' || (current === 's-select' && app.mode === 'online')) { leaveOnline(); app.stack = []; show('s-menu'); return; }
   show(app.stack.pop() || 's-menu');
 }
-$('[data-back]').forEach(b => b.addEventListener('click', back));
+document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', back));
 $('#bAuraPreview').addEventListener('click', () => {
   // Separate preview route, leaving match data and the production renderer untouched.
   window.location.assign('./aura_preview.html');
