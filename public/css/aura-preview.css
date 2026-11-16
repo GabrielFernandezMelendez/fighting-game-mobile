@@ -34,3 +34,9 @@
 .aura-preview-controls button[aria-pressed="true"]{border-color:#ff7a1a;background:rgba(91,46,23,.96)}
 .aura-preview-stage{isolation:isolate}
 @media(max-width:760px){.aura-preview-controls{gap:4px;left:6px;right:6px;bottom:6px}.aura-preview-controls button{font-size:12px;padding:7px 8px}}
+
+/* Aura V3: controls for animated personality review, not gameplay. */
+#preview-pose{border-color:#ff7a1a;background:rgba(91,46,23,.93)}
+#preview-motion{border-color:#6a6484}
+.aura-preview-controls{max-width:100%;padding:0 2px}
+@media(max-width:760px){.aura-preview-controls button{font-size:11px;padding:6px 7px}}
