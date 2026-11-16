@@ -7,6 +7,7 @@ import { toWorld, hurtbox, getMove } from './sim.js';
 import { ModelLibrary, ModelFighter } from './models.js';
 import { clipFor } from './anims.js';
 import { VFX } from './vfx.js';
+import { buildStage as makeStage } from './stages.js';
 import { isInstalledApp } from './app-mode.js';
 
 // La app instalada y ?aura3d activan ambos modelos. ?sombra3d permite revisar solo a Sombra.
@@ -106,27 +107,21 @@ export class Renderer3D {
   // ---------- Escenario ----------
   buildStage() {
     const T = this.T, scene = this.scene;
-    const floor = new T.Mesh(new T.PlaneGeometry(40, 12), this.toon('#24263a')); floor.rotation.x = -Math.PI / 2; floor.position.z = -2; scene.add(floor);
-    const pts = []; for (let i = -20; i <= 20; i++) pts.push(new T.Vector3(i * 0.5, 0.001, -6), new T.Vector3(i * 0.5, 0.001, 4));
-    for (let j = -6; j <= 4; j++) pts.push(new T.Vector3(-10, 0.001, j), new T.Vector3(10, 0.001, j));
-    scene.add(new T.LineSegments(new T.BufferGeometry().setFromPoints(pts), new T.LineBasicMaterial({ color: '#ff7a1a', transparent: true, opacity: 0.22 })));
-    const wall = new T.Mesh(new T.PlaneGeometry(60, 20), new T.MeshBasicMaterial({ color: '#2b2147' })); wall.position.set(0, 6, -8); scene.add(wall);
-    const bld = new T.InstancedMesh(new T.BoxGeometry(0.9, 1, 0.4), new T.MeshBasicMaterial(), 18);
-    const win = new T.InstancedMesh(new T.BoxGeometry(0.5, 0.04, 0.01), new T.MeshBasicMaterial(), 18);
-    const mtx = new T.Matrix4(), col = new T.Color();
-    for (let i = 0; i < 18; i++) {
-      const h = 1 + ((i * 37) % 9) * 0.35;
-      mtx.makeScale(1, h, 1).setPosition(-10 + i * 1.25, h / 2, -7); bld.setMatrixAt(i, mtx); bld.setColorAt(i, col.set(i % 3 ? '#221d3d' : '#2a2450'));
-      mtx.makeTranslation(-10 + i * 1.25, h * 0.7, -6.79); win.setMatrixAt(i, mtx); win.setColorAt(i, col.set(i % 2 ? '#ff7a1a' : '#ffd23f'));
-    }
-    scene.add(bld, win);
-    for (const x of [STAGE.min - 0.35, STAGE.max + 0.35]) { const p = new T.Mesh(new T.BoxGeometry(0.08, 3, 0.08), this.glow('#ff7a1a')); p.position.set(x, 1.5, -0.6); scene.add(p); }
+    this.setStage(new URLSearchParams(location.search).get('stage') || 'sala');   // main.js lo cambia al empezar cada combate
     // partículas reutilizables
     this.sparkPool = []; for (let i = 0; i < 60; i++) { const m = new T.Mesh(new T.BoxGeometry(0.05, 0.05, 0.05), this.glow('#ffd23f')); m.visible = false; scene.add(m); this.sparkPool.push(m); }
     this.ringPool = []; for (let i = 0; i < 6; i++) { const r = new T.Mesh(new T.TorusGeometry(1, 0.05, 6, 32), new T.MeshBasicMaterial({ color: '#ffffff', transparent: true })); r.visible = false; scene.add(r); this.ringPool.push(r); }
     const dbgM = new T.MeshBasicMaterial({ color: '#ff3030', transparent: true, opacity: .4, depthTest: false });
     this.hitBalls = []; for (let i = 0; i < 14; i++) { const s = new T.Mesh(new T.SphereGeometry(1, 10, 8), dbgM); s.visible = false; s.renderOrder = 10; scene.add(s); this.hitBalls.push(s); }
     this.hurtBoxes = [0, 1].map(() => { const b = new T.Mesh(new T.BoxGeometry(1, 1, 0.02), new T.MeshBasicMaterial({ color: '#30ff7a', transparent: true, opacity: .22, depthTest: false })); b.visible = false; b.renderOrder = 9; scene.add(b); return b; });
+  }
+
+  // Cambia el escenario (solo presentación: la simulación no sabe nada de él)
+  setStage(id) {
+    if (this.stage && this.stageId === id) return;
+    if (this.stage) { this.scene.remove(this.stage.group); this.stage.dispose(); }
+    this.stage = makeStage(id, this.T, { quality: this.quality ?? 2 }); this.stageId = id;
+    this.scene.add(this.stage.group); this.scene.background = this.stage.background;
   }
 
   // ---------- Personajes ----------
@@ -408,6 +403,7 @@ export class Renderer3D {
     const { renderer, scene, camera, host } = this;
     const W = host.clientWidth, H = host.clientHeight, key = `${W}x${H}x${renderer.getPixelRatio()}`;
     if (this.sizeKey !== key) { renderer.setSize(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); this.sizeKey = key; }
+    this.stageT = (this.stageT || 0) + dt; this.stage?.update(this.stageT, dt, camera);
     M.fighters.forEach((F, i) => this.poseRig(this.rigs[i], F));
     scene.updateMatrixWorld();
     M.fighters.forEach((F, i) => this.vfx.updateTrail(i, this.rigs[i], F, getMove(F), this.rigs[i].C.accent || '#ffffff'));

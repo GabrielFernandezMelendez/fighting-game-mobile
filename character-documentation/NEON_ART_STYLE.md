@@ -190,6 +190,18 @@ Una **hoja de personaje** como `references/aura/aura_sheet_v3_rgb.png`:
 
 ---
 
+## 5b. Escenarios
+
+Mismo lenguaje que los personajes, aplicado a fondos de arena de lucha (referencia: fondos de anime 3D tipo DBFZ, con nuestra paleta).
+
+- **Color plano en 3 tonos duros** (`MeshToonMaterial` + rampa de 3 píxeles). Sin degradados suaves: los cielos van en 6-7 **bandas**.
+- **Contorno de tinta** `#140f1c` en todo objeto definido (cajas, postes, carteles, toldos, edificios). Se hace con un casco invertido **por escala** (no por normal, que abre las esquinas de las cajas); en piezas planas, placa negra detrás con `polygonOffset`. Grosor `0.02 × (1 + |z| / 7)` para que mida igual cerca y lejos. Sin contorno: cielo, nubes, brillos, lluvia y texto.
+- **Profundidad por capas**: lejos más claro y frío, cerca más oscuro y saturado. Las nubes son bolas planas de dos tonos, como el polvo del dash.
+- **Acentos** solo naranja `#FF7A1A`, carmesí `#FF3355`, cian `#20E3E3` y amarillo `#FFC21A`, en luces, carteles y marcas.
+- **Encuadre**: la cámara va muy cerca; lo importante del fondo debe quedar entre 0 y 3 m de altura y entre las posiciones de los luchadores. Lo que está por encima queda tapado por el marcador.
+- **Rendimiento**: mallas instanciadas para repeticiones (ventanas, edificios, lluvia); la cantidad de lluvia y los contornos dependen de la calidad.
+- Para añadir uno: función nueva en `public/js/stages.js` que devuelva `{ group, background, update(t, dt), dispose }`, entrada en `STAGES` y miniatura `public/img/ui/stage_<id>.jpg` (captura del escenario sin personajes ni HUD).
+
 ## 6. Glosario
 - **Cel-shading:** sombreado en bandas duras, como dibujo animado.
 - **Inverted hull:** contorno hecho con una copia de la malla, inflada y con las caras invertidas, en negro.

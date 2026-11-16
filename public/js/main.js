@@ -8,12 +8,13 @@ import { LocalInput } from './input.js';
 import { Lockstep, PeerLink } from './net.js';
 import { ComboPlayer } from './combo.js';
 import { CpuPlayer, CPU_LEVELS } from './cpu.js';
+import { STAGES, stageById } from './stages.js';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const coarse = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 
 // ---------- Ajustes persistentes ----------
-const settings = Object.assign({ quality: coarse ? 1 : 2, fps: true, vibration: true, opacity: 55, btn: 78, delay: 0, cpuLevel: 1, cpuRival: 'sombra', motion: false }, (() => { try { return JSON.parse(localStorage.getItem('neon-settings') || '{}'); } catch { return {}; } })());
+const settings = Object.assign({ quality: coarse ? 1 : 2, fps: true, vibration: true, opacity: 55, btn: 78, delay: 0, cpuLevel: 1, cpuRival: 'sombra', motion: false, stage: 'sala' }, (() => { try { return JSON.parse(localStorage.getItem('neon-settings') || '{}'); } catch { return {}; } })());
 const saveSettings = () => { try { localStorage.setItem('neon-settings', JSON.stringify(settings)); } catch {} };
 function applySettings() {
   document.documentElement.style.setProperty('--ctl-opacity', settings.opacity / 100);
@@ -64,6 +65,7 @@ $$('[data-go]').forEach(b => b.addEventListener('click', () => {
   else if (g === 'practice') { app.mode = 'practice'; buildSelect(); go('s-select'); }
   else if (g === 'cpu') { app.mode = 'cpu'; buildSelect(); go('s-select'); }
   else if (g === 'armory') { buildArmory(); go('s-armory'); }
+  else if (g === 'stages') { buildStages(); go('s-stages'); }
   else go('s-' + g);
 }));
 
@@ -181,9 +183,24 @@ function exitGame() {
 }
 function toMenu() { exitGame(); leaveOnline(); app.stack = []; show('s-menu'); }
 
+// ---------- Escenarios ----------
+// ?stage=<id> en la URL fuerza uno (pruebas); si no, el elegido en la pantalla Escenarios.
+const URL_STAGE = new URLSearchParams(location.search).get('stage');
+const myStage = () => stageById(URL_STAGE || settings.stage).id;
+function buildStages() {
+  const box = $('#stageList'); box.innerHTML = '';
+  for (const S of STAGES) {
+    const b = document.createElement('button'); b.className = 'stage-c' + (S.id === myStage() ? ' on' : ''); b.dataset.id = S.id;
+    b.setAttribute('aria-pressed', S.id === myStage()); b.style.backgroundImage = `linear-gradient(transparent 40%, rgba(12,13,20,.92)), url(img/ui/stage_${S.id}.jpg)`;
+    b.innerHTML = `<b>${S.name}</b><span>${S.desc}</span>`;
+    b.addEventListener('click', () => { settings.stage = S.id; saveSettings(); buildStages(); });
+    box.appendChild(b);
+  }
+}
+
 // ---------- Práctica ----------
 async function startPractice(sel, openMovesPanel = false) {
-  app.mode = 'practice'; await ensureRenderer();
+  app.mode = 'practice'; await ensureRenderer(); R.setStage(myStage());
   const chars = [sel, { c: 'dummy', w: 'none' }];
   app.M = createMatch({ mode: 'training', chars });
   R.setFighters(chars);
@@ -234,9 +251,9 @@ async function startCpuMatch() {
   $$('.overlay').forEach(o => o.classList.remove('on'));
   const chars = [{ c: app.myChar, w: app.myWeapon || CHARS[app.myChar].weapon }, { c: settings.cpuRival, w: CHARS[settings.cpuRival].weapon }];
   vsScreen(chars);
-  $('#vsInfo').textContent = `CPU ${CPU_LEVELS[app.cpuLevel].name} — al mejor de 3 rondas`;
+  $('#vsInfo').textContent = `CPU ${CPU_LEVELS[app.cpuLevel].name} — al mejor de 3 rondas · ${stageById(myStage()).name}`;
   exitGame(); show('s-vs');
-  await ensureRenderer(); R.setFighters(chars);
+  await ensureRenderer(); R.setStage(myStage()); R.setFighters(chars);
   await new Promise(r => setTimeout(r, 1600));
   if (app.mode !== 'cpu') return;
   app.M = createMatch({ mode: 'versus', chars });
@@ -325,7 +342,7 @@ function onNetMessage(m) {
   if (!m || !m.t) return;
   switch (m.t) {
     case 'pick': app.rivalSel = { c: m.c, w: m.w }; app.rivalReady = m.ready; updateRivalSelect(); if (app.role === 0) maybeStartOnline(); return;
-    case 'start': beginOnlineMatch(m.chars, m.delay, m.mid); return;
+    case 'start': beginOnlineMatch(m.chars, m.delay, m.mid, m.stage); return;
     case 'rematch': app.rematch.rival = true; updateResultsHint(); if (app.role === 0) maybeRematch(); return;
     case 'reselect': app.results = false; exitGame(); app.myReady = false; app.rivalReady = false; buildSelect(); show('s-select'); return;
     case 'leave': toast('El rival ha salido', 3000); toMenu(); return;
@@ -336,17 +353,19 @@ function onNetMessage(m) {
 function maybeStartOnline() {
   if (!(app.myReady && app.rivalReady)) return;
   const auto = Math.max(3, Math.min(10, Math.round(app.link.rtt / 2 / 16.7) + 2));
-  const delay = +settings.delay || auto, mid = app.mid + 1, chars = [{ c: app.myChar, w: app.myWeapon }, app.rivalSel];
-  app.link.send({ t: 'start', chars, delay, mid }); beginOnlineMatch(chars, delay, mid);
+  const delay = +settings.delay || auto, mid = app.mid + 1, chars = [{ c: app.myChar, w: app.myWeapon }, app.rivalSel], stage = myStage();
+  app.link.send({ t: 'start', chars, delay, mid, stage }); beginOnlineMatch(chars, delay, mid, stage);
 }
-async function beginOnlineMatch(chars, delay, mid) {
+// El escenario lo elige quien envía 'start' (solo es decorado: no afecta a la simulación ni al determinismo)
+async function beginOnlineMatch(chars, delay, mid, stage = 'sala') {
+  stage = stageById(stage).id; app.stage = stage;
   app.mid = mid; app.ls = null; app.pendingNet = app.pendingNet.filter(m => m.mid === mid); app.rematch = { me: false, rival: false };
   $$('.overlay').forEach(o => o.classList.remove('on'));
   // pantalla VS
   vsScreen(chars);
-  $('#vsInfo').textContent = `Online — al mejor de 3 rondas · retardo ${delay} f`;
+  $('#vsInfo').textContent = `Online — al mejor de 3 rondas · ${stageById(stage).name} · retardo ${delay} f`;
   show('s-vs');
-  await ensureRenderer(); R.setFighters(chars);
+  await ensureRenderer(); R.setStage(stage); R.setFighters(chars);
   await new Promise(r => setTimeout(r, 2200));
   if (app.mode !== 'online' || app.mid !== mid) return;
   app.M = createMatch({ mode: 'online', chars });
@@ -357,8 +376,8 @@ async function beginOnlineMatch(chars, delay, mid) {
 }
 function maybeRematch() {
   if (app.rematch.me && app.rematch.rival && app.role === 0) {
-    const mid = app.mid + 1, chars = app.M.chars, delay = app.ls.delay;
-    app.link.send({ t: 'start', chars, delay, mid }); beginOnlineMatch(chars, delay, mid);
+    const mid = app.mid + 1, chars = app.M.chars, delay = app.ls.delay, stage = app.stage;
+    app.link.send({ t: 'start', chars, delay, mid, stage }); beginOnlineMatch(chars, delay, mid, stage);
   }
 }
 function leaveOnline() {
