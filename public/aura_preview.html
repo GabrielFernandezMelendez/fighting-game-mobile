@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c0d14">
+<title>NEÓN · Aura — Vista 3D</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/aura-preview.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body class="aura-preview-body">
+<main class="aura-preview-layout">
+  <header class="aura-preview-header">
+    <a class="aura-preview-back" href="index.html#settings" aria-label="Volver a ajustes">‹ Volver a ajustes</a>
+    <div>
+      <div class="aura-preview-kicker">NEÓN / Taller de personajes</div>
+      <h1>Aura <span>· Blockout 3D</span></h1>
+    </div>
+    <span class="aura-preview-phase">Fase C · Preproducción</span>
+  </header>
+  <div class="aura-preview-content">
+    <div class="aura-preview-stage" id="preview-stage">
+      <canvas id="aura-canvas" aria-label="Visor tridimensional interactivo de Aura"></canvas>
+      <div class="aura-preview-legend">Arrastra para girar · Rueda o botones para zoom</div>
+      <div class="aura-preview-controls">
+        <button id="preview-front" type="button">Frente</button>
+        <button id="preview-side" type="button">Perfil</button>
+        <button id="preview-back" type="button">Espalda</button>
+        <button id="preview-reset" type="button">Restablecer</button>
+        <button id="preview-zoom-in" type="button" aria-label="Acercar">+</button>
+        <button id="preview-zoom-out" type="button" aria-label="Alejar">−</button>
+      </div>
+    </div>
+    <aside class="aura-preview-panel">
+      <h2>La Centella</h2>
+      <p>Primera maqueta tridimensional de las proporciones y silueta propuestas. La máscara, el pelo, el cuello y las prendas son geometrías simplificadas.</p>
+      <h3>Materiales base</h3>
+      <div class="aura-preview-swatches">
+        <span style="--swatch:#e7ddd5">Marfil</span>
+        <span style="--swatch:#e8e1f2">Pelo</span>
+        <span style="--swatch:#514956">Pantalón</span>
+        <span style="--swatch:#202027">Grafito</span>
+        <span style="--swatch:#ff7a1a">Naranja</span>
+      </div>
+      <p class="aura-preview-warning"><strong>Modelo experimental.</strong> Esta vista genera un blockout procedural en Three.js con MeshToonMaterial. No es todavía la malla GLB definitiva ni está riggeada o animada. El personaje jugable no se modifica.</p>
+      <p id="preview-status" class="aura-preview-status" role="status">Preparando la vista 3D…</p>
+      <a href="https://github.com/GabrielFernandezMelendez/fighting-game-mobile/blob/main/character-documentation/AURA.md" target="_blank" rel="noopener" class="aura-preview-doc">Consultar ficha de personaje ↗</a>
+    </aside>
+  </div>
+</main>
+<script type="module" src="js/aura-preview.js"></script>
+</body>
+</html>
