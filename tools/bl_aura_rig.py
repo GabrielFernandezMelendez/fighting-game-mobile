@@ -8,7 +8,7 @@ Salida:  <salida>.blend (malla + armature, pesos automáticos) y <salida>.glb (s
 Las articulaciones se han medido sobre la silueta frontal y lateral de la malla F1 (pose A del concept).
 Se escala a 2.76 de alto, igual que los modelos RPG, para que models.js y bl_retarget.py los traten igual.
 """
-import bpy, sys
+import bpy, sys, os
 from mathutils import Vector
 args = sys.argv[sys.argv.index('--') + 1:]
 src, out = args[0], args[1]
@@ -91,6 +91,40 @@ if donor_path and unweighted > 0.1 * len(mesh.data.vertices):
     bpy.data.objects.remove(donor, do_unlink=True)
     unweighted = sum(1 for v in mesh.data.vertices if not any(x.weight > 0.01 for x in v.groups))
     print('pesos transferidos; sin peso', unweighted)
+# Pantalón ancho: el bone heat deja parte de las perneras en Body/Hips y al levantar la pierna
+# la tela se estira como una falda. Por debajo de la entrepierna, el peso del tronco pasa a las piernas,
+# repartido por cercanía a cada pierna (sin cortes bruscos en la costura central).
+if os.environ.get('LEG_WEIGHTS', '1') == '1':
+    from mathutils.geometry import intersect_point_line
+    gi = {g.name: g for g in mesh.vertex_groups}
+    allleg = {'UpperLeg.L', 'LowerLeg.L', 'Foot.L', 'UpperLeg.R', 'LowerLeg.R', 'Foot.R'}
+    seg = {sd: [(P(J[f'UpperLeg.{sd}'][0]), P(J[f'UpperLeg.{sd}'][1]), f'UpperLeg.{sd}'), (P(J[f'LowerLeg.{sd}'][0]), P(J[f'LowerLeg.{sd}'][1]), f'LowerLeg.{sd}')] for sd in 'LR'}
+    crotch = (0.02 + 0.5) * H; ramp = 0.08 * H; moved = 0
+    def dist_seg(p, a, b):
+        q, f = intersect_point_line(p, a, b); f = max(0, min(1, f)); return (p - (a + (b - a) * f)).length
+    for v in mesh.data.vertices:
+        if v.co.z > crotch or abs(v.co.x) > 0.15 * H: continue
+        t = min(1.0, (crotch - v.co.z) / ramp)
+        w = {mesh.vertex_groups[g.group].name: g.weight for g in v.groups}
+        trunk = sum(val for n, val in w.items() if n not in allleg)
+        if trunk * t < 1e-4: continue
+        best = {}
+        for sd in 'LR':
+            d, name = min((dist_seg(v.co, a, b), nm) for a, b, nm in seg[sd]); best[sd] = (d, name)
+        inv = {sd: 1 / max(best[sd][0], 1e-3) ** 4 for sd in 'LR'}; tot = inv['L'] + inv['R']
+        for n, val in w.items():
+            if n not in allleg: gi[n].add([v.index], val * (1 - t), 'REPLACE')
+        for sd in 'LR':
+            nm = best[sd][1]; gi[nm].add([v.index], w.get(nm, 0) + trunk * t * inv[sd] / tot, 'REPLACE')
+        moved += 1
+    bpy.ops.object.select_all(action='DESELECT'); mesh.select_set(True); bpy.context.view_layer.objects.active = mesh
+    try:
+        bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
+        bpy.ops.object.vertex_group_smooth(group_select_mode='ALL', factor=0.5, repeat=2)
+    except Exception as e: print('sin suavizado de pesos:', e)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.vertex_group_normalize_all(lock_active=False)
+    print('perneras: vértices reasignados', moved)
 bpy.ops.wm.save_as_mainfile(filepath=out + '.blend')
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.export_scene.gltf(filepath=out + '.glb', use_selection=True, export_animations=False, export_skins=True,
