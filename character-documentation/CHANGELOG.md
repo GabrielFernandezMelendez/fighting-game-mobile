@@ -21,6 +21,12 @@
 - No se modificaron combate ni modelos GLB de producción.
 - Requiere revisión visual y rendimiento en navegador antes de considerarlo aprobado.
 
+## 2026-11-16 — Aura v1.3: personalidad V3
+- Se archivó [AURA-v1.2.md](history/AURA-v1.2.md).
+- Se añadió una capa de presentación dinámica para el visor, guardia/relajada, respiración y animación secundaria.
+- Sin cambios al combate, a los archivos GLB de producción ni al sistema de armas.
+- Pendiente validación visual y rigging real.
+
 ## Plantilla para revisiones
 ### FECHA — PERSONAJE vX.Y
 - Estado: propuesto / aprobado / implementado
