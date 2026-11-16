@@ -82,7 +82,7 @@ Todo con scripts `bpy` reproducibles, sin trabajo manual:
 | Paso | Script | Resultado |
 |---|---|---|
 | F2a color | `tools/bl_aura_recolor.py` | Espalda y laterales proyectados desde la hoja de giro (z-buffer por vértices), amarillo→naranja. `references/aura/f2/f2a_recolor_highpoly.png` |
-| F2b malla | `tools/bl_aura_retopo.py` (`RETOPO=voxel`) | Vóxeles 2,5 mm → decimado a **30 k triángulos**, Smart UV, textura 1024 horneada desde la malla alta. QuadriFlow se cancela sin interfaz: queda pendiente probarlo en Blender de escritorio |
+| F2b malla | `tools/bl_aura_retopo.py` (`RETOPO=voxel`) | Vóxeles 2,5 mm → decimado a **30 k triángulos**, Smart UV, textura 1024 horneada desde la malla alta. QuadriFlow **también falla en Blender 5.3 de escritorio** (probado vía MCP el 2026-11-16): la malla de vóxeles es 100 % manifold y coherente (comprobado arista a arista), una esfera remallada sí funciona, pero Aura falla incluso a 1,4 k caras. Es la propia librería con mallas de topología compleja (asas/huecos). Retopología con loops = trabajo manual (o Instant Meshes / herramienta de retopo dedicada) |
 | F2c rig | `tools/bl_aura_rig.py` | Esqueleto con los nombres del rig del juego ajustado a la pose A de Aura, pesos automáticos (bone heat) sin vértices huérfanos. Escala 2,76 como los modelos RPG |
 | Clips | `TARGET=… ANIMS_NAME=aura_anims.glb tools/bl_retarget.py` | Los 44 clips UAL retargeteados a su esqueleto → `public/assets/chars/aura_anims.glb` |
 
