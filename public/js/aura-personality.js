@@ -68,7 +68,7 @@ export function installAuraPersonality(THREE, detail) {
   const glints=[];
   for(const sign of [-1,1]) {
     const glow=new THREE.Mesh(new THREE.BoxGeometry(.065,.011,.007),eyeMat.clone());
-    glow.position.set(sign*.089,2.505,.308);
+    glow.position.set(sign*.089,.195,.308);
     sections.head.add(glow);
     glints.push(glow);
   }
