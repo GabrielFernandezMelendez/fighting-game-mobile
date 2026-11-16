@@ -41,6 +41,14 @@
 - Sin alteraciones de mecánicas ni asset usado en combate.
 - Ver [guía del relieve](AURA_CONCEPT_RELIEF.md).
 
+## 2026-11-16 — Aura v1.6: malla 3D animable experimental
+- Archivada [AURA-v1.5.md](history/AURA-v1.5.md).
+- Primer prototipo con malla 3D, `THREE.Skeleton` y `THREE.SkinnedMesh` disponible en visor lateral.
+- Añadida prueba de Idle, Guardia y ataque de daga mediante movimientos de huesos.
+- Se conserva el relieve como referencia artística (no se convierte el rig en modelo jugable).
+- Sin GLB riggeado exportado, ni malla esculpida en Blender, ni cambios a las armas o gameplay.
+- Ver [AURA_RIG_V1.md](AURA_RIG_V1.md).
+
 ## Plantilla para revisiones
 ### FECHA — PERSONAJE vX.Y
 - Estado: propuesto / aprobado / implementado
