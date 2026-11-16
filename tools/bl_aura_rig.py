@@ -117,6 +117,67 @@ if os.environ.get('LEG_WEIGHTS', '1') == '1':
         for sd in 'LR':
             nm = best[sd][1]; gi[nm].add([v.index], w.get(nm, 0) + trunk * t * inv[sd] / tot, 'REPLACE')
         moved += 1
+    # Las manos en pose A rozan los muslos: el bone heat mezcla pesos de mano en el pantalón y de
+    # pierna en la mano. Cada vértice se queda solo con el grupo (brazo o pierna) al que está más cerca.
+    from mathutils.geometry import intersect_point_line as ipl
+    def dseg(p, a, b):
+        q, f = ipl(p, a, b); f = max(0, min(1, f)); return (p - (a + (b - a) * f)).length
+    armg = {sd: [f'UpperArm.{sd}', f'LowerArm.{sd}', f'Fist.{sd}', f'Fist1.{sd}'] for sd in 'LR'}
+    legg = {sd: [f'UpperLeg.{sd}', f'LowerLeg.{sd}', f'Foot.{sd}'] for sd in 'LR'}
+    cleaned = 0
+    for v in mesh.data.vertices:
+        w = {mesh.vertex_groups[g.group].name: g.weight for g in v.groups}
+        for sd in 'LR':
+            ha = sum(w.get(n, 0) for n in armg[sd]); hl = sum(w.get(n, 0) for n in legg[sd])
+            if ha < 0.01 or hl < 0.01: continue
+            da = min(dseg(v.co, P(J[n][0]), P(J[n][1])) for n in (f'LowerArm.{sd}', f'Fist.{sd}', f'Fist1.{sd}'))
+            dl = min(dseg(v.co, P(J[n][0]), P(J[n][1])) for n in legg[sd])
+            drop = armg[sd] if dl < da else legg[sd]; keep = legg[sd] if dl < da else armg[sd]
+            moved_w = sum(w.get(n, 0) for n in drop)
+            for n in drop:
+                if n in w: gi[n].add([v.index], 0.0, 'REPLACE')
+            ks = sum(w.get(n, 0) for n in keep)
+            for n in keep:
+                if n in w: gi[n].add([v.index], w[n] + moved_w * w[n] / ks, 'REPLACE')
+            cleaned += 1
+    print('mano/pierna separados en', cleaned, 'vértices')
+    # Reparto dentro de cada pierna por la posición a lo largo de cadera→tobillo (el bone heat ponía
+    # parte del muslo en LowerLeg y, al doblar la rodilla, salían "espinas" hacia atrás).
+    def ramp(x, a, b): return max(0.0, min(1.0, (x - a) / (b - a)))
+    for sd in 'LR':
+        hip, knee, ank = P(J[f'UpperLeg.{sd}'][0]), P(J[f'LowerLeg.{sd}'][0]), P(J[f'Foot.{sd}'][0])
+        names = [f'UpperLeg.{sd}', f'LowerLeg.{sd}', f'Foot.{sd}']
+        kz = (knee.z - hip.z) / (ank.z - hip.z)   # posición relativa de la rodilla
+        for v in mesh.data.vertices:
+            w = {mesh.vertex_groups[g.group].name: g.weight for g in v.groups}
+            tot = sum(w.get(n, 0) for n in names)
+            if tot < 1e-4: continue
+            t = (v.co.z - hip.z) / (ank.z - hip.z)          # 0 cadera … 1 tobillo
+            foot = ramp(t, 0.97, 1.03)
+            # tela ancha detrás de la rodilla: si sigue a la espinilla, al doblar sale disparada hacia
+            # atrás; se queda con el muslo hasta más abajo
+            axis_y = hip.y + (ank.y - hip.y) * t
+            back = ramp(v.co.y - axis_y, 0.01 * H, 0.05 * H)
+            k0, k1 = kz - 0.07 + back * 0.12, kz + 0.07 + back * 0.25
+            lower = ramp(t, k0, k1) * (1 - foot)
+            upper = 1 - lower - foot
+            for n, f in zip(names, (upper, lower, foot)): gi[n].add([v.index], tot * f, 'REPLACE')
+    # Glúteos: la tela detrás de la articulación de la cadera debe quedarse con la pelvis; si sigue
+    # al muslo, al subir la rodilla se abre hacia atrás como una aleta.
+    for sd in 'LR':
+        hip = P(J[f'UpperLeg.{sd}'][0]); names = [f'UpperLeg.{sd}', f'LowerLeg.{sd}', f'Foot.{sd}']
+        for v in mesh.data.vertices:
+            if (v.co.x > 0) != (sd == 'L'): continue
+            behind = ramp(v.co.y - hip.y, 0.0 * H, 0.05 * H)
+            low = ramp(hip.z - v.co.z, 0.04 * H, 0.14 * H)
+            b = behind * (1 - low) * 0.85
+            if b < 0.02: continue
+            w = {mesh.vertex_groups[g.group].name: g.weight for g in v.groups}
+            leg = sum(w.get(n, 0) for n in names)
+            if leg < 1e-4: continue
+            for n in names:
+                if n in w: gi[n].add([v.index], w[n] * (1 - b), 'REPLACE')
+            gi['Body'].add([v.index], w.get('Body', 0) + leg * b, 'REPLACE')
     bpy.ops.object.select_all(action='DESELECT'); mesh.select_set(True); bpy.context.view_layer.objects.active = mesh
     try:
         bpy.ops.object.mode_set(mode='WEIGHT_PAINT')

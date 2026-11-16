@@ -57,6 +57,8 @@ export function clipFor(F, meta) {
     case 'prejump': return frac('NinjaJump_Start', 0.05 + q(f) * 0.02, meta);
     case 'air': return { ...frac('Jump_Loop', Math.min(1, Math.max(0, (6 - F.vy) / 14)) * 0.5, meta), blend: 4 };
     case 'land': return frac('NinjaJump_Land', 0.25 + q(f) * 0.03, meta);
+    case 'dashF': return frac('Shield_Dash_RM', 0.12 + Math.min(1, q(f) / 16) * 0.55, meta);
+    case 'dashB': return frac('NinjaJump_Land', 0.05 + Math.min(1, q(f) / 18) * 0.5, meta);
     case 'hit': return frac(F.react === 'body' ? 'Hit_Chest' : 'Hit_Head', q(f) / Math.max(1, F.stun || 16), meta);
     case 'launched': case 'thrown': return frac('Hit_Knockback', 0.18 + Math.min(0.12, Math.max(0, -F.vy) * 0.015), meta);
     case 'down': return frac('Death01', 1, meta);

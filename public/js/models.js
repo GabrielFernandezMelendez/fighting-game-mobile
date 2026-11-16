@@ -33,6 +33,38 @@ export function outlineMaterial(thick = 0.022) {
   m.userData.outline = true; outlineMats.set(thick, m); return m;
 }
 
+// ------------------------------------------------------------------
+//  Cel-shading NEÓN: dos bandas duras con color de sombra propio por material (no gris),
+//  borde iluminado con el acento del personaje y sin depender de la intensidad de las luces.
+//  La banda se decide con N·L de una luz clave fija en espacio de cámara.
+// ------------------------------------------------------------------
+export const CEL_PRESETS = {
+  default: { shade: '#7b6d98', band: 0.12, rim: 0.22 },
+  pelo:    { shade: '#9a8ac4', band: 0.22, rim: 0.30 },
+  mascara: { shade: '#a39db8', band: 0.28, rim: 0.12 },
+  piel:    { shade: '#c08680', band: 0.10, rim: 0.10 },
+};
+export function makeCel(mat, preset, rimColor = '#ff9a50') {
+  const P = preset || CEL_PRESETS.default;
+  mat.userData.cel = { uShade: { value: new THREE.Color(P.shade) }, uBand: { value: P.band }, uRim: { value: new THREE.Color(rimColor).multiplyScalar(P.rim) } };
+  mat.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, mat.userData.cel);
+    sh.fragmentShader = 'uniform vec3 uShade; uniform float uBand; uniform vec3 uRim;\n' + sh.fragmentShader.replace('#include <opaque_fragment>', `
+      vec3 alb = diffuseColor.rgb;
+      // luz clave fija respecto a la cámara (arriba y a un lado): sombras legibles en la vista lateral
+      float nl = dot(normal, normalize(vec3(0.62, 0.58, 0.52)));
+      float lit = smoothstep(uBand - 0.015, uBand + 0.015, nl);
+      vec3 cel = mix(alb * uShade, alb, lit);
+      float fres = 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
+      cel += uRim * step(0.62, fres) * lit;
+      outgoingLight = cel + totalEmissiveRadiance;
+      #include <opaque_fragment>`);
+  };
+  mat.customProgramCacheKey = () => 'neon-cel';
+  mat.needsUpdate = true;
+  return mat;
+}
+
 // Normales promediadas por posición (las mallas low-poly vienen con aristas duras)
 function addOutlineNormals(geo) {
   if (geo.getAttribute('outlineNormal')) return;
@@ -77,7 +109,7 @@ function prepare(scene) {
   scene.traverse(o => {
     if (!o.isMesh) return;
     addOutlineNormals(o.geometry);
-    const src = o.material;
+    const src = o.material; o.userData.srcMat = src.name || '';
     o.material = new THREE.MeshToonMaterial({ map: src.map || null, color: src.map ? '#ffffff' : (src.color || '#ffffff'), gradientMap: grad() });
     if (o.material.map) { o.material.map.colorSpace = THREE.SRGBColorSpace; o.material.map.magFilter = THREE.LinearFilter; }
     o.frustumCulled = false;
@@ -107,7 +139,7 @@ function analyzeClips(scene, clips) {
 // ------------------------------------------------------------------
 export class ModelFighter {
   constructor(lib, gltf, opts) {
-    const { height = 1.8, outline = 0.022, model, doubleSide = false } = opts;
+    const { height = 1.8, outline = 0.022, model, doubleSide = false, cel = false, rimColor } = opts;
     this.lib = lib;
     this.root = new THREE.Group();         // posición + espejo
     this.turn = new THREE.Group();         // orientación 3/4
@@ -128,6 +160,12 @@ export class ModelFighter {
     this.mats = []; this.model.traverse(o => { if (o.isMesh && !o.userData.outline && o.material.isMeshToonMaterial) this.mats.push(o.material = o.material.clone()); });
     // mallas de imagen→3D con capas finas: doble cara evita ver el casco del contorno por dentro
     if (doubleSide) for (const m of this.mats) m.side = THREE.DoubleSide;
+    // cel-shading por material: el nombre del material del GLB elige el preset (Aura_pelo, Aura_mascara…)
+    if (cel) this.model.traverse(o => {
+      if (!o.isMesh || o.userData.outline || !o.material.isMeshToonMaterial) return;
+      const key = Object.keys(CEL_PRESETS).find(k => (o.userData.srcMat || '').toLowerCase().includes(k));
+      makeCel(o.material, CEL_PRESETS[key] || CEL_PRESETS.default, rimColor);
+    });
     this.mixer = new THREE.AnimationMixer(this.model);
     const set = lib.animsFor(model); this.meta = set.meta;
     this.actions = {}; for (const [n, c] of set.clips) this.actions[n] = this.mixer.clipAction(c);

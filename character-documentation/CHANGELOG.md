@@ -73,3 +73,15 @@
 - Después: `PERSONAJE.md`
 - Impacto en animaciones/balance/network:
 - PR, commit y pruebas:
+
+## 2026-11-16 — Aura 3D: cel-shading, color plano, dash y VFX
+- **Color plano** (`tools/bl_aura_flatcolor.py`): paleta del concept + reglas por zona; elimina las sombras horneadas.
+- **Materiales por zona** en la malla de juego: `Aura_ropa`, `Aura_pelo`, `Aura_mascara`, `Aura_piel`.
+- **Cel shader NEÓN** (`models.js`): dos bandas, sombra con color propio por material, rim de acento. Solo con `?aura3d`.
+- **Rig**: corregidos los picos de las rodillas al saltar (pesos mano/pierna y rodilla).
+- **Gameplay**: dash adelante/atrás con doble toque de dirección (joystick o teclado), cancelable en ataque. Test `test/dash.mjs`. Repercusión: nuevo estado `dashF/dashB` en la simulación determinista (online compatible, sin cambio de input).
+- **VFX** (`vfx.js`, solo presentación): estela del arma, estrella de impacto, polvo.
+- **Cámara**: encuadra a los dos luchadores también en vertical (saltos).
+- Documentación: nueva guía [CHARACTER_PIPELINE.md](CHARACTER_PIPELINE.md); fuentes 3D en `art/aura/`.
+- Aura sigue usando el modelo anterior sin `?aura3d`. `AURA.md` sin cambios.
+

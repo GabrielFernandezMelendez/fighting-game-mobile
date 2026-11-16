@@ -6,10 +6,11 @@ import { L, D2R, STAGE, CHARS, WEAPONS } from './data.js';
 import { toWorld, hurtbox, getMove } from './sim.js';
 import { ModelLibrary, ModelFighter } from './models.js';
 import { clipFor } from './anims.js';
+import { VFX } from './vfx.js';
 
 // Prueba de la Aura imagen→3D (pipeline F2) sin sustituir al personaje jugable: añadir ?aura3d a la URL
 const AURA3D = typeof location !== 'undefined' && new URLSearchParams(location.search).has('aura3d');
-const AURA3D_OVERRIDE = { model: 'aura', outline: 0.012, doubleSide: true, modelHeight: 1.78 };
+const AURA3D_OVERRIDE = { model: 'aura', outline: 0.012, doubleSide: true, modelHeight: 1.78, cel: true };
 
 const PALETTES = {
   white: { white: '#f2f2f6', whiteB: '#dfe1e8', suit: '#2f3342', suitL: '#41465a', acc: '#ff7a1a', neon: '#ffd23f', neonO: '#ff9a3c', visor: '#ff8a2c', visorE: '#5a1e00' },
@@ -41,7 +42,8 @@ export class Renderer3D {
     const rim = new THREE.DirectionalLight('#ffd2a8', 1.3); rim.position.set(3, 3, -5); scene.add(rim);
     this.gcache = new Map();
     this.buildStage();
-    this.rigs = []; this.particles = []; this.quality = 2; this.camX = 0; this.camZ = 6; this.shake = 0;
+    this.rigs = []; this.particles = []; this.quality = 2; this.camX = 0; this.camZ = 6; this.camY = 0.9; this.shake = 0;
+    this.vfx = new VFX(THREE, scene);
     // Modelos 3D (Quaternius). Si fallan, se usa el muñeco por piezas.
     this.lib = new ModelLibrary(); this.gltf = {};
     try {
@@ -130,7 +132,7 @@ export class Renderer3D {
   // Personaje con modelo + clips retargeteados
   buildModelFighter(C, wk) {
     const T = this.T, g = this.geo();
-    const mf = new ModelFighter(this.lib, this.gltf[C.model], { height: C.modelHeight || 1.75, outline: C.outline || 0.02, model: C.model, doubleSide: !!C.doubleSide });
+    const mf = new ModelFighter(this.lib, this.gltf[C.model], { height: C.modelHeight || 1.75, outline: C.outline || 0.02, model: C.model, doubleSide: !!C.doubleSide, cel: !!C.cel, rimColor: C.accent });
     if (C.tint) for (const m of mf.mats) m.color.set(C.tint);
     this.scene.add(mf.root);
     // arma en el hueso Weapon.R, orientada como el arma original del pack (hoja hacia arriba en reposo)
@@ -150,9 +152,11 @@ export class Renderer3D {
     const wgrp = new T.Group(); holder.add(wgrp);
     this.buildWeapon(wk, wgrp, mesh, g, {});
     this.mergeRig(wgrp);
+    const len = (WEAPONS[wk] && WEAPONS[wk].len) || 0.2;
+    const trailA = new T.Object3D(), trailB = new T.Object3D(); trailB.position.set(0, -Math.max(0.22, len), 0); wgrp.add(trailA, trailB);
     const shadow = new T.Mesh(this.cached('blob', () => new T.CircleGeometry(0.32, 24)), new T.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: .45 }));
     shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.003; this.scene.add(shadow);
-    return { C, model: mf, root: mf.root, shadow, hairSegs: [], hairPts: [], flashMats: [] };
+    return { C, model: mf, root: mf.root, shadow, hairSegs: [], hairPts: [], flashMats: [], trailA, trailB };
   }
   poseModel(rig, F) {
     const mf = rig.model, s = F.scale, a = clipFor(F, mf.meta);
@@ -377,7 +381,10 @@ export class Renderer3D {
         }
         this.particles.push({ x: e.x, y: e.y, life: 1, ring: true, color: color || '#ffffff' });
         this.shake = Math.max(this.shake, e.type === 'block' ? 0.03 : 0.04 + (e.power || 1) * 0.04);
-      } else if (e.type === 'land' || e.type === 'djump') this.particles.push({ x: e.x, y: e.type === 'land' ? 0.05 : (e.y || 0) + 0.9, life: 1, ring: true, flat: e.type === 'land', color: '#bfc3cf' });
+        if (e.type === 'hit') this.vfx.star(e.x, e.y, (e.attacker != null && this.rigs[e.attacker] && this.rigs[e.attacker].C.accent) || '#ff7a1a');
+      } else if (e.type === 'dust') { this.vfx.puff(e.x, 0, e.dir, e.big); continue; }
+      if (e.type === 'land') this.vfx.puff(e.x, 0, 0, false);
+      if (e.type === 'land' || e.type === 'djump') this.particles.push({ x: e.x, y: e.type === 'land' ? 0.05 : (e.y || 0) + 0.9, life: 1, ring: true, flat: e.type === 'land', color: '#bfc3cf' });
       else if (e.type === 'ko') this.shake = 0.25;
     }
   }
@@ -387,6 +394,7 @@ export class Renderer3D {
     if (this.sizeKey !== key) { renderer.setSize(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); this.sizeKey = key; }
     M.fighters.forEach((F, i) => this.poseRig(this.rigs[i], F));
     scene.updateMatrixWorld();
+    M.fighters.forEach((F, i) => this.vfx.updateTrail(i, this.rigs[i], F, getMove(F), this.rigs[i].C.accent || '#ffffff'));
     M.fighters.forEach((F, i) => this.updateHair(this.rigs[i], F));
     // partículas
     let si = 0, ri = 0;
@@ -415,12 +423,17 @@ export class Renderer3D {
       });
     }
     // cámara: punto medio, se aleja con la distancia y sube con los saltos
+    // cámara: encuadra a los dos luchadores en horizontal y en vertical (saltos incluidos)
     const [A, B] = M.fighters, mid = (A.x + B.x) / 2, dist = Math.abs(A.x - B.x);
-    const aspect = W / H, zT = Math.min(9, Math.max(5.2, 3.2 + dist * 1.15) * Math.max(1, 1.75 / aspect));
-    this.camX += (mid - this.camX) * 0.12; this.camZ += (zT - this.camZ) * 0.08;
-    const yBoost = Math.max(0, Math.max(A.hipY, B.hipY) - 1.4) * 0.35;
+    const aspect = W / H, tanH = Math.tan(camera.fov * Math.PI / 360);
+    const bottom = Math.min(0, A.y, B.y) - 0.1, top = Math.max(A.y, B.y) + 2.05;
+    const yT = Math.max(0.95, (bottom + top) / 2);
+    const zX = (dist / 2 + 1.1) / (tanH * aspect), zY = (top - bottom) / 2 / tanH * 1.08;
+    const zT = Math.min(11, Math.max(5.2, zX, zY));
+    this.camX += (mid - this.camX) * 0.12; this.camZ += (zT - this.camZ) * 0.1; this.camY += (yT - this.camY) * 0.14;
     this.shake *= 0.85; const sh = (Math.random() - .5) * this.shake;
-    camera.position.set(this.camX + sh, 1.05 + yBoost + sh * 0.5, this.camZ); camera.lookAt(this.camX, 0.9 + yBoost, 0);
+    camera.position.set(this.camX + sh, this.camY + 0.15 + sh * 0.5, this.camZ); camera.lookAt(this.camX, this.camY, 0);
+    this.vfx.update(dt, camera);
     renderer.render(scene, camera);
   }
   get drawCalls() { return this.renderer.info.render.calls; }
