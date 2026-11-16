@@ -23,6 +23,12 @@ for (const id of ['preview-fallback','preview-weapon','preview-pose','preview-mo
 for (const retired of ['preview-front','preview-side','preview-back','preview-mode']) {
   assert.ok(!viewer.includes('id="' + retired + '"'), 'retired orbit control ' + retired + ' remains');
 }
+for (const id of ['aura-concept-image','aura-concept-open','preview-concept-upload',
+  'preview-concept-zoom','preview-concept-status']) {
+  assert.ok(viewer.includes('id="' + id + '"'), 'missing high-res concept control '+id);
+}
+assert.ok(viewer.includes('assets/previews/aura_concept_v3.png'),
+  'PNG reference path not used by the visor');
 const preview = readFileSync(new URL('../public/js/aura-preview.js', import.meta.url), 'utf8');
 const personality = readFileSync(new URL('../public/js/aura-personality.js', import.meta.url), 'utf8');
 const detail = readFileSync(new URL('../public/js/aura-detail.js', import.meta.url), 'utf8');
@@ -31,6 +37,7 @@ assert.equal(config.modelUrl, null, 'no GLB should be claimed as deployed before
 assert.ok(preview.includes('new THREE.OrthographicCamera('), 'side orthographic camera missing');
 assert.ok(!preview.includes('canvas.addEventListener(\'pointermove\''), 'orbit dragging must be disabled');
 assert.ok(preview.includes('new GLTFLoader()'), 'GLB loader missing');
+assert.ok(preview.includes("URL.createObjectURL(image)"), 'local hi-res image support missing');
 assert.ok(preview.includes('loader.parseAsync(buffer'), 'local GLB test path missing');
 assert.ok(preview.includes('createAuraDetail(THREE, materials)'), 'V3 fallback must remain available');
 assert.ok(preview.includes('installAuraPersonality(THREE, fallback)'), 'V3 fallback idle missing');
