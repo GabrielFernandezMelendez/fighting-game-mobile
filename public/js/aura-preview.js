@@ -252,6 +252,50 @@ fileInput.addEventListener('change', async (event) => {
     fileInput.value = '';
   }
 });
+// Full-resolution concept reference. Prefer a published PNG, but never hide
+// a missing asset: let the user load the original PNG locally without upload.
+const conceptImage = get('aura-concept-image');
+const conceptLink = get('aura-concept-open');
+const conceptStatus = get('preview-concept-status');
+const conceptInput = get('preview-concept-upload');
+const conceptZoom = get('preview-concept-zoom');
+const conceptPath = './assets/previews/aura_concept_v3.png';
+const conceptFallback = './img/aura.jpg';
+let localConceptUrl = null;
+let conceptFailed = false;
+conceptImage.addEventListener('error', () => {
+  if (conceptFailed) return;
+  conceptFailed = true;
+  conceptImage.src = conceptFallback;
+  conceptLink.href = conceptFallback;
+  conceptStatus.textContent = 'Falta el PNG original en GitHub. Selecciona «Ver PNG original» para usar la versión de alta resolución de tu ordenador.';
+});
+conceptImage.addEventListener('load', () => {
+  if (!conceptFailed) conceptStatus.textContent = 'Referencia PNG de alta resolución cargada.';
+});
+conceptInput.addEventListener('change', () => {
+  const image = conceptInput.files?.[0];
+  if (!image) return;
+  if (image.type !== 'image/png' || image.size > 15 * 1024 * 1024) {
+    conceptStatus.textContent = 'Selecciona un archivo PNG de menos de 15 MB.';
+    conceptInput.value = '';
+    return;
+  }
+  if (localConceptUrl) URL.revokeObjectURL(localConceptUrl);
+  localConceptUrl = URL.createObjectURL(image);
+  conceptFailed = false;
+  conceptImage.src = localConceptUrl;
+  conceptLink.href = localConceptUrl;
+  conceptStatus.textContent = 'Concept original: ' + image.name + ' — visualización local a resolución completa.';
+  conceptInput.value = '';
+});
+conceptZoom.addEventListener('click', () => {
+  if (conceptLink.href) window.open(conceptLink.href, '_blank', 'noopener');
+});
+window.addEventListener('pagehide', () => {
+  if (localConceptUrl) URL.revokeObjectURL(localConceptUrl);
+});
+
 // Deployable config: modelUrl is null until an authored/rigged file is supplied.
 // No intentional 404s or fake production assets.
 async function loadConfiguredGLB() {
