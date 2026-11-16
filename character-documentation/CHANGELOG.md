@@ -15,6 +15,12 @@
 - Se documentó el uso previsto del cel-shading existente `MeshToonMaterial`; el juego y la simulación permanecen intactos.
 - Blender y las validaciones de exportación/rig/móvil siguen pendientes.
 
+## 2026-11-16 — Aura v1.2: visor de detalle V2
+- Se archivó la [versión 1.1](history/AURA-v1.1.md).
+- Se introdujo una nueva geometría procedural de revisión (pelo, máscara, ropa, correas, botas), conservando comparación con V1 y daga opcional.
+- No se modificaron combate ni modelos GLB de producción.
+- Requiere revisión visual y rendimiento en navegador antes de considerarlo aprobado.
+
 ## Plantilla para revisiones
 ### FECHA — PERSONAJE vX.Y
 - Estado: propuesto / aprobado / implementado
