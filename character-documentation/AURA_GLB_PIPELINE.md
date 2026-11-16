@@ -12,7 +12,7 @@ La hoja de concepto aprobada es la referencia de identidad (cabello blanco-lila,
 
 - Visor: `public/aura_preview.html`, abierto desde **Ajustes → Ver personaje Aura**.
 - Cámara: **ortográfica y lateral fija**. Ligero ángulo hacia el frente para leer máscara y pecho, sin controles orbit ni giro libre.
-- Materiales del prototipo: `MeshToonMaterial`, mapa de 3 bandas, colores aproximados; no es garantía de acabado final del GLB.
+- Materiales del prototipo: `MeshToonMaterial`, mapa de 3 bandas, colores aproximados. Al importar un GLB estándar, el visor convierte sus materiales a un sombreado toon básico, conservando colores y texturas; no representa el shader de producción definitivo.
 - Respaldo V3: `public/js/aura-detail.js` + `public/js/aura-personality.js`. **Es provisional**, no reemplaza una malla de producción.
 - GLB: `public/assets/previews/aura.json` tiene `modelUrl: null`, intencionadamente. Se puede probar un GLB **local** con el selector de archivos del visor, sin subirlo al servidor.
 
