@@ -1,6 +1,6 @@
 # AURA — La Centella
 
-**Versión:** 1.3 · **Fecha:** 2026-11-16  
+**Versión:** 1.4 · **Fecha:** 2026-11-16  
 **Estado:** A (dirección funcional definida); B (concept visual propuesto); C (blockout Blender programado, todavía sin exportación validada); D (integración pendiente).
 
 ## 1. Línea base implementada — no confundir con propuestas
@@ -158,3 +158,17 @@ Esta ilustración es una **referencia de dirección de arte**, no una lámina t�
 3. Pausar/Reanudar y comprobar respiración y movimiento de prendas/cabello.
 4. Comparar V1 y V3, y activar/ocultar daga.
 5. Confirmar controles en navegador de escritorio y móvil horizontal y revisar clipping/articulaciones.
+
+## 9. V4 — Cámara lateral fija y contrato GLB (2026-11-16)
+
+**Estado:** infraestructura de revisión implementada en código; **modelo 3D final no existente**. La documentación anterior está archivada en [history/AURA-v1.3.md](history/AURA-v1.3.md).
+
+- **Nueva decisión:** abandonar el modelado procedural como camino a producción; usar **Blender → GLB real → Three.js**. Mantener el juego en Three.js salvo prueba técnica que motive migración.
+- Visor lateral ortográfico y fijo (sin giro manual); ligera componente frontal para lectura de máscara. La cámara de combate no se modifica.
+- El visor puede abrir un GLB local con texturas integradas (máx. 35 MB) para una revisión visual **sin subida** y puede usar un asset del repositorio cuando se declare en `public/assets/previews/aura.json`.
+- `modelUrl` permanece en `null` hasta recibir un modelo aprobado. El fallback V3 continúa visible, identificado como no final.
+- Se mantienen controles de pose, pausa y zoom, además de botón para comparar el GLB cargado con la referencia V3.
+- Se incorpora vínculo al turnaround reducido en la pantalla, como guía de dirección artística.
+- No se modifica selección personaje/arma, lucha 1v1, modelos GLB del combate ni simulación determinista.
+
+**Pasos de producción y criterios de aceptación:** [AURA_GLB_PIPELINE.md](AURA_GLB_PIPELINE.md). La pantalla V4 **no implica que exista ya un personaje de calidad 2XKO/Tōkon**.
