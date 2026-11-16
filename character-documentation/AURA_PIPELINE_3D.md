@@ -57,6 +57,16 @@ Previsualización en `references/aura/f1/trellis2_front_preview.jpg` (normales, 
 - ⚠️ Máscara y cara poco definidas; manos simplificadas; textura con naranja virando a amarillo; superficie facetada.
 - ❌ GLB no descargado: la extracción agotó la cuota gratuita de ZeroGPU sin sesión. Repetir con sesión de Hugging Face iniciada y usando la vista de `turnaround/`.
 
+#### Resultado 2 — TRELLIS.2 con sesión, vista frontal de la hoja de giro (2026-11-16) ✅ GLB obtenido
+- GLB original: 291.9 k triángulos, 1 material con textura 2048 (WebP). No se versiona por tamaño (12 MB); copia en Descargas del responsable.
+- Reducido a **30 k triángulos** con `tools/bl_decimate.py` → `public/assets/previews/f1/aura_trellis2_30k.glb` (2,5 MB). La silueta se conserva.
+- Comparativa (frente, 3/4 de combate, lateral, espalda, PBR): `references/aura/f1/trellis2_turnaround_front_{292k,30k}.png`, generada con `public/dev_f1_compare.html?glb=…`.
+- ✅ **Frente y 3/4 muy fieles**: máscara con ojos, mechones, cuello alto, chaqueta corta asimétrica, cinturón y correas, pantalón ancho, botas.
+- ⚠️ **Espalda y lateral inventados** (entrada de una sola vista): pelo trasero oscuro/naranja, cuello trasero amarillo. El naranja tiende a amarillo en toda la textura.
+- ⚠️ Malla única sin piezas separadas (máscara, pelo, ropa fundidos) y topología triangulada sin loops: necesita retopología para animar.
+- ⚠️ Las manchas negras del render toon son del contorno de prueba (escalado simple), no del modelo; el contorno real del juego usa normales suavizadas.
+- **Decisión propuesta:** usar esta malla como **base de F2** (Blender): separar máscara y pelo, rehacer la espalda guiándose por la vista BACK, retopo y reproyección de color con las cuatro vistas.
+
 Evaluación (en este orden, no por "más detalle"): silueta lateral → máscara → pelo → proporciones → volumen de ropa → topología. Se documentan capturas lado a lado con el concept en `references/aura/f1/`.
 **Criterio de salida:** una base cuya silueta lateral y proporciones encajen con el concept; máscara y pelo se rehacen en F2 de todas formas.
 

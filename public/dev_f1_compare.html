@@ -1,0 +1,33 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>F1 comparativa</title>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<style>body{margin:0;background:#1a1826}</style></head><body>
+<script type="module">
+// Herramienta de desarrollo F1: render del GLB de imagen→3D con toon + contorno, varias cámaras
+import * as THREE from 'three';
+import { GLTFLoader } from './vendor/jsm/loaders/GLTFLoader.js';
+const q = new URLSearchParams(location.search), url = q.get('glb') || 'assets/previews/f1/aura_trellis2.glb';
+const W = 360, H = 520, views = [['frente', 0, false], ['3/4 combate', -0.75, true], ['lateral', -Math.PI / 2, true], ['espalda', Math.PI, true], ['PBR original 3/4', -0.75, false, true]];
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); R.setSize(W * views.length, H); R.setScissorTest(true); document.body.appendChild(R.domElement);
+const g = await new GLTFLoader().loadAsync(url);
+const grad = new THREE.DataTexture(new Uint8Array([120,120,120,255, 190,190,190,255, 255,255,255,255]), 3, 1); grad.magFilter = grad.minFilter = THREE.NearestFilter; grad.needsUpdate = true;
+const toonScene = new THREE.Scene(), pbrScene = new THREE.Scene();
+const mk = (sc, toon) => {
+  const m = g.scene.clone(true);
+  const meshes = []; m.traverse(o => { if (o.isMesh) meshes.push(o); });
+  meshes.forEach(o => {
+    if (toon) { const src = o.material; o.material = new THREE.MeshToonMaterial({ map: src.map, gradientMap: grad });
+      const ol = new THREE.Mesh(o.geometry, new THREE.MeshBasicMaterial({ color: '#0d0d14', side: THREE.BackSide }));
+      ol.onBeforeRender = () => {}; ol.scale.setScalar(1.012); o.add(ol); } });
+  const box = new THREE.Box3().setFromObject(m), c = box.getCenter(new THREE.Vector3()), s = 1.8 / (box.max.y - box.min.y);
+  const piv = new THREE.Group(); m.position.sub(c); piv.add(m); piv.scale.setScalar(s); piv.position.y = 0.9; sc.add(piv); return piv;
+};
+const tp = mk(toonScene, true), pp = mk(pbrScene, false);
+for (const s of [toonScene, pbrScene]) { s.add(new THREE.AmbientLight('#fff', 0.7)); s.add(new THREE.HemisphereLight('#fff4e8', '#3a3360', 0.8)); const k = new THREE.DirectionalLight('#fff', 2.0); k.position.set(-2, 4, 5); s.add(k); }
+const cam = new THREE.PerspectiveCamera(22, W / H, 0.1, 50); cam.position.set(0, 1.05, 5.4); cam.lookAt(0, 0.92, 0);
+views.forEach(([n, yaw, toon, pbr], i) => {
+  const piv = pbr ? pp : tp; piv.rotation.y = yaw;
+  R.setViewport(i * W, 0, W, H); R.setScissor(i * W, 0, W, H); R.setClearColor(pbr ? '#2a2838' : '#232036'); R.render(pbr ? pbrScene : toonScene, cam);
+});
+let tris = 0; g.scene.traverse(o => { if (o.isMesh) tris += o.geometry.index.count / 3; });
+window.INFO = { tris }; window.READY = true;
+</script></body></html>
