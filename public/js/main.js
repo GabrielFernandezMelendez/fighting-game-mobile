@@ -24,7 +24,7 @@ function applySettings() {
 // ---------- Estado global ----------
 let R = null;
 const input = new LocalInput();
-input.bindTouch($('#touch'), { base: $('#stickBase'), knob: $('#stickKnob'), grab: $('#bGrab'), block: $('#bBlock'), trail: $('#trail') }, settings);
+input.bindTouch($('#touch'), { grab: $('#bGrab'), block: $('#bBlock'), trail: $('#trail') }, settings);
 const app = { mode: null, M: null, ls: null, link: null, role: 0, myChar: 'aura', myWeapon: null, rivalSel: null, myReady: false, rivalReady: false, mid: 0,
   pendingNet: [], cp: null, cpEnd: 0, running: false, paused: false, boxes: false, results: false, lag: [1000, 1000], rematch: { me: false, rival: false }, stack: [] };
 window.__app = app;
@@ -179,11 +179,11 @@ function renderMoves(tab) {
       return `<div class="mv"><span class="g">${label}</span><span class="n">${m.name}<small>arranque ${m.active[0]} · daño ${dmg(key, m)}${m.low ? ' · bajo' : ''}${m.overhead ? ' · alto' : ''}${m.react === 'launch' ? ' · lanza' : ''}${m.armor ? ' · armadura' : ''}</small></span><button data-demo='${JSON.stringify(steps)}' data-name="${m.name}">▶</button></div>`; };
     body.innerHTML = `<h4>${C.name} · ${W.name} · suelo</h4>` + GESTURES.map(([g, l]) => row(g, l, 'g_' + g, [g])).join('')
       + `<h4>En el aire (la demo lanza al muñeco y salta detrás)</h4>` + GESTURES.map(([g, l]) => row(g, l, 'a_' + g, ['up', 'jump', 'a:' + g])).join('')
-      + `<h4>Otros</h4><div class="mv"><span class="g">Botón</span><span class="n">Agarre<small>rompe el bloqueo · daño 120</small></span><button data-demo='["grab"]' data-name="Agarre">▶</button></div>`
+      + `<h4>Otros</h4><p class="hint">En la mitad izquierda, desliza para moverte, saltar o agacharte. Desliza dos veces en la misma dirección horizontal para hacer dash. Usa la mitad derecha para atacar.</p><div class="mv"><span class="g">Botón</span><span class="n">Agarre<small>rompe el bloqueo · daño 120</small></span><button data-demo='["grab"]' data-name="Agarre">▶</button></div>`
       + `<div class="mv"><span class="g">Pasiva</span><span class="n">${C.passive}<small>${C.passiveDesc}</small></span></div>`;
   } else {
     body.innerHTML = `<h4>Combos de ${W.name}</h4>` + COMBOS[W.key].filter(c => !c.requires || c.requires === sel.c).map(c => `<div class="cb"><b>${c.name}</b><p>${c.notation}</p><button class="mbtn sm" data-demo='${JSON.stringify(c.steps)}' data-name="${c.name}">▶ Ver combo</button></div>`).join('')
-      + `<p class="hint">Regla general: al conectar un golpe puedes encadenar otro distinto. Tras ↑ (lanzador) mantén arriba en el joystick para el súper salto y sigue en el aire con hasta 3 ataques distintos.</p>`;
+      + `<p class="hint">Regla general: al conectar un golpe puedes encadenar otro distinto. Tras el lanzador (↑ en la mitad derecha), desliza arriba en la mitad izquierda para el súper salto y sigue en el aire con hasta 3 ataques distintos.</p>`;
   }
   body.querySelectorAll('[data-demo]').forEach(b => b.addEventListener('click', () => playDemo(JSON.parse(b.dataset.demo), b.dataset.name)));
 }

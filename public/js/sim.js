@@ -9,7 +9,7 @@ export const NO_INPUT = { dx: 0, up: false, down: false, block: false, act: null
 const REACTION = ['hit', 'blockstun', 'launched', 'down', 'getup', 'thrown', 'win', 'lose'];
 const THROWABLE = ['idle', 'walkF', 'walkB', 'crouch', 'block', 'cblock', 'land', 'dashF', 'dashB'];
 // Dash por doble pulsación de dirección (66 / 44): ventana entre pulsaciones y duración en frames
-export const DASH = { window: 12, fwdFrames: 16, backFrames: 18, fwdSpeed: 7.8, backSpeed: 6.4, fwdCancel: 7 };
+export const DASH = { window: 22, fwdFrames: 16, backFrames: 18, fwdSpeed: 7.8, backSpeed: 6.4, fwdCancel: 7 };
 
 // ---------- Utilidades de poses ----------
 export function lerpPose(a, b, t) {

@@ -1,21 +1,41 @@
 // =====================================================================
 //  ENTRADA LOCAL: teclado (depuración en PC) y táctil (móvil)
-//  Mitad izquierda: joystick flotante + Agarre | Mitad derecha: swipes + Bloqueo
+//  Mitad izquierda: swipes de movimiento + Agarre | Mitad derecha: ataques + Bloqueo
 // =====================================================================
+const swipeMotion = {
+  left: { dx: -1, frames: 6 }, right: { dx: 1, frames: 6 },
+  up: { up: true, frames: 12 }, down: { down: true, frames: 12 },
+};
+
 export class LocalInput {
   constructor() {
     this.dx = 0; this.up = false; this.down = false; this.block = false; this.queue = [];
-    this.keys = new Set(); this.touchActive = false; this.touches = new Map(); this.trails = [];
+    this.keys = new Set(); this.touches = new Map(); this.trails = [];
+    this.swipes = []; this.motion = null; this.motionSampled = false; this.touchBlock = false;
     this.enabled = false;
     this.bindKeyboard();
   }
   // Una entrada por fotograma de simulación (las acciones se consumen de una en una)
   sample() {
     if (!this.enabled) return { dx: 0, up: false, down: false, block: false, act: null };
-    return { dx: this.dx, up: this.up, down: this.down, block: this.block, act: this.queue.shift() || null };
+    if (this.swipes.length) {
+      // El dash necesita un fotograma neutro entre dos swipes, aunque lleguen juntos.
+      this.motion = this.motionSampled ? null : { ...this.swipes.shift() };
+    }
+    const motion = this.motion;
+    this.motionSampled = !!motion;
+    if (motion && --motion.frames === 0) this.motion = null;
+    return {
+      dx: motion?.dx ?? this.dx, up: !!motion?.up || this.up, down: !!motion?.down || this.down,
+      block: this.block || this.touchBlock, act: this.queue.shift() || null,
+    };
   }
   push(a) { if (this.enabled) { this.queue.push(a); if (this.queue.length > 3) this.queue.shift(); } }
-  clear() { this.queue = []; this.dx = 0; this.up = this.down = this.block = false; }
+  clear() {
+    this.queue = []; this.dx = 0; this.up = this.down = this.block = false;
+    this.swipes = []; this.motion = null; this.motionSampled = false;
+    this.touches.clear(); this.syncTouchButtons?.();
+  }
 
   bindKeyboard() {
     const map = { j: 'tap', ' ': 'tap', arrowup: 'up', arrowdown: 'down', arrowleft: 'left', arrowright: 'right', k: 'grab' };
@@ -30,61 +50,83 @@ export class LocalInput {
     addEventListener('blur', () => { this.keys.clear(); this.syncKeys(); });
   }
   syncKeys() {
-    if (this.touchActive) return;
     this.dx = (this.keys.has('d') ? 1 : 0) - (this.keys.has('a') ? 1 : 0);
     this.up = this.keys.has('w'); this.down = this.keys.has('s'); this.block = this.keys.has('l');
   }
 
-  bindTouch(root, { base, knob, grab, block, trail }, settings) {
+  bindTouch(root, { grab, block, trail }, settings) {
     this.settings = settings;
     const tctx = trail.getContext('2d');
-    const hitBtn = (el, x, y) => { const r = el.getBoundingClientRect(); return Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)) < r.width * 0.75; };
-    root.addEventListener('touchstart', e => {
-      e.preventDefault(); this.touchActive = true;
-      for (const t of e.changedTouches) {
-        const x = t.clientX, y = t.clientY;
-        if (hitBtn(grab, x, y)) { this.push('grab'); grab.classList.add('on'); this.touches.set(t.identifier, { zone: 'grab' }); this.haptic(8); continue; }
-        if (hitBtn(block, x, y)) { this.block = true; block.classList.add('on'); this.touches.set(t.identifier, { zone: 'block', x0: x, y0: y }); continue; }
-        if (x < root.clientWidth / 2) {
-          this.touches.set(t.identifier, { zone: 'stick', x0: x, y0: y });
-          base.style.display = knob.style.display = 'block'; base.style.left = knob.style.left = x + 'px'; base.style.top = knob.style.top = y + 'px';
-        } else this.touches.set(t.identifier, { zone: 'swipe', x0: x, y0: y, t0: performance.now(), swiped: false, pts: [[x, y]] });
+    const hitBtn = (el, x, y) => { const r = el.getBoundingClientRect(); return Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)) < r.width * 0.58; };
+    this.syncTouchButtons = () => {
+      const touches = [...this.touches.values()];
+      this.touchBlock = touches.some(t => t.zone === 'block');
+      block.classList.toggle('on', this.touchBlock);
+      grab.classList.toggle('on', touches.some(t => t.zone === 'grab'));
+    };
+
+    const trackSwipe = (s, x, y) => {
+      if (s.zone === 'grab') return;
+      s.pts.push([x, y]);
+      if (s.swiped) return;
+      const dx = x - s.x0, dy = y - s.y0;
+      const movement = s.zone === 'move';
+      const horizontal = Math.abs(dx) >= Math.abs(dy) * (movement ? 0.8 : 1);
+      const distance = horizontal ? Math.abs(dx) : Math.abs(dy);
+      const threshold = movement ? (horizontal ? 22 : 30) : 38;
+      if (distance < threshold) return;
+
+      s.swiped = true;
+      const direction = horizontal ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
+      if (movement) {
+        if (this.swipes.length < 3) this.swipes.push(swipeMotion[direction]);
+      } else {
+        s.zone = 'attack';
+        this.syncTouchButtons();
+        this.push(direction);
       }
-    }, { passive: false });
-    root.addEventListener('touchmove', e => {
+      this.haptic(6);
+    };
+
+    root.addEventListener('touchstart', e => {
+      if (!this.enabled) return;
       e.preventDefault();
       for (const t of e.changedTouches) {
-        const s = this.touches.get(t.identifier); if (!s) continue;
         const x = t.clientX, y = t.clientY;
-        if (s.zone === 'stick') {
-          let dx = x - s.x0, dy = y - s.y0; const d = Math.hypot(dx, dy), max = 55;
-          if (d > max) { s.x0 += dx * (1 - max / d) * 0.5; s.y0 += dy * (1 - max / d) * 0.5; dx = x - s.x0; dy = y - s.y0; }
-          base.style.left = s.x0 + 'px'; base.style.top = s.y0 + 'px';
-          knob.style.left = (s.x0 + Math.max(-max, Math.min(max, dx))) + 'px'; knob.style.top = (s.y0 + Math.max(-max, Math.min(max, dy))) + 'px';
-          this.dx = dx > 18 ? 1 : dx < -18 ? -1 : 0; this.up = dy < -32; this.down = dy > 30;
-        } else if (s.zone === 'swipe' || s.zone === 'block') {
-          if (s.zone === 'swipe') s.pts.push([x, y]);
-          const dx = x - s.x0, dy = y - s.y0;
-          if (!s.swiped && Math.hypot(dx, dy) > 38) {
-            s.swiped = true;
-            const d = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-            if (s.zone === 'block') { this.block = false; block.classList.remove('on'); s.zone = 'swipe'; s.pts = [[s.x0, s.y0], [x, y]]; }
-            this.push(d); this.haptic(6);
-          }
+        if (hitBtn(grab, x, y)) {
+          this.touches.set(t.identifier, { zone: 'grab' });
+          this.push('grab'); this.haptic(8);
+          continue;
         }
+        const zone = hitBtn(block, x, y) ? 'block' : (x < root.clientWidth / 2 ? 'move' : 'attack');
+        this.touches.set(t.identifier, { zone, x0: x, y0: y, t0: performance.now(), swiped: false, pts: [[x, y]] });
+      }
+      this.syncTouchButtons();
+    }, { passive: false });
+    root.addEventListener('touchmove', e => {
+      if (!this.enabled) return;
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        const s = this.touches.get(t.identifier);
+        if (s) trackSwipe(s, t.clientX, t.clientY);
       }
     }, { passive: false });
     const end = e => {
-      e.preventDefault();
+      if (this.enabled) e.preventDefault();
       for (const t of e.changedTouches) {
-        const s = this.touches.get(t.identifier); if (!s) continue;
-        if (s.zone === 'stick') { this.dx = 0; this.up = false; this.down = false; base.style.display = knob.style.display = 'none'; }
-        if (s.zone === 'swipe' && !s.swiped && performance.now() - s.t0 < 300) { this.push('tap'); this.haptic(5); s.pts.push([s.x0 + 1, s.y0 + 1]); }
-        if (s.zone === 'block') { this.block = false; block.classList.remove('on'); }
-        if (s.zone === 'grab') grab.classList.remove('on');
-        if (s.pts) this.trails.push({ pts: s.pts, life: 1 });
+        const s = this.touches.get(t.identifier);
+        if (!s) continue;
+        if (this.enabled && e.type === 'touchend') {
+          trackSwipe(s, t.clientX, t.clientY);
+          if (s.zone === 'attack' && !s.swiped && performance.now() - s.t0 < 300 &&
+              Math.hypot(t.clientX - s.x0, t.clientY - s.y0) < 12) {
+            this.push('tap'); this.haptic(5);
+          }
+        }
+        if (s.pts?.length > 1 && s.zone !== 'block') this.trails.push({ pts: s.pts, life: 1 });
         this.touches.delete(t.identifier);
       }
+      this.syncTouchButtons();
     };
     root.addEventListener('touchend', end, { passive: false });
     root.addEventListener('touchcancel', end, { passive: false });
@@ -96,7 +138,7 @@ export class LocalInput {
         trail.width = pixelWidth; trail.height = pixelHeight;
       }
       tctx.setTransform(dpr, 0, 0, dpr, 0, 0); tctx.clearRect(0, 0, w, h);
-      const live = [...this.touches.values()].filter(s => s.zone === 'swipe').map(s => ({ pts: s.pts, life: 1 }));
+      const live = [...this.touches.values()].filter(s => s.zone === 'move' || s.zone === 'attack').map(s => ({ pts: s.pts, life: 1 }));
       for (const tr of [...this.trails, ...live]) {
         if (tr.pts.length < 2) continue;
         tctx.strokeStyle = `rgba(255,154,60,${0.7 * tr.life})`; tctx.lineWidth = 10 * tr.life; tctx.lineCap = 'round'; tctx.lineJoin = 'round';
