@@ -38,7 +38,12 @@ function back() {
   if (current === 's-lobby' || (current === 's-select' && app.mode === 'online')) { leaveOnline(); app.stack = []; show('s-menu'); return; }
   show(app.stack.pop() || 's-menu');
 }
-$$('[data-back]').forEach(b => b.addEventListener('click', back));
+$('[data-back]').forEach(b => b.addEventListener('click', back));
+$('#bAuraPreview').addEventListener('click', () => {
+  // Separate preview route, leaving match data and the production renderer untouched.
+  window.location.assign('./aura_preview.html');
+});
+
 function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); if (ms) t._h = setTimeout(() => t.style.display = 'none', ms); }
 
 $$('[data-go]').forEach(b => b.addEventListener('click', () => {
@@ -390,4 +395,7 @@ for (const [id, key, conv] of [['#setQuality', 'quality', Number], ['#setFps', '
 })();
 
 applySettings();
-show('s-menu');
+if (window.location.hash === '#settings') {
+  show('s-settings');
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+} else show('s-menu');

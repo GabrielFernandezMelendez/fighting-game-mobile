@@ -205,3 +205,8 @@ button { font-family:inherit; }
   .card .cname b { font-size:18px; } .detail h3 { font-size:24px; } .code { font-size:34px; }
   .wcard svg { height:70px; } .detail > p { display:none; } .detail { gap:5px; padding:10px; } .stat { font-size:12px; } .passive { font-size:12px; padding:4px 8px; } .skins { grid-template-columns:repeat(4, 1fr); } .stage { min-height:110px; }
 }
+
+/* Enlace a la vista 3D experimental desde Ajustes */
+.aura-preview-setting{grid-column:1/-1;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px;border:1px solid #70472c;background:rgba(55,31,20,.55);border-radius:12px}
+.aura-preview-setting .mbtn{font-size:16px}
+.aura-preview-setting small{font-size:13px;max-width:440px;color:#dfcbbb}

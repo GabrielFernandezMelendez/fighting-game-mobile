@@ -1,0 +1,30 @@
+/* Preview aislada: no altera el layout ni los estilos de combate. */
+.aura-preview-body{overflow:auto;touch-action:pan-y;background:#0c0d14}
+.aura-preview-layout{min-height:100dvh;padding:clamp(12px,3vw,30px);display:flex;flex-direction:column;gap:18px;background:radial-gradient(ellipse at 50% 20%,#25203b,#0c0d14 70%)}
+.aura-preview-header{display:flex;align-items:center;gap:22px;justify-content:space-between}
+.aura-preview-back,.aura-preview-doc{color:#fff;text-decoration:none;border:1px solid #494058;border-radius:10px;padding:10px 15px;white-space:nowrap}
+.aura-preview-back:hover,.aura-preview-doc:hover{border-color:#ff7a1a}
+.aura-preview-kicker{color:#ff9b57;text-transform:uppercase;letter-spacing:.22em;font-weight:700;font-size:12px}
+.aura-preview-header h1{font-size:clamp(24px,3.8vw,45px);margin:0;line-height:1}
+.aura-preview-header h1 span{font-size:.55em;font-weight:500;color:#b9b5c6}
+.aura-preview-phase{font-size:12px;text-transform:uppercase;letter-spacing:.12em;border:1px solid #875324;background:#352318;border-radius:99px;padding:7px 12px}
+.aura-preview-content{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,310px);gap:15px;flex:1;min-height:0}
+.aura-preview-stage{position:relative;min-height:450px;height:min(74dvh,780px);overflow:hidden;border-radius:18px;border:1px solid #473a5c;background:radial-gradient(circle at 50% 35%,#39334b 0%,#1a1827 55%,#10121b 100%)}
+#aura-canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#aura-canvas:active{cursor:grabbing}
+.aura-preview-legend{position:absolute;left:14px;top:12px;font-size:13px;color:#cfc5da;pointer-events:none;background:rgba(8,8,18,.65);padding:5px 8px;border-radius:8px}
+.aura-preview-controls{position:absolute;bottom:10px;left:10px;right:10px;display:flex;flex-wrap:wrap;justify-content:center;gap:7px}
+.aura-preview-controls button{cursor:pointer;border:1px solid #62526f;border-radius:8px;background:rgba(21,18,35,.9);color:#fff;padding:9px 13px;font:700 14px Rajdhani,system-ui,sans-serif}
+.aura-preview-controls button:hover,.aura-preview-controls button:focus-visible{border-color:#ff7a1a;outline:none}
+.aura-preview-panel{border:1px solid #473a5c;border-radius:18px;background:#181526;padding:20px;align-self:start;display:flex;flex-direction:column;gap:14px}
+.aura-preview-panel h2,.aura-preview-panel h3{margin:0;text-transform:uppercase;letter-spacing:.08em}
+.aura-preview-panel p{margin:0;line-height:1.45;color:#dad5e4}
+.aura-preview-panel h3{font-size:15px;color:#ff9a55}
+.aura-preview-swatches{display:flex;flex-wrap:wrap;gap:7px}
+.aura-preview-swatches span{display:inline-flex;align-items:center;gap:6px;border:1px solid #3d364b;border-radius:7px;padding:4px 7px;font-size:12px}
+.aura-preview-swatches span:before{content:"";display:block;width:17px;height:17px;background:var(--swatch);border-radius:4px;border:1px solid #ffffff33}
+.aura-preview-warning{border-left:3px solid #ff7a1a;padding:9px 10px;background:#2c211e;font-size:14px}
+.aura-preview-status{font-size:12px;color:#aaa4b5!important}
+.aura-preview-doc{align-self:flex-start;font-size:14px}
+@media(max-width:760px){.aura-preview-header{flex-wrap:wrap;gap:10px}.aura-preview-phase{display:none}.aura-preview-content{grid-template-columns:1fr}.aura-preview-stage{height:62dvh;min-height:310px}.aura-preview-panel{padding:13px}.aura-preview-layout{gap:10px}}
+@media(max-height:430px) and (orientation:landscape){.aura-preview-content{grid-template-columns:minmax(0,1fr) 235px}.aura-preview-stage{height:75dvh;min-height:240px}.aura-preview-header h1{font-size:21px}}
