@@ -1,21 +1,25 @@
-# Sombra · prototipo 3D
+# Sombra — ficheros fuente 3D (para retoque)
 
-Primera malla volumétrica editable de Sombra, con capucha de rostro oculto, bufanda, bolsa asimétrica, vendaje y pantalón ancho. Referencia de forma y paleta en la [lámina de Sombra](https://chatgpt.com/library?file_id=libfile_a409e672cfa48191b5bc6bd36f43d025&account_id=personal). Se aplicaron las pautas de [NEÓN Art Style](https://github.com/GabrielFernandezMelendez/fighting-game-mobile/pull/16) para las masas de color, la silueta lateral y el cel-shading.
+Generados con el pipeline de [CHARACTER_PIPELINE.md](../../character-documentation/CHARACTER_PIPELINE.md) (`CHAR=sombra`), igual que Aura. Lámina: `character-documentation/references/sombra/sombra_sheet_v1_rgb.png`.
 
-- `sombra_prototype.blend` contiene piezas editables, nueve colores de material y el esqueleto del juego. La base se construyó directamente en Blender. El exportador usa una sola malla con grupos de material y color plano por cara para la tinta interior. El arma se monta durante la partida.
-- `public/assets/chars/sombra.glb` se activa con `/?aura3d` en **Campo de práctica → Sombra**. El mismo enlace activa el modelo de Aura al elegirla. `/?sombra3d` sigue disponible para revisar solo a Sombra.
-- Comparación en Blender desde [tres cuartos](../../character-documentation/references/sombra/prototype/tres-cuartos.png) y [perfil](../../character-documentation/references/sombra/prototype/perfil.png). Estas capturas muestran geometría y materiales en Blender Workbench.
+| Fichero | Qué es | Uso |
+|---|---|---|
+| `sombra_01_trellis2_raw.glb` | Salida directa de TRELLIS.2 desde la vista frontal (~1 M tris) | Referencia de forma; no editar |
+| `sombra_02_recolor_highpoly.blend` | Alta poligonal con frente, espalda y perfil de la lámina reproyectados (`Col`) | Base para cambiar la proyección |
+| `sombra_03_flat_highpoly.blend` | Alta con color plano por zonas (`Col`), original (`Col_src`) y zonas (`LblCol`) | Repintar zonas (Vertex Paint) |
+| `sombra_04_lowpoly.blend` + `_color.png` | 30 k tris, zona por vértice, materiales `Sombra_ropa/piel/capucha` | **Punto de partida para retopo y retoque** |
+| `sombra_05_rig.blend` | Malla baja con esqueleto del juego ajustado a sus brazos y piernas | Pintar pesos / exportar al juego |
+| `sombra_prototype.blend` / `.glb` | Prototipo modelado a mano (PR #17), sustituido por la malla de TRELLIS | Referencia histórica |
 
-## Regenerar
+En juego: `public/assets/chars/sombra.glb` y `sombra_anims.glb` (44 clips retargeteados a su esqueleto). Probar con `index.html?sombra3d` (o `?aura3d`, que activa ambas).
 
-Desde la raíz del repositorio, con Blender 4.3:
-
+**Regenerar:**
 ```bash
-blender -b --python-exit-code 1 --python tools/bl_sombra_prototype.py
+VIEWS=sombra_ ORANGE_FIX=0 python tools/bl_aura_recolor.py art/sombra/sombra_01_trellis2_raw.glb character-documentation/references/sombra out/sombra_recolor
+CHAR=sombra python tools/bl_aura_flatcolor.py -- out/sombra_recolor.blend out/sombra_flat.blend
+CHAR=sombra RETOPO=voxel python tools/bl_aura_retopo.py -- out/sombra_flat.blend out/sombra_lo 15000 0.0025 1024
+CHAR=sombra python tools/bl_aura_rig.py -- out/sombra_lo.blend out/sombra_rig
+TARGET=out/sombra_rig.blend ANIMS_NAME=sombra_anims.glb python tools/bl_retarget.py out
 ```
 
-El script guarda la fuente antes de unir las piezas para exportar. La malla tiene 3.280 triángulos y cada vértice tiene pesos normalizados. El esqueleto comparte transformaciones de reposo con Aura y usa sus 44 clips existentes. El socket de la mano permite montar el arma seleccionada mediante el código del juego.
-
-## Estado de revisión
-
-Se comprobaron la carga GLB mediante Three.js, el salto, los 44 clips disponibles y el montaje de las cuatro armas. La validación visual en partida con WebGL y en móvil sigue pendiente. La malla necesita otra pasada artística para afinar pliegues, bordado, manos, botas y deformación en poses extremas. Usa el cel-shading, la tinta interior y el contorno del juego.
+**Pendiente para un artista:** la franja carmesí del pantalón se pierde en la malla de 30 k (zona demasiado fina); el hueco negro de la capucha es pequeño; el chaleco tiene algo de ruido de correas.

@@ -12,6 +12,10 @@ Pasos: remallado por vóxeles (cierra la malla) → QuadriFlow → Smart UV → 
 (emisión del color de la malla alta sobre la baja, selected-to-active).
 """
 import bpy, sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import neon_chars
+CC = neon_chars.get()                      # CHAR=aura|sombra (tools/neon_chars.py)
+NAME = CC['name'].capitalize()
 args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[-5:]
 src, out = args[0], args[1]
 faces = int(args[2]) if len(args) > 2 else 15000
@@ -19,10 +23,10 @@ voxel = float(args[3]) if len(args) > 3 else 0.0035
 texsz = int(args[4]) if len(args) > 4 else 1024
 
 bpy.ops.wm.open_mainfile(filepath=src)
-hi = next(o for o in bpy.data.objects if o.type == 'MESH'); hi.name = 'Aura_high'
+hi = next(o for o in bpy.data.objects if o.type == 'MESH'); hi.name = NAME + '_high'
 ctx = bpy.context
 for o in bpy.data.objects: o.select_set(False)
-lo = hi.copy(); lo.data = hi.data.copy(); lo.name = 'Aura'; ctx.collection.objects.link(lo)
+lo = hi.copy(); lo.data = hi.data.copy(); lo.name = NAME; ctx.collection.objects.link(lo)
 ctx.view_layer.objects.active = lo; lo.select_set(True)
 
 MODE = __import__('os').environ.get('RETOPO', 'voxel')   # 'voxel' (QuadriFlow/decimado) o 'decimate' (conserva piezas y UV de TRELLIS)
@@ -73,8 +77,8 @@ if MODE == 'voxel':
     bpy.ops.object.mode_set(mode='OBJECT')
 
 # 4) textura destino + material
-img = bpy.data.images.new('Aura_color', texsz, texsz, alpha=False); img.colorspace_settings.name = 'sRGB'
-mat = bpy.data.materials.new('Aura'); mat.use_nodes = True; nt = mat.node_tree
+img = bpy.data.images.new(NAME + '_color', texsz, texsz, alpha=False); img.colorspace_settings.name = 'sRGB'
+mat = bpy.data.materials.new(NAME); mat.use_nodes = True; nt = mat.node_tree
 bsdf = nt.nodes['Principled BSDF']; bsdf.inputs['Roughness'].default_value = 1
 tn = nt.nodes.new('ShaderNodeTexImage'); tn.image = img; nt.links.new(tn.outputs['Color'], bsdf.inputs['Base Color'])
 nt.nodes.active = tn
@@ -96,28 +100,25 @@ print('bake ok')
 if 'LblCol' in hi.data.color_attributes:
     import numpy as np
     from mathutils.kdtree import KDTree
-    names = ['chaqueta', 'pantalon', 'gris', 'grafito', 'negro', 'naranja', 'pelo', 'mascara', 'piel', 'metal']
-    group = {'pelo': 'Aura_pelo', 'mascara': 'Aura_mascara', 'piel': 'Aura_piel'}
+    names = CC['names']; group = CC['group']
     enc = np.empty(len(hi.data.vertices) * 4, np.float32); hi.data.color_attributes['LblCol'].data.foreach_get('color', enc)
     lab_hi = np.floor(enc.reshape(-1, 4)[:, 0] * 16).astype(int)
     kd = KDTree(len(hi.data.vertices))
     for i, v in enumerate(hi.data.vertices): kd.insert(hi.matrix_world @ v.co, i)
     kd.balance()
     lab_lo = [lab_hi[kd.find(lo.matrix_world @ v.co)[1]] for v in lo.data.vertices]
-    slots = ['Aura_ropa', 'Aura_pelo', 'Aura_mascara', 'Aura_piel']
+    slots = CC['slots']
     for nm in slots[1:]:
         m2 = mat.copy(); m2.name = nm; lo.data.materials.append(m2)
-    mat.name = 'Aura_ropa'
+    mat.name = slots[0]
     cnt = {k: 0 for k in slots}
     for p in lo.data.polygons:
         votes = {}
-        for vi in p.vertices: g = group.get(names[min(lab_lo[vi], 9)], 'Aura_ropa'); votes[g] = votes.get(g, 0) + 1
+        for vi in p.vertices: g = group.get(names[min(lab_lo[vi], len(names) - 1)], slots[0]); votes[g] = votes.get(g, 0) + 1
         best = max(votes, key=votes.get); p.material_index = slots.index(best); cnt[best] += 1
     print('MATERIALES', cnt)
 # 6) color plano por cara (sin textura): etiqueta por mayoría de la malla alta + limpieza de islas
-DISPLAY = {  # muestras de la paleta de la lámina V3 (más saturadas que la proyección)
-  'chaqueta': '#E7C6B3', 'pantalon': '#8F6E89', 'gris': '#91888E', 'grafito': '#342D3A', 'negro': '#1E1A24',
-  'naranja': '#FD7A02', 'pelo': '#DCCBF0', 'mascara': '#D8D0D6', 'piel': '#E7B49E', 'metal': '#B3ABB4'}
+DISPLAY = CC['display']   # colores finales por zona (tools/neon_chars.py)
 if FACECOL:
     import bmesh
     from collections import Counter
@@ -125,7 +126,7 @@ if FACECOL:
     flab = []
     for p in me.polygons:
         c = Counter(int(lab_hi[i]) for _, i, _ in kd.find_n(lo.matrix_world @ p.center, 7))
-        flab.append(min(c.most_common(1)[0][0], 9))
+        flab.append(min(c.most_common(1)[0][0], len(names) - 1))
     bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
     nbr = [[e2.index for e in f.edges for e2 in e.link_faces if e2.index != f.index] for f in bm.faces]
     bm.free()
@@ -145,7 +146,7 @@ if FACECOL:
                 f = stack.pop(); comp.append(f)
                 for n in nbr[f]:
                     if not seen[n] and flab[n] == L: seen[n] = True; stack.append(n)
-            lim = 6 if names[L] == 'naranja' else 18
+            lim = 6 if names[L] in ('naranja', 'carmesi', 'metal') else 18
             if len(comp) < lim:
                 c = Counter(flab[n] for f in comp for n in nbr[f] if flab[n] != L)
                 if c:
@@ -159,7 +160,7 @@ if FACECOL:
     for p in me.polygons:
         L = flab[p.index]; col = rgb[names[L]]
         for li in p.loop_indices: ca.data[li].color_srgb = col
-        p.material_index = slots.index(group.get(names[L], 'Aura_ropa'))
+        p.material_index = slots.index(group.get(names[L], slots[0]))
     # materiales: color de vértice en lugar de textura (así se ve igual en Blender y en el juego)
     for m in lo.data.materials:
         t = m.node_tree; b = t.nodes['Principled BSDF']
@@ -175,7 +176,7 @@ if LABELS:
     vl = []
     for v in me.vertices:
         c = Counter(int(lab_hi[i]) for _, i, _ in kd.find_n(lo.matrix_world @ v.co, 9))
-        vl.append(min(c.most_common(1)[0][0], 9))
+        vl.append(min(c.most_common(1)[0][0], len(names) - 1))
     nb = [[] for _ in range(nv)]
     for e in me.edges: a, b = e.vertices; nb[a].append(b); nb[b].append(a)
     for _ in range(3):   # mayoría local
@@ -193,7 +194,7 @@ if LABELS:
                 v = stack.pop(); comp.append(v)
                 for n in nb[v]:
                     if not seen[n] and vl[n] == L: seen[n] = True; stack.append(n)
-            if len(comp) < (4 if names[L] == 'naranja' else 10):
+            if len(comp) < (4 if names[L] in ('naranja', 'carmesi', 'metal') else 10):
                 c = Counter(vl[n] for v in comp for n in nb[v] if vl[n] != L)
                 if c:
                     t = c.most_common(1)[0][0]
@@ -205,7 +206,7 @@ if LABELS:
     for i, L in enumerate(vl): ca.data[i].color = ((L + 0.5) / 16, 0.0, 0.0, 1.0)
     for p in me.polygons:
         c = Counter(vl[i] for i in p.vertices); L = c.most_common(1)[0][0]
-        p.material_index = slots.index(group.get(names[L], 'Aura_ropa'))
+        p.material_index = slots.index(group.get(names[L], slots[0]))
     lo['neon_labels'] = 1
     lo['neon_palette'] = ','.join(DISPLAY[n] for n in names)
     lo['neon_zones'] = ','.join(names)   # el juego elige el color de sombra por zona (ZONE_SHADE en models.js)

@@ -11,8 +11,11 @@ y guarda el resultado como atributo de color "Col" en un .blend + un GLB de prev
 Uso:
   python tools/bl_aura_recolor.py <entrada.glb> <vistas_dir> <salida_sin_ext>
   vistas_dir debe contener aura_t_front_rgba.png, aura_t_back_rgba.png, aura_t_side_rgba.png
+
+Otros personajes: VIEWS=sombra_ (prefijo de las vistas: <prefijo>front/back/side_rgba.png) y
+ORANGE_FIX=0 para no tocar los amarillos (la corrección naranja es propia de Aura).
 """
-import bpy, bmesh, sys, colorsys
+import bpy, bmesh, sys, colorsys, os
 import numpy as np
 from mathutils import Vector
 
@@ -49,7 +52,7 @@ def to_srgb(c): return np.where(c <= 0.0031308, c * 12.92, 1.055 * np.power(np.c
 def to_lin(c): return np.where(c <= 0.04045, c / 12.92, np.power((c + 0.055) / 1.055, 2.4))
 s = orig.copy()   # img.pixels de imágenes de 8 bits ya están en sRGB
 hsv = np.array([colorsys.rgb_to_hsv(*c) for c in s])
-mask = (hsv[:, 0] > 30 / 360) & (hsv[:, 0] < 62 / 360) & (hsv[:, 1] > 0.45) & (hsv[:, 2] > 0.35)
+mask = (os.environ.get('ORANGE_FIX', '1') == '1') & (hsv[:, 0] > 30 / 360) & (hsv[:, 0] < 62 / 360) & (hsv[:, 1] > 0.45) & (hsv[:, 2] > 0.35)
 hsv[mask, 0] = 24 / 360; hsv[mask, 1] = np.maximum(hsv[mask, 1], 0.85)
 s = np.array([colorsys.hsv_to_rgb(*c) for c in hsv]); orig = to_lin(s).astype(np.float32)
 print('naranja corregido en', int(mask.sum()), 'vértices')
@@ -89,7 +92,8 @@ def project(view, horiz, depth, weight_axis, bin_px=4, tol=0.012):
     print('  vista: mirando', int((weight_axis > 0.22).sum()), 'visibles', int(((weight_axis > 0.22) & vis).sum()))
     return to_lin(col).astype(np.float32), facing
 
-front_v = load_view('aura_t_front_rgba.png'); back_v = load_view('aura_t_back_rgba.png'); side_v = load_view('aura_t_side_rgba.png')
+VP = os.environ.get('VIEWS', 'aura_t_')
+front_v = load_view(VP + 'front_rgba.png'); back_v = load_view(VP + 'back_rgba.png'); side_v = load_view(VP + 'side_rgba.png')
 # el personaje mira a -Y; su izquierda es +X
 cb, wb = project(back_v, -co[:, 0], co[:, 1], nr[:, 1])
 cl, wl = project(side_v, co[:, 1], co[:, 0], nr[:, 0])

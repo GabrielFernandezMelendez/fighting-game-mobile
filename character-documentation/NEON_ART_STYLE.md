@@ -135,7 +135,8 @@ Una **hoja de personaje** como `references/aura/aura_sheet_v3_rgb.png`:
 - [ ] **F0** Vistas aisladas en `references/<pj>/` (`tools/prep_concept_views.py`).
 - [ ] **F1** GLB de TRELLIS.2 (vista frontal) en `art/<pj>/<pj>_01_trellis2_raw.glb`.
 - [ ] **F2a** Recolor desde la hoja de giro (`tools/bl_aura_recolor.py` → copia como `bl_<pj>_recolor.py` si cambian las vistas).
-- [ ] **F3** Color plano con `tools/bl_<pj>_flatcolor.py` (copia de la de Aura):
+- [ ] **Config**: añadir el personaje a `tools/neon_chars.py` (`palette`, `display`, `slots`, `group`). Todos los scripts aceptan `CHAR=<pj>`.
+- [ ] **F3** Color plano con `CHAR=<pj> tools/bl_aura_flatcolor.py` (añadir un bloque `elif C['name'] == '<pj>'` con sus reglas):
   - `PALETTE` = muestras de la hoja.
   - **Reglas de zona** propias: cabeza, cara, torso, piernas, botas, manos. Usan altura normalizada `zn` (0 pies, 1 cabeza) y `x`/`y` relativas a la altura.
   - Comprobar el reparto con el print `ZONAS`.
@@ -145,7 +146,8 @@ Una **hoja de personaje** como `references/aura/aura_sheet_v3_rgb.png`:
   - Añadir las zonas nuevas a `ZONE_SHADE` (`models.js`).
   - Objetivo: **30 k triángulos**.
 - [ ] **F5** Rig con `bl_aura_rig.py`:
-  - **Mismos nombres de hueso** que el rig del juego.
+  - **Mismos nombres de hueso** que el rig del juego. Fuera de Aura, `FIT_JOINTS=1` ajusta codos, muñecas, rodillas y tobillos a la malla.
+  - Accesorios que cuelgan junto a la mano (bolsa, correas): añadir sus zonas a `NO_ARM` en `bl_aura_rig.py`.
   - Revisar `LEG_WEIGHTS` y la separación mano/pierna.
   - Validar `vértices sin peso 0` y probar `Jump_Loop` sin picos.
 - [ ] **F6** Clips con `bl_retarget.py` (`TARGET=…`, `ANIMS_NAME=<pj>_anims.glb`); registrar en `MODEL_ANIMS` (`models.js`).
@@ -173,6 +175,9 @@ Una **hoja de personaje** como `references/aura/aura_sheet_v3_rgb.png`:
 | Manchas negras en prendas finas | El contorno atraviesa capas finas | Doble cara + `polygonOffset` y desplazamiento z en el contorno |
 | Picos en rodillas o muslos al saltar | Pesos de la mano en el muslo; tela trasera siguiendo a la espinilla | Separación mano/pierna + mezcla de rodilla desplazada (`bl_aura_rig.py`) |
 | Pantalón como falda | Pesos del pantalón en Body/Hips | `LEG_WEIGHTS` |
+| Dedos estirados hasta el muslo | El remallado fundió mano y pantalón | El rig borra las caras puente mano-muslo |
+| Bolsa que sigue a la mano | Pesos de brazo en la bolsa | `NO_ARM` por zona |
+| Clips con brazos torcidos en otro personaje | Esqueleto con proporciones de Aura | `FIT_JOINTS` + retarget propio (`<pj>_anims.glb`) |
 | Gris en la mano | Proyección mal clasificada | Regla de manos en F3 |
 | Efectos más oscuros de lo esperado | `ShaderMaterial` sin conversión de color | `#include <colorspace_fragment>` |
 | Tinta invisible o sucia en zonas negras | Línea oscura sobre color oscuro | `INK.minLuma` |
