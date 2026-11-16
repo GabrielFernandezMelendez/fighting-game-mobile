@@ -83,7 +83,9 @@ lo.data.materials.clear(); lo.data.materials.append(mat)
 hm = hi.data.materials[0]; hn = hm.node_tree
 em = hn.nodes.new('ShaderNodeEmission'); vc = hn.nodes.new('ShaderNodeVertexColor'); vc.layer_name = 'Col'
 hn.links.new(vc.outputs['Color'], em.inputs['Color']); hn.links.new(em.outputs[0], hn.nodes['Material Output'].inputs['Surface'])
-FACECOL = os.environ.get('COLOR', 'face') == 'face' and 'LblCol' in hi.data.color_attributes
+MODE = os.environ.get('COLOR', 'label') if 'LblCol' in hi.data.color_attributes else 'bake'
+FACECOL = MODE == 'face'
+LABELS = MODE == 'label'
 # 5) bake selected → active (la textura se conserva para artistas aunque se use color por cara)
 sc = ctx.scene; sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = 1
 hi.select_set(True); lo.select_set(True); ctx.view_layer.objects.active = lo
@@ -164,6 +166,50 @@ if FACECOL:
         for l in list(b.inputs['Base Color'].links): t.links.remove(l)
         v = t.nodes.new('ShaderNodeVertexColor'); v.layer_name = 'Col'; t.links.new(v.outputs['Color'], b.inputs['Base Color'])
     print('COLOR POR CARA', dict(Counter(names[l] for l in flab)))
+# 6b) COLOR=label (por defecto): etiqueta de zona POR VÉRTICE. El juego elige el color de paleta en cada píxel
+#     (zona con más peso dentro del triángulo), así las fronteras de color y la tinta van por dentro de los
+#     triángulos en curvas suaves, no en dientes de sierra por las aristas. La paleta viaja en el GLB (extras).
+if LABELS:
+    from collections import Counter
+    me = lo.data; nv = len(me.vertices)
+    vl = []
+    for v in me.vertices:
+        c = Counter(int(lab_hi[i]) for _, i, _ in kd.find_n(lo.matrix_world @ v.co, 9))
+        vl.append(min(c.most_common(1)[0][0], 9))
+    nb = [[] for _ in range(nv)]
+    for e in me.edges: a, b = e.vertices; nb[a].append(b); nb[b].append(a)
+    for _ in range(3):   # mayoría local
+        new = vl[:]
+        for i in range(nv):
+            c = Counter(vl[n] for n in nb[i]); top, k = c.most_common(1)[0]
+            if top != vl[i] and k * 2 > len(nb[i]): new[i] = top
+        vl = new
+    for it in range(3):  # islas pequeñas → zona del borde
+        seen = [False] * nv; merged = 0
+        for v0 in range(nv):
+            if seen[v0]: continue
+            comp, stack, L = [], [v0], vl[v0]; seen[v0] = True
+            while stack:
+                v = stack.pop(); comp.append(v)
+                for n in nb[v]:
+                    if not seen[n] and vl[n] == L: seen[n] = True; stack.append(n)
+            if len(comp) < (4 if names[L] == 'naranja' else 10):
+                c = Counter(vl[n] for v in comp for n in nb[v] if vl[n] != L)
+                if c:
+                    t = c.most_common(1)[0][0]
+                    for v in comp: vl[v] = t
+                    merged += 1
+        print('islas fusionadas', merged)
+    for a in list(me.color_attributes): me.color_attributes.remove(a)
+    ca = me.color_attributes.new('Col', 'FLOAT_COLOR', 'POINT'); me.color_attributes.active_color = ca
+    for i, L in enumerate(vl): ca.data[i].color = ((L + 0.5) / 16, 0.0, 0.0, 1.0)
+    for p in me.polygons:
+        c = Counter(vl[i] for i in p.vertices); L = c.most_common(1)[0][0]
+        p.material_index = slots.index(group.get(names[L], 'Aura_ropa'))
+    lo['neon_labels'] = 1
+    lo['neon_palette'] = ','.join(DISPLAY[n] for n in names)
+    lo['neon_zones'] = ','.join(names)   # el juego elige el color de sombra por zona (ZONE_SHADE en models.js)
+    print('ZONAS POR VÉRTICE', dict(Counter(names[l] for l in vl)))
 # 7) normales suavizadas para el cel-shading (truco anime): se copian de una versión muy suavizada de la malla,
 #    así la frontera luz/sombra sigue la forma grande y no los triángulos. NORMALS=raw para desactivar.
 if os.environ.get('NORMALS', 'smooth') == 'smooth':
@@ -172,7 +218,7 @@ if os.environ.get('NORMALS', 'smooth') == 'smooth':
     me = lo.data; nv = len(me.vertices)
     N = np.empty(nv * 3, np.float32); me.vertices.foreach_get('normal', N); N = N.reshape(-1, 3)
     E = np.empty(len(me.edges) * 2, np.int32); me.edges.foreach_get('vertices', E); E = E.reshape(-1, 2)
-    for _ in range(int(os.environ.get('NORMAL_ITERS', 12))):
+    for _ in range(int(os.environ.get('NORMAL_ITERS', 30))):
         acc = N.copy(); np.add.at(acc, E[:, 0], N[E[:, 1]]); np.add.at(acc, E[:, 1], N[E[:, 0]])
         N = acc / np.linalg.norm(acc, axis=1, keepdims=True).clip(1e-6)
     me.normals_split_custom_set_from_vertices([tuple(n) for n in N])
@@ -182,5 +228,5 @@ bpy.data.objects.remove(hi, do_unlink=True)
 bpy.ops.wm.save_as_mainfile(filepath=out + '.blend')
 bpy.ops.object.select_all(action='DESELECT'); lo.select_set(True)
 bpy.ops.export_scene.gltf(filepath=out + '.glb', use_selection=True, export_image_format='WEBP', export_image_quality=90,
-                          export_vertex_color='ACTIVE' if FACECOL else 'MATERIAL')
+                          export_vertex_color='ACTIVE' if (FACECOL or LABELS) else 'MATERIAL', export_extras=True)
 print('OK tris', sum(len(p.vertices) - 2 for p in lo.data.polygons))
