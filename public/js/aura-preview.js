@@ -1,199 +1,258 @@
-// Visualizador independiente del blockout de Aura (no sustituye el modelo del combate).
-// Geometria procedural inspirada en tools/bl_aura_blockout.py y en el turnaround aprobado.
+// NEÓN · Taller de Aura — revisión lateral 2.5D, SIN tocar el combate.
+// La malla final se modela en Blender y se importa como GLB; las primitivas V3
+// quedan solo de referencia hasta contar con un asset real aprobado.
 import * as THREE from 'three';
+import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { createAuraDetail } from './aura-detail.js';
 import { installAuraPersonality } from './aura-personality.js';
 
-const canvas = document.querySelector('#aura-canvas');
-const stage = document.querySelector('#preview-stage');
-const info = document.querySelector('#preview-status');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+const get = (id) => document.getElementById(id);
+const stage = get('preview-stage');
+const canvas = get('aura-canvas');
+const status = get('preview-status');
+const assetStatus = get('preview-asset-status');
+const fallbackButton = get('preview-fallback');
+const poseButton = get('preview-pose');
+const motionButton = get('preview-motion');
+const weaponButton = get('preview-weapon');
+const zoomIn = get('preview-zoom-in');
+const zoomOut = get('preview-zoom-out');
+const fileInput = get('preview-upload');
+
+function notice(message, error = false) {
+  status.textContent = message;
+  status.dataset.error = String(error);
+}
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({
+    canvas, antialias: true, alpha: true, powerPreference: 'high-performance'
+  });
+} catch (error) {
+  notice('No se pudo iniciar WebGL. Comprueba la aceleración gráfica del navegador.', true);
+  throw error;
+}
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-camera.position.set(0, 1.6, 6.4);
-const ambient = new THREE.HemisphereLight(0xf9ebdf, 0x303047, 2.0);
-scene.add(ambient);
-const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
-keyLight.position.set(-3, 8, 5);
+const camera = new THREE.OrthographicCamera(-2, 2, 2, -2, 0.1, 50);
+const focus = new THREE.Vector3(0, 1.39, 0);
+// Vista lateral 2.5D: sin orbit controls ni giro del avatar.
+// Pequeña componente frontal para leer la máscara y pecho en combate.
+const sideDirection = new THREE.Vector3(6.5, 2.35, 0.85).sub(new THREE.Vector3(0, 1.39, 0)).normalize();
+camera.position.copy(focus).addScaledVector(sideDirection, 8);
+camera.lookAt(focus);
+let zoom = 1;
+function updateCamera() {
+  const width = Math.max(1, stage.clientWidth);
+  const height = Math.max(1, stage.clientHeight);
+  const visibleHeight = 3.70 / zoom;
+  const aspect = width / height;
+  camera.left = -visibleHeight * aspect * 0.5;
+  camera.right = visibleHeight * aspect * 0.5;
+  camera.top = visibleHeight * 0.5;
+  camera.bottom = -visibleHeight * 0.5;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height, false);
+}
+function changeZoom(delta) {
+  zoom = THREE.MathUtils.clamp(zoom + delta, 0.7, 1.8);
+  updateCamera();
+}
+zoomIn.addEventListener('click', () => changeZoom(0.15));
+zoomOut.addEventListener('click', () => changeZoom(-0.15));
+get('preview-reset').addEventListener('click', () => {
+  zoom = 1;
+  updateCamera();
+});
+window.addEventListener('resize', updateCamera);
+if ('ResizeObserver' in window) new ResizeObserver(updateCamera).observe(stage);
+
+scene.add(new THREE.HemisphereLight(0xf9edf3, 0x393346, 1.45));
+const keyLight = new THREE.DirectionalLight(0xfff4ed, 2.9);
+keyLight.position.set(2.0, 5.0, 3.5);
 scene.add(keyLight);
-const rim = new THREE.DirectionalLight(0xff8526, 1.15);
-rim.position.set(3, 4, -5);
-scene.add(rim);
+const rimLight = new THREE.DirectionalLight(0xff9947, 1.3);
+rimLight.position.set(-4.0, 3.0, -2.0);
+scene.add(rimLight);
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(0.76, 48),
+  new THREE.MeshBasicMaterial({color:0x30283b})
+);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -0.026;
+scene.add(floor);
 
-const toon = new THREE.DataTexture(new Uint8Array([
-  88,88,88,255, 160,160,160,255, 255,255,255,255,
+// Material toon para el prototipo. GLB conserva materiales/UV propios;
+// los shaders definitivos del modelo importado se aprobarán por separado.
+const ramp = new THREE.DataTexture(new Uint8Array([
+  88, 88, 88, 255, 169, 169, 169, 255, 255, 255, 255, 255
 ]), 3, 1, THREE.RGBAFormat);
-toon.needsUpdate = true;
-toon.minFilter = toon.magFilter = THREE.NearestFilter;
+ramp.magFilter = ramp.minFilter = THREE.NearestFilter;
+ramp.needsUpdate = true;
 const colors = {
-  ivory: '#e7ddd5', hair: '#e8e1f2', charcoal: '#202027',
-  purple: '#514956', armor: '#393640', orange: '#ff7a1a',
-  black: '#080810', skin: '#bf907f',
-  purpleLight: '#74677c', darkMetal: '#302c3a', hairShade: '#c4b6d2'
+  ivory:'#e7ddd5', hair:'#e8e1f2', charcoal:'#202027',
+  purple:'#514956', armor:'#393640', orange:'#ff7a1a', black:'#080810',
+  skin:'#bf907f', purpleLight:'#74677c', darkMetal:'#302c3a', hairShade:'#c4b6d2'
 };
-const mats = Object.fromEntries(Object.entries(colors).map(([name, color]) => [
-  name, new THREE.MeshToonMaterial({color, gradientMap: toon})
-]));
-const aura = new THREE.Group();
-scene.add(aura);
+const materials = Object.fromEntries(Object.entries(colors).map(([key, color]) =>
+  [key, new THREE.MeshToonMaterial({color, gradientMap:ramp})]
+));
+const fallback = createAuraDetail(THREE, materials);
+scene.add(fallback.root);
+const personality = installAuraPersonality(THREE, fallback);
+fallback.weapon.visible = false;
+let dagger = false;
 
-function mesh(geometry, material, position, rotation) {
-  const obj = new THREE.Mesh(geometry, mats[material]);
-  obj.position.set(...position);
-  if (rotation) obj.rotation.set(...rotation);
-  aura.add(obj);
-  // El contorno usa casco invertido; solo en piezas grandes para ahorrar draw calls.
-  if (['ivory','purple','armor','hair'].includes(material)) {
-    const outline = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color:'#0c0d14', side:THREE.BackSide}));
-    outline.scale.setScalar(1.035);
-    obj.add(outline);
+// GLB cargado desde public/assets/previews/ o arrastrado por el usuario.
+let imported = null;
+let importedMixer = null;
+let clips = [];
+let activeAction = null;
+let currentPose = 'idle';
+let motion = true;
+let showingFallback = true;
+const loader = new GLTFLoader();
+
+function normalizeModel(group) {
+  const bounds = new THREE.Box3().setFromObject(group);
+  if (bounds.isEmpty()) throw new Error('El GLB no contiene geometría visible');
+  const size = bounds.getSize(new THREE.Vector3());
+  if (!(size.y > 0.001) || size.y > 10000) throw new Error('Altura de modelo no válida');
+  const center = bounds.getCenter(new THREE.Vector3());
+  const factor = 2.76 / size.y;
+  const wrapper = new THREE.Group();
+  wrapper.name = 'AuraGLBPreviewNormalized';
+  wrapper.add(group);
+  group.scale.setScalar(factor);
+  group.position.set(-center.x * factor, -bounds.min.y * factor, -center.z * factor);
+  return wrapper;
+}
+function findClip(pose) {
+  const matchers = pose === 'guard'
+    ? [/guard/i, /block/i, /combat.*idle/i, /fight.*idle/i]
+    : [/^idle$/i, /idle/i, /breath/i, /stand/i];
+  for (const rx of matchers) {
+    const clip = clips.find(c => rx.test(c.name));
+    if (clip) return clip;
   }
-  return obj;
+  return pose === 'idle' ? (clips[0] || null) : null;
 }
-function box(name, position, dimensions, material, bevel=false) {
-  const o=mesh(new THREE.BoxGeometry(...dimensions), material, position);
-  o.name=name;
-  return o;
+function applyClip() {
+  if (!importedMixer) return;
+  const clip = findClip(currentPose);
+  if (activeAction) activeAction.fadeOut(0.12);
+  if (!clip) {
+    activeAction = null;
+    notice('El GLB no contiene un clip compatible con esta pose; revisión estática.');
+    return;
+  }
+  activeAction = importedMixer.clipAction(clip);
+  activeAction.reset().fadeIn(0.12).play();
+  activeAction.paused = !motion;
 }
-function ellipsoid(name, position, radii, material, detail=1) {
-  const o=mesh(new THREE.IcosahedronGeometry(1,detail),material,position);
-  o.name=name; o.scale.set(...radii);
-  return o;
+function syncControls() {
+  fallback.root.visible = showingFallback;
+  if (imported) imported.visible = !showingFallback;
+  fallbackButton.disabled = !imported;
+  fallbackButton.textContent = showingFallback ? 'Mostrar modelo GLB' : 'Comparar con V3';
+  weaponButton.disabled = !showingFallback;
+  fallback.weapon.visible = showingFallback && dagger;
+  weaponButton.setAttribute('aria-pressed', String(dagger && showingFallback));
+  poseButton.textContent = currentPose === 'guard' ? 'Pose relajada' : 'Pose de combate';
+  motionButton.textContent = motion ? 'Pausar movimiento' : 'Reanudar movimiento';
 }
-function link(name,a,b,r1,r2,material,sides=7) {
-  const va=new THREE.Vector3(...a),vb=new THREE.Vector3(...b),dif=vb.clone().sub(va);
-  const o=mesh(new THREE.CylinderGeometry(r2,r1,dif.length(),sides),material,va.clone().add(vb).multiplyScalar(.5).toArray());
-  o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dif.normalize());
-  o.name=name; return o;
+function setPose(next) {
+  currentPose = next;
+  personality.setPose(next);
+  if (!showingFallback) applyClip();
+  syncControls();
 }
-function spike(name, pos, radius, height, angle, material) {
-  const o=mesh(new THREE.ConeGeometry(radius,height,5),material,pos);
-  o.rotation.set(angle[0],angle[1],angle[2]); o.name=name;
-}
-// Body proportions: 2.76 units tall. This is unrigged visual proxy, not the Blender GLB.
-box('Inner torso',[0,1.76,0],[.38,.48,.24],'charcoal');
-box('Ivory cropped jacket',[0,1.90,.035],[.46,.29,.28],'ivory');
-box('Jacket lower trim',[0,1.79,.035],[.46,.075,.30],'armor');
-box('Tall scarf collar',[0,2.15,.025],[.49,.22,.38],'charcoal');
-box('Orange scarf line',[0,2.18,.231],[.38,.029,.025],'orange');
-box('Waist',[0,1.50,0],[.36,.28,.26],'purple');
-box('Belt',[0,1.62,.04],[.44,.085,.31],'charcoal');
-box('Belt clasp',[0,1.62,.218],[.09,.065,.025],'armor');
-box('Hip flap',[-.31,1.32,.015],[.18,.40,.25],'armor');
-for (const side of [-1,1]) {
-  const n=side===-1?'L':'R', x=side*.24;
-  link(n+' thigh',[x,1.48,0],[x*1.05,1.02,0],.177,.15,'purple');
-  ellipsoid(n+' pants knee',[x*1.05,.99,0],[.16,.19,.145],'purple');
-  link(n+' baggy calf',[x*1.05,.97,0],[x*1.16,.45,0],.19,.115,'purple');
-  box(n+' boot shaft',[x*1.16,.34,.01],[.25,.39,.29],'armor');
-  box(n+' shoe',[x*1.16,.13,.12],[.31,.20,.48],'charcoal');
-  box(n+' sole',[x*1.16,.05,.12],[.33,.07,.51],'ivory');
-  box(n+' boot orange',[x*1.16,.34,.165],[.04,.18,.025],'orange');
-  box(n+' shoulder',[x*1.40,2.03,0],[.27,.19,.36],'armor');
-  link(n+' upper arm',[x*1.5,1.99,0],[x*1.70,1.68,.018],.116,.104,'ivory');
-  ellipsoid(n+' elbow',[x*1.7,1.66,.018],[.11,.11,.11],'armor');
-  link(n+' forearm',[x*1.7,1.63,.02],[x*1.83,1.33,.05],.11,.085,'ivory');
-  box(n+' glove',[x*1.86,1.22,.08],[.15,.20,.16],'charcoal');
-  box(n+' wrist orange',[x*1.83,1.35,.14],[.12,.03,.02],'orange');
-}
-link('Neck',[0,2.22,0],[0,2.34,0],.11,.105,'charcoal',8);
-ellipsoid('Head',[0,2.49,0],[.185,.26,.205],'ivory',2);
-ellipsoid('Faceted mask',[0,2.49,.15],[.175,.235,.11],'ivory',1);
-for (const side of [-1,1]) {
-  const eye=box('Black eye slit',[side*.084,2.50,.251],[.105,.034,.022],'black');
-  eye.rotation.z=side*.20;
-}
-ellipsoid('Hair crown',[0,2.66,-.055],[.205,.11,.19],'hair',1);
-for (let i=0;i<9;i++) {
-  const a=2*Math.PI*i/9;
-  spike('Hair spike '+i,[Math.cos(a)*.17,2.72+(i%3)*.02,Math.sin(a)*.12-.045],
-    .10,.23+(i%3)*.05,[Math.sin(a)*.36,0,-Math.cos(a)*.38],'hair');
-}
-
-// Switchable preview: legacy geometry remains to compare silhouette changes.
-// Detailed mesh is still a procedural art study (NOT a rigged glTF asset).
-const detailed = createAuraDetail(THREE, mats);
-const personality = installAuraPersonality(THREE, detailed);
-scene.add(detailed.root);
-aura.visible = false; // The new detailed revision is the default review view.
-let detailMode = true;
-let daggerShown = false;
-const poseButton = document.querySelector('#preview-pose');
-const motionButton = document.querySelector('#preview-motion');
-poseButton.addEventListener('click',()=>{
-  personality.setPose(personality.pose === 'guard' ? 'idle' : 'guard');
-  poseButton.textContent = personality.pose === 'guard' ? 'Pose relajada' : 'Pose de combate';
+poseButton.addEventListener('click', () => setPose(currentPose === 'guard' ? 'idle' : 'guard'));
+motionButton.addEventListener('click', () => {
+  motion = !motion;
+  personality.setPlaying(motion);
+  if (activeAction) activeAction.paused = !motion;
+  syncControls();
 });
-motionButton.addEventListener('click',()=>{
-  personality.setPlaying(!personality.playing);
-  motionButton.textContent = personality.playing ? 'Pausar movimiento' : 'Reanudar movimiento';
+weaponButton.addEventListener('click', () => { dagger = !dagger; syncControls(); });
+fallbackButton.addEventListener('click', () => {
+  if (!imported) return;
+  showingFallback = !showingFallback;
+  if (!showingFallback) applyClip();
+  syncControls();
+  assetStatus.textContent = showingFallback
+    ? 'Comparación: prototipo V3 (no es malla de producción)'
+    : 'Modelo GLB cargado — cámara lateral fija';
 });
-const modeButton = document.querySelector('#preview-mode');
-const weaponButton = document.querySelector('#preview-weapon');
-function updatePreviewMode() {
-  detailed.root.visible = detailMode;
-  aura.visible = !detailMode;
-  modeButton.textContent = detailMode ? 'Ver blockout V1' : 'Ver detalle V2';
-  weaponButton.disabled = !detailMode;
-  poseButton.disabled = !detailMode;
-  motionButton.disabled = !detailMode;
-  detailed.weapon.visible = detailMode && daggerShown;
-  weaponButton.setAttribute('aria-pressed',String(detailMode && daggerShown));
-  info.textContent = detailMode
-    ? 'Aura V3 · respiración, actitud y movimiento secundario · prototipo sin rigging'
-    : 'Blockout V1 · comparación de geometría inicial';
+function acceptGLTF(gltf, label) {
+  const normalized = normalizeModel(gltf.scene);
+  if (imported) scene.remove(imported);
+  if (importedMixer) importedMixer.stopAllAction();
+  imported = normalized;
+  scene.add(imported);
+  clips = gltf.animations || [];
+  importedMixer = clips.length ? new THREE.AnimationMixer(gltf.scene) : null;
+  activeAction = null;
+  showingFallback = false;
+  currentPose = 'idle';
+  applyClip();
+  syncControls();
+  assetStatus.textContent = label + ' · ' + clips.length + ' animaciones';
+  notice('GLB cargado. Revisa la silueta y la fidelidad al concept desde el lateral.');
 }
-modeButton.addEventListener('click',()=>{detailMode=!detailMode;updatePreviewMode();});
-weaponButton.addEventListener('click',()=>{daggerShown=!daggerShown;updatePreviewMode();});
-updatePreviewMode();
-
-// Display stand and neutral figure; accessories and weapons are intentionally separate.
-const disk=new THREE.Mesh(new THREE.CylinderGeometry(.80,.84,.06,60),new THREE.MeshStandardMaterial({color:0x24202f,roughness:.88}));
-disk.position.y=-.05; scene.add(disk);
-const circle=new THREE.Mesh(new THREE.TorusGeometry(.76,.008,3,64),new THREE.MeshBasicMaterial({color:0xff7a1a}));
-circle.rotation.x=Math.PI/2; circle.position.y=-.015; scene.add(circle);
-
-const state = { yaw: -0.45, pitch: .06, zoom: 6.4, dragging: false, oldX:0, oldY:0 };
-function positionCamera() {
-  const target = new THREE.Vector3(0,1.36,0);
-  camera.position.set(
-    Math.sin(state.yaw)*Math.cos(state.pitch)*state.zoom,
-    target.y+Math.sin(state.pitch)*state.zoom,
-    Math.cos(state.yaw)*Math.cos(state.pitch)*state.zoom
-  );
-  camera.lookAt(target);
-}
-function reset() { state.yaw=-.45; state.pitch=.06; state.zoom=6.4; positionCamera(); }
-document.querySelector('#preview-reset').addEventListener('click',reset);
-document.querySelector('#preview-front').addEventListener('click',()=>{state.yaw=0;state.pitch=0;positionCamera();});
-document.querySelector('#preview-side').addEventListener('click',()=>{state.yaw=Math.PI/2;state.pitch=0;positionCamera();});
-document.querySelector('#preview-back').addEventListener('click',()=>{state.yaw=Math.PI;state.pitch=0;positionCamera();});
-document.querySelector('#preview-zoom-in').addEventListener('click',()=>{state.zoom=Math.max(3.2,state.zoom-.6);positionCamera();});
-document.querySelector('#preview-zoom-out').addEventListener('click',()=>{state.zoom=Math.min(11,state.zoom+.6);positionCamera();});
-canvas.addEventListener('pointerdown',e=>{state.dragging=true;state.oldX=e.clientX;state.oldY=e.clientY;canvas.setPointerCapture(e.pointerId);});
-canvas.addEventListener('pointermove',e=>{
-  if(!state.dragging)return;
-  state.yaw-=((e.clientX-state.oldX)*.009);
-  state.pitch=Math.max(-.5,Math.min(.7,state.pitch+(e.clientY-state.oldY)*.006));
-  state.oldX=e.clientX;state.oldY=e.clientY;positionCamera();
+// File input requires a self-contained GLB (embedded textures).
+fileInput.addEventListener('change', async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith('.glb') || file.size > 35 * 1024 * 1024) {
+    notice('Selecciona un archivo .glb de máximo 35 MB.', true);
+    return;
+  }
+  notice('Cargando modelo local…');
+  try {
+    const buffer = await file.arrayBuffer();
+    const gltf = await loader.parseAsync(buffer, '');
+    acceptGLTF(gltf, 'GLB local: ' + file.name);
+  } catch (error) {
+    notice('No se pudo abrir el GLB: ' + error.message, true);
+  } finally {
+    fileInput.value = '';
+  }
 });
-canvas.addEventListener('pointerup',()=>{state.dragging=false;});
-canvas.addEventListener('pointercancel',()=>{state.dragging=false;});
-canvas.addEventListener('wheel',e=>{e.preventDefault();state.zoom=Math.max(3.2,Math.min(11,state.zoom+e.deltaY*.006));positionCamera();},{passive:false});
-function resize() {
-  const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight);
-  renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+// Deployable config: modelUrl is null until an authored/rigged file is supplied.
+// No intentional 404s or fake production assets.
+async function loadConfiguredGLB() {
+  try {
+    const response = await fetch('./assets/previews/aura.json', {cache:'no-store'});
+    if (!response.ok) throw new Error('Configuración de preview no disponible');
+    const config = await response.json();
+    if (!config.modelUrl) {
+      assetStatus.textContent = 'Pendiente de modelo Blender/GLB · mostrando prototipo V3';
+      notice('Todavía no hay GLB definitivo. Puedes cargar uno con «Probar GLB local».');
+      return;
+    }
+    if (!/^assets\/previews\/[\w./-]+\.glb$/.test(config.modelUrl) || config.modelUrl.includes('..')) {
+      throw new Error('Ruta GLB no autorizada en configuración');
+    }
+    notice('Cargando modelo 3D desde el repositorio…');
+    const gltf = await loader.loadAsync('./' + config.modelUrl);
+    acceptGLTF(gltf, 'Asset del repositorio: ' + config.modelUrl);
+  } catch (error) {
+    assetStatus.textContent = 'Modo de reserva: prototipo V3';
+    notice('No hay GLB utilizable. Se conserva la vista V3: ' + error.message, true);
+  }
 }
-window.addEventListener('resize',resize);
-reset();resize();
-// updatePreviewMode() communicates the currently selected model.
+syncControls();
+updateCamera();
+loadConfiguredGLB();
 const clock = new THREE.Clock();
 function animate() {
-  personality.update(clock.getDelta());
-  renderer.render(scene,camera);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (showingFallback) personality.update(dt);
+  else if (importedMixer && motion) importedMixer.update(dt);
+  renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
 animate();
