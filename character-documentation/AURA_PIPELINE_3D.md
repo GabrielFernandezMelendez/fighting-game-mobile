@@ -77,6 +77,34 @@ Evaluación (en este orden, no por "más detalle"): silueta lateral → máscara
 - Escala 1 unidad = 1 m, mirando a −Y en Blender (+Z en glTF), pose A del concept.
 - Automatizable con Blender MCP / `bpy`: importación, limpieza (merge by distance, normales), decimado de prueba, escala/orientación, renders de comparación con cámara lateral fija, exportación. **No automatizable:** decisiones de forma, máscara, pelo, retopo fina.
 
+#### Resultado F2 automatizado (2026-11-16) — Aura jugable de prueba con `?aura3d`
+Todo con scripts `bpy` reproducibles, sin trabajo manual:
+| Paso | Script | Resultado |
+|---|---|---|
+| F2a color | `tools/bl_aura_recolor.py` | Espalda y laterales proyectados desde la hoja de giro (z-buffer por vértices), amarillo→naranja. `references/aura/f2/f2a_recolor_highpoly.png` |
+| F2b malla | `tools/bl_aura_retopo.py` (`RETOPO=voxel`) | Vóxeles 2,5 mm → decimado a **30 k triángulos**, Smart UV, textura 1024 horneada desde la malla alta. QuadriFlow se cancela sin interfaz: queda pendiente probarlo en Blender de escritorio |
+| F2c rig | `tools/bl_aura_rig.py` | Esqueleto con los nombres del rig del juego ajustado a la pose A de Aura, pesos automáticos (bone heat) sin vértices huérfanos. Escala 2,76 como los modelos RPG |
+| Clips | `TARGET=… ANIMS_NAME=aura_anims.glb tools/bl_retarget.py` | Los 44 clips UAL retargeteados a su esqueleto → `public/assets/chars/aura_anims.glb` |
+
+Comandos (desde la raíz, con `assets_raw/` presente):
+```bash
+python tools/bl_aura_recolor.py aura_trellis2.glb character-documentation/references/aura/turnaround out/aura_recolor
+RETOPO=voxel python tools/bl_aura_retopo.py -- out/aura_recolor.blend out/aura_lo 15000 0.0025 1024
+python tools/bl_aura_rig.py -- out/aura_lo.blend out/aura_rig
+TARGET=out/aura_rig.blend ANIMS_NAME=aura_anims.glb python tools/bl_retarget.py out
+cp out/aura_rig.glb public/assets/chars/aura.glb && cp out/aura_anims.glb public/assets/chars/
+```
+**Probar:** abrir el juego con `?aura3d` (p. ej. `index.html?aura3d`) y elegir Aura. Sin el parámetro, Aura sigue usando el modelo Cleric: no se sustituye el personaje jugable.
+
+Integración (`models.js` / `render.js`): juego de clips por modelo (`MODEL_ANIMS`), material a doble cara y contorno más fino para Aura, contorno con desplazamiento de profundidad para evitar manchas negras en prendas finas. Simulación, hitboxes y online sin cambios; tests en verde.
+
+**Limitaciones conocidas (para F2 manual en Blender):**
+- El remallado por vóxeles **une las perneras** en una "falda" que se ve al abrir las piernas (salto, guardia baja). Hay que separar piernas y la correa colgante.
+- Malla triangulada sin loops de articulación: los codos y rodillas se deforman de forma blanda.
+- Máscara y pelo no son piezas separadas (van al hueso de la cabeza por peso).
+- UV fragmentadas (Smart UV sobre triángulos): desperdicia textura; con retopo manual se rehacen.
+- Proporciones: Aura es más realista que los modelos RPG (cabezones); mezclarlos en pantalla cambia la escala aparente.
+
 ### F3 — Color plano
 - Proyectar `aura_front/side/back` sobre la malla desde cámaras ortográficas alineadas (script `bpy`) → textura base 1024 ó 2048.
 - Repintar zonas mal proyectadas y separar colores por material según la paleta (marfil, lavanda, gris violeta, grafito, naranja).

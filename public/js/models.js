@@ -22,9 +22,13 @@ const outlineMats = new Map();
 export function outlineMaterial(thick = 0.022) {
   if (outlineMats.has(thick)) return outlineMats.get(thick);
   const m = new THREE.MeshBasicMaterial({ color: '#0d0d14', side: THREE.BackSide });
+  // empujar el contorno hacia atrás en profundidad: en prendas finas (dos capas muy juntas) el casco
+  // extruido de la capa trasera taparía a la delantera y aparecerían manchas negras
+  m.polygonOffset = true; m.polygonOffsetFactor = 2; m.polygonOffsetUnits = 8;
   m.onBeforeCompile = sh => {
     sh.vertexShader = 'attribute vec3 outlineNormal;\n' + sh.vertexShader.replace('#include <begin_vertex>',
-      `vec3 transformed = vec3(position) + normalize(outlineNormal) * ${thick.toFixed(4)};`);
+      `vec3 transformed = vec3(position) + normalize(outlineNormal) * ${thick.toFixed(4)};`)
+      .replace('#include <fog_vertex>', '#include <fog_vertex>\n  gl_Position.z += 0.0008 * gl_Position.w;');
   };
   m.userData.outline = true; outlineMats.set(thick, m); return m;
 }
@@ -40,20 +44,33 @@ function addOutlineNormals(geo) {
   geo.setAttribute('outlineNormal', new THREE.BufferAttribute(out, 3));
 }
 
+// Juego de clips por modelo: los modelos RPG comparten 'anims'; los esqueletos propios llevan el suyo
+// (mismos nombres de hueso, distinta pose de reposo → el retarget se hace por esqueleto).
+export const MODEL_ANIMS = { aura: 'aura_anims' };
+export const animSetFor = model => MODEL_ANIMS[model] || 'anims';
+
 export class ModelLibrary {
-  constructor() { this.loader = new GLTFLoader(); this.chars = new Map(); this.clips = null; }
-  async loadAnims() {
-    if (this.clips) return this.clips;
-    const g = await this.loader.loadAsync(BASE + 'anims.glb');
-    this.clips = new Map(g.animations.map(c => [c.name, c]));
-    this.meta = analyzeClips(g.scene, this.clips);
-    return this.clips;
+  constructor() { this.loader = new GLTFLoader(); this.chars = new Map(); this.sets = new Map(); this.clips = null; }
+  async loadAnims(set = 'anims') {
+    if (!this.sets.has(set)) this.sets.set(set, this.loader.loadAsync(BASE + set + '.glb').then(g => {
+      const clips = new Map(g.animations.map(c => [c.name, c]));
+      return { clips, meta: analyzeClips(g.scene, clips) };
+    }));
+    const r = await this.sets.get(set);
+    if (set === 'anims') { this.clips = r.clips; this.meta = r.meta; }   // compatibilidad
+    return r;
   }
+  setFor(model) { return this.sets.get(animSetFor(model)); }
   async loadChar(model) {
     if (!this.chars.has(model)) this.chars.set(model, this.loader.loadAsync(BASE + model + '.glb').then(g => { prepare(g.scene); return g; }));
     return this.chars.get(model);
   }
-  async preload(models) { await Promise.all([this.loadAnims(), ...models.map(m => this.loadChar(m))]); }
+  async preload(models) {
+    const sets = [...new Set(['anims', ...models.map(animSetFor)])];
+    await Promise.all([...sets.map(x => this.loadAnims(x)), ...models.map(m => this.loadChar(m))]);
+    this.resolved = new Map(); for (const x of sets) this.resolved.set(x, await this.sets.get(x));
+  }
+  animsFor(model) { return (this.resolved && this.resolved.get(animSetFor(model))) || { clips: this.clips, meta: this.meta }; }
 }
 
 function prepare(scene) {
@@ -90,7 +107,7 @@ function analyzeClips(scene, clips) {
 // ------------------------------------------------------------------
 export class ModelFighter {
   constructor(lib, gltf, opts) {
-    const { height = 1.8, outline = 0.022 } = opts;
+    const { height = 1.8, outline = 0.022, model, doubleSide = false } = opts;
     this.lib = lib;
     this.root = new THREE.Group();         // posición + espejo
     this.turn = new THREE.Group();         // orientación 3/4
@@ -109,8 +126,11 @@ export class ModelFighter {
     });
     this.bones = {}; this.model.traverse(o => { if (o.isBone) this.bones[o.name] = o; });
     this.mats = []; this.model.traverse(o => { if (o.isMesh && !o.userData.outline && o.material.isMeshToonMaterial) this.mats.push(o.material = o.material.clone()); });
+    // mallas de imagen→3D con capas finas: doble cara evita ver el casco del contorno por dentro
+    if (doubleSide) for (const m of this.mats) m.side = THREE.DoubleSide;
     this.mixer = new THREE.AnimationMixer(this.model);
-    this.actions = {}; for (const [n, c] of lib.clips) this.actions[n] = this.mixer.clipAction(c);
+    const set = lib.animsFor(model); this.meta = set.meta;
+    this.actions = {}; for (const [n, c] of set.clips) this.actions[n] = this.mixer.clipAction(c);
     this.cur = null; this.prev = null; this.blend = 0;
   }
   hand() { return this.bones.WeaponR || this.bones.FistR; }

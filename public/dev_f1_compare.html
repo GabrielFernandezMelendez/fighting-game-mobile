@@ -15,9 +15,8 @@ const mk = (sc, toon) => {
   const m = g.scene.clone(true);
   const meshes = []; m.traverse(o => { if (o.isMesh) meshes.push(o); });
   meshes.forEach(o => {
-    if (toon) { const src = o.material; o.material = new THREE.MeshToonMaterial({ map: src.map, gradientMap: grad });
-      const ol = new THREE.Mesh(o.geometry, new THREE.MeshBasicMaterial({ color: '#0d0d14', side: THREE.BackSide }));
-      ol.onBeforeRender = () => {}; ol.scale.setScalar(1.012); o.add(ol); } });
+    if (toon) { const src = o.material; o.material = new THREE.MeshToonMaterial({ map: src.map, gradientMap: grad, vertexColors: !src.map && !!o.geometry.attributes.color });
+      if (q.get('outline') !== '0') { const ol = new THREE.Mesh(o.geometry, new THREE.MeshBasicMaterial({ color: '#0d0d14', side: THREE.BackSide })); ol.scale.setScalar(1.012); o.add(ol); } } });
   const box = new THREE.Box3().setFromObject(m), c = box.getCenter(new THREE.Vector3()), s = 1.8 / (box.max.y - box.min.y);
   const piv = new THREE.Group(); m.position.sub(c); piv.add(m); piv.scale.setScalar(s); piv.position.y = 0.9; sc.add(piv); return piv;
 };

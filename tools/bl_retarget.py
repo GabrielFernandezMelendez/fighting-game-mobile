@@ -18,6 +18,8 @@ SRC = [
     "TreeChopping_Loop", "Yes", "Idle_Shield_Loop", "Idle_FoldArms_Loop", "Zombie_Scratch", "Idle_Shield_Break"]),
 ]
 OUT = sys.argv[-1]
+# opcional: TARGET=<rig.blend> ANIMS_NAME=<nombre.glb> para retargetear a otro esqueleto con los mismos nombres de hueso
+TARGET = os.environ.get('TARGET'); ANIMS_NAME = os.environ.get('ANIMS_NAME', 'anims.glb')
 os.makedirs(OUT, exist_ok=True)
 
 # destino <- (origen, hijo origen para la dirección, hijo destino para la dirección)  (None = sin alinear)
@@ -36,7 +38,7 @@ for s, S in (('L', 'l'), ('R', 'r')):
     f'Foot.{s}': (f'foot_{S}', f'ball_{S}', None),
   })
 
-bpy.ops.wm.open_mainfile(filepath=f"{RPG}/Warrior.blend")
+bpy.ops.wm.open_mainfile(filepath=TARGET or f"{RPG}/Warrior.blend")
 scene = bpy.context.scene
 tgt = [o for o in bpy.data.objects if o.type == 'ARMATURE'][0]
 for pb in tgt.pose.bones:
@@ -55,7 +57,7 @@ order = [n for n in order if not n.startswith('Foot.')] + ['Foot.L', 'Foot.R']
 
 def tdir(name, child):
   b = TB[name]
-  return ((TB[child].head_local if child else b.tail_local) - b.head_local).normalized()
+  return ((TB[child].head_local if child and child in TB else b.tail_local) - b.head_local).normalized()
 
 def retarget_file(path, clips):
   before = set(bpy.data.objects)
@@ -150,7 +152,7 @@ for a in list(bpy.data.actions):
   if 'Stash' in a.name: bpy.data.actions.remove(a)
 for a in bpy.data.actions: a.name = a.name.split('.')[0]
 print('ACTS', [(a.name, len(a.fcurves) if hasattr(a,'fcurves') else '?', [sl.identifier for sl in a.slots] if hasattr(a,'slots') else '') for a in bpy.data.actions][:4])
-bpy.ops.export_scene.gltf(filepath=f"{OUT}/anims.glb", use_selection=True, export_animations=True,
+bpy.ops.export_scene.gltf(filepath=f"{OUT}/{ANIMS_NAME}", use_selection=True, export_animations=True,
   export_animation_mode='ACTIONS', export_force_sampling=True, export_frame_step=1, export_skins=True,
   export_def_bones=False, export_optimize_animation_size=True, export_yup=True)
 print('ANIMS OK')

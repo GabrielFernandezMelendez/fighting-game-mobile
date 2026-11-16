@@ -57,6 +57,14 @@
 - Hunyuan3D descartado: su licencia excluye la UE. Candidatos F1: TRELLIS.2, TripoSG, Tripo, Meshy.
 - Impacto en animaciones/balance/network: ninguno.
 
+## 2026-11-16 — Aura F2 automatizada: malla TRELLIS riggeada y animada (prueba)
+- Estado: implementado como **prueba** detrás de `?aura3d`; el personaje jugable no cambia.
+- Malla de TRELLIS.2 → color corregido con la hoja de giro → 30 k triángulos con textura horneada → esqueleto propio con pesos automáticos → 44 clips UAL retargeteados.
+- Scripts: `bl_aura_recolor.py`, `bl_aura_retopo.py`, `bl_aura_rig.py`; `bl_retarget.py` admite `TARGET`/`ANIMS_NAME`.
+- Render: clips por modelo, doble cara opcional, contorno con offset de profundidad.
+- Impacto en animaciones/balance/network: ninguno en el modo por defecto. Tests en verde.
+- Pendiente: separar piernas, retopología con loops y piezas de máscara/pelo en Blender.
+
 ## Plantilla para revisiones
 ### FECHA — PERSONAJE vX.Y
 - Estado: propuesto / aprobado / implementado
