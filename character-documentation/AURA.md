@@ -95,7 +95,7 @@ Posible personaje `point` para abrir defensas, con assist rápido y extensiones 
 
 ## 6. Identidad visual oficial y blockout — v1.1
 
-**Dirección visual aprobada:** turnaround generado para Aura, con cuatro presentaciones: pose 3/4, frontal, perfil izquierdo y posterior, además de la daga insignia y paleta de colores. Archivo original: `hoja_técnica_de_giro_de_aura.png` (1448 × 1086, entregado junto a esta propuesta). **La imagen binaria debe incluirse en `character-documentation/images/aura-turnaround.png` antes de considerar cerrada la tarea documental.** Mientras no esté subida, este documento no debe anunciarla como archivo presente en GitHub.
+**Dirección visual aprobada:** turnaround generado para Aura, con cuatro presentaciones: pose 3/4, frontal, perfil izquierdo y posterior, además de la daga insignia y paleta de colores. Archivo original: `hoja_técnica_de_giro_de_aura.png` (1448 × 1086, entregado junto a esta propuesta). **Vista previa incorporada al repositorio:** [aura-turnaround-preview.svg](images/aura-turnaround-preview.svg) (SVG que contiene una copia WebP reducida de la ilustración aprobada). **Archivo fuente en resolución completa aún pendiente:** `character-documentation/images/aura-turnaround.png` (1448 × 1086). La versión de baja resolución no sustituye la referencia de producción.
 
 Esta ilustración es una **referencia de dirección de arte**, no una lámina técnica perfectamente ortográfica: hay perspectivas y variaciones de pose. El modelador debe normalizar proporciones entre vistas antes de usarla como plano de modelado. La daga se presenta como arma insignia, pero su malla no debe fusionarse con el cuerpo.
 
@@ -118,4 +118,5 @@ Esta ilustración es una **referencia de dirección de arte**, no una lámina t�
 ### Estado de los ficheros
 - `public/img/aura.jpg`: splash antiguo, conservar para comparar.
 - `tools/bl_aura_blockout.py`: generador preliminar, no sustituye el asset que actualmente usa el juego.
-- `character-documentation/images/aura-turnaround.png`: **pendiente de subir archivo original**.
+- `character-documentation/images/aura-turnaround-preview.svg`: vista previa del turnaround en el repositorio.
+- `character-documentation/images/aura-turnaround.png`: fuente a resolución completa, **pendiente de incorporar**.
