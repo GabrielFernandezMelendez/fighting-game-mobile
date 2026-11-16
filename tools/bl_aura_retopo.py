@@ -5,10 +5,13 @@ Salida:  <salida>.blend y <salida>.glb con malla baja en quads, UV propias y tex
 
   python tools/bl_aura_retopo.py <entrada.blend> <salida_sin_ext> [caras_quad=15000] [voxel=0.0035] [tex=1024]
 
+COLOR=face (por defecto si la malla alta trae "LblCol" de bl_aura_flatcolor.py): cada cara recibe UN color de
+la paleta (atributo "Col" por esquina) → bordes duros, sin difuminado de textura. COLOR=bake: textura horneada.
+
 Pasos: remallado por vóxeles (cierra la malla) → QuadriFlow → Smart UV → bake Cycles
 (emisión del color de la malla alta sobre la baja, selected-to-active).
 """
-import bpy, sys
+import bpy, sys, os
 args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[-5:]
 src, out = args[0], args[1]
 faces = int(args[2]) if len(args) > 2 else 15000
@@ -80,7 +83,8 @@ lo.data.materials.clear(); lo.data.materials.append(mat)
 hm = hi.data.materials[0]; hn = hm.node_tree
 em = hn.nodes.new('ShaderNodeEmission'); vc = hn.nodes.new('ShaderNodeVertexColor'); vc.layer_name = 'Col'
 hn.links.new(vc.outputs['Color'], em.inputs['Color']); hn.links.new(em.outputs[0], hn.nodes['Material Output'].inputs['Surface'])
-# 5) bake selected → active
+FACECOL = os.environ.get('COLOR', 'face') == 'face' and 'LblCol' in hi.data.color_attributes
+# 5) bake selected → active (la textura se conserva para artistas aunque se use color por cara)
 sc = ctx.scene; sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = 1
 hi.select_set(True); lo.select_set(True); ctx.view_layer.objects.active = lo
 bpy.ops.object.bake(type='EMIT', use_selected_to_active=True, cage_extrusion=0.02, max_ray_distance=0.08, margin=4)
@@ -108,9 +112,75 @@ if 'LblCol' in hi.data.color_attributes:
         for vi in p.vertices: g = group.get(names[min(lab_lo[vi], 9)], 'Aura_ropa'); votes[g] = votes.get(g, 0) + 1
         best = max(votes, key=votes.get); p.material_index = slots.index(best); cnt[best] += 1
     print('MATERIALES', cnt)
+# 6) color plano por cara (sin textura): etiqueta por mayoría de la malla alta + limpieza de islas
+DISPLAY = {  # muestras de la paleta de la lámina V3 (más saturadas que la proyección)
+  'chaqueta': '#E7C6B3', 'pantalon': '#8F6E89', 'gris': '#91888E', 'grafito': '#342D3A', 'negro': '#1E1A24',
+  'naranja': '#FD7A02', 'pelo': '#DCCBF0', 'mascara': '#D8D0D6', 'piel': '#E7B49E', 'metal': '#B3ABB4'}
+if FACECOL:
+    import bmesh
+    from collections import Counter
+    me = lo.data; nf = len(me.polygons)
+    flab = []
+    for p in me.polygons:
+        c = Counter(int(lab_hi[i]) for _, i, _ in kd.find_n(lo.matrix_world @ p.center, 7))
+        flab.append(min(c.most_common(1)[0][0], 9))
+    bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
+    nbr = [[e2.index for e in f.edges for e2 in e.link_faces if e2.index != f.index] for f in bm.faces]
+    bm.free()
+    for _ in range(2):   # mayoría local: quita caras sueltas
+        new = flab[:]
+        for f in range(nf):
+            c = Counter(flab[n] for n in nbr[f])
+            if c and c.most_common(1)[0][1] >= 2 and c.most_common(1)[0][0] != flab[f] and flab[f] not in [flab[n] for n in nbr[f]]:
+                new[f] = c.most_common(1)[0][0]
+        flab = new
+    for it in range(3):  # islas pequeñas → color del borde
+        seen = [False] * nf; merged = 0
+        for f0 in range(nf):
+            if seen[f0]: continue
+            comp, stack, L = [], [f0], flab[f0]; seen[f0] = True
+            while stack:
+                f = stack.pop(); comp.append(f)
+                for n in nbr[f]:
+                    if not seen[n] and flab[n] == L: seen[n] = True; stack.append(n)
+            lim = 6 if names[L] == 'naranja' else 18
+            if len(comp) < lim:
+                c = Counter(flab[n] for f in comp for n in nbr[f] if flab[n] != L)
+                if c:
+                    t = c.most_common(1)[0][0]
+                    for f in comp: flab[f] = t
+                    merged += 1
+        print('islas fusionadas', merged)
+    for a in list(me.color_attributes): me.color_attributes.remove(a)
+    ca = me.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER'); me.color_attributes.active_color = ca
+    rgb = {k: tuple(int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)) + (1.0,) for k, h in DISPLAY.items()}
+    for p in me.polygons:
+        L = flab[p.index]; col = rgb[names[L]]
+        for li in p.loop_indices: ca.data[li].color_srgb = col
+        p.material_index = slots.index(group.get(names[L], 'Aura_ropa'))
+    # materiales: color de vértice en lugar de textura (así se ve igual en Blender y en el juego)
+    for m in lo.data.materials:
+        t = m.node_tree; b = t.nodes['Principled BSDF']
+        for l in list(b.inputs['Base Color'].links): t.links.remove(l)
+        v = t.nodes.new('ShaderNodeVertexColor'); v.layer_name = 'Col'; t.links.new(v.outputs['Color'], b.inputs['Base Color'])
+    print('COLOR POR CARA', dict(Counter(names[l] for l in flab)))
+# 7) normales suavizadas para el cel-shading (truco anime): se copian de una versión muy suavizada de la malla,
+#    así la frontera luz/sombra sigue la forma grande y no los triángulos. NORMALS=raw para desactivar.
+if os.environ.get('NORMALS', 'smooth') == 'smooth':
+    # difusión de normales por la conectividad de la malla: no encoge la geometría ni mezcla piernas cercanas
+    import numpy as np
+    me = lo.data; nv = len(me.vertices)
+    N = np.empty(nv * 3, np.float32); me.vertices.foreach_get('normal', N); N = N.reshape(-1, 3)
+    E = np.empty(len(me.edges) * 2, np.int32); me.edges.foreach_get('vertices', E); E = E.reshape(-1, 2)
+    for _ in range(int(os.environ.get('NORMAL_ITERS', 12))):
+        acc = N.copy(); np.add.at(acc, E[:, 0], N[E[:, 1]]); np.add.at(acc, E[:, 1], N[E[:, 0]])
+        N = acc / np.linalg.norm(acc, axis=1, keepdims=True).clip(1e-6)
+    me.normals_split_custom_set_from_vertices([tuple(n) for n in N])
+    print('normales suavizadas')
 # limpiar y exportar
 bpy.data.objects.remove(hi, do_unlink=True)
 bpy.ops.wm.save_as_mainfile(filepath=out + '.blend')
 bpy.ops.object.select_all(action='DESELECT'); lo.select_set(True)
-bpy.ops.export_scene.gltf(filepath=out + '.glb', use_selection=True, export_image_format='WEBP', export_image_quality=90)
+bpy.ops.export_scene.gltf(filepath=out + '.glb', use_selection=True, export_image_format='WEBP', export_image_quality=90,
+                          export_vertex_color='ACTIVE' if FACECOL else 'MATERIAL')
 print('OK tris', sum(len(p.vertices) - 2 for p in lo.data.polygons))

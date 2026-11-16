@@ -66,6 +66,8 @@ Paleta de Aura: chaqueta `#E8DACB`, pantalón `#8E7686`, gris `#776471`, grafito
 - Remallado por vóxeles (2,5 mm) → limpieza de islas → decimado a **30 k triángulos** (presupuesto móvil).
 - QuadriFlow (cuadriláteros) se intentó también en Blender de escritorio: se cancela con esta topología. Queda como trabajo manual.
 - Smart UV + bake EMIT de `Col` a una textura 1024.
+- **Color plano por cara** (`COLOR=face`, por defecto): cada triángulo recibe un único color de la paleta (mayoría de las 7 etiquetas más cercanas de la malla alta), con limpieza de caras sueltas e islas pequeñas. Se exporta como `COLOR_0`: bordes duros, sin el difuminado de una textura de 1024. Los colores de pantalla son las muestras de la lámina (`DISPLAY`), más saturadas que la proyección. `COLOR=bake` vuelve a la textura horneada (que se sigue guardando para artistas).
+- **Normales suavizadas** (`NORMALS=smooth`, por defecto): difusión de normales por la conectividad (12 pasadas) y normales personalizadas. Así la frontera luz/sombra del cel shader sigue los volúmenes grandes y no los triángulos (técnica habitual en anime 3D).
 - **Materiales por zona**: transfiere `LblCol` por vecino más cercano y asigna cada cara por mayoría a `Aura_ropa`, `Aura_pelo`, `Aura_mascara` o `Aura_piel` (comparten textura). El nombre del material decide el preset del cel shader en el juego.
 
 ## 6. F5 — Rig y pesos
@@ -93,7 +95,7 @@ cp out/<pj>_anims.glb public/assets/chars/
   - `MODEL_ANIMS` asocia el modelo con su juego de clips.
   - **Cel shader NEÓN** (`makeCel`, `CEL_PRESETS`): dos bandas duras con **color de sombra propio por material** (lavanda para ropa, más claro en pelo y máscara, rosado en piel), luz clave fija respecto a la cámara (sombras legibles en vista lateral) y rim con el color de acento.
   - Contorno de casco invertido con desplazamiento de profundidad (sin manchas negras en prendas finas).
-- `vfx.js`: estela del arma con el color de acento, estrella de impacto plana, polvo en dash/backdash/salto/aterrizaje.
+- `vfx.js`: estela del arma con el color de acento, estrella de impacto plana y **polvo cel-shading** como en la lámina (dos tonos duros, lenguas afiladas hacia atrás, 12 fps, se rompe en huecos). Revisión aislada: `public/dev_vfx.html`.
 
 ## 9. Revisión visual
 - `public/dev_f1_compare.html?glb=<ruta>&outline=0`: 5 vistas de un GLB (color por vértice o textura).

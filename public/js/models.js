@@ -40,7 +40,7 @@ export function outlineMaterial(thick = 0.022) {
 // ------------------------------------------------------------------
 export const CEL_PRESETS = {
   default: { shade: '#7b6d98', band: 0.12, rim: 0.22 },
-  pelo:    { shade: '#9a8ac4', band: 0.22, rim: 0.30 },
+  pelo:    { shade: '#9a8ac4', band: 0.22, rim: 0.14 },
   mascara: { shade: '#a39db8', band: 0.28, rim: 0.12 },
   piel:    { shade: '#c08680', band: 0.10, rim: 0.10 },
 };
@@ -110,7 +110,9 @@ function prepare(scene) {
     if (!o.isMesh) return;
     addOutlineNormals(o.geometry);
     const src = o.material; o.userData.srcMat = src.name || '';
-    o.material = new THREE.MeshToonMaterial({ map: src.map || null, color: src.map ? '#ffffff' : (src.color || '#ffffff'), gradientMap: grad() });
+    // color plano por cara (atributo COLOR_0) si el GLB no trae textura: bordes de color duros
+    const vc = !src.map && !!o.geometry.attributes.color;
+    o.material = new THREE.MeshToonMaterial({ map: src.map || null, color: src.map || vc ? '#ffffff' : (src.color || '#ffffff'), vertexColors: vc, gradientMap: grad() });
     if (o.material.map) { o.material.map.colorSpace = THREE.SRGBColorSpace; o.material.map.magFilter = THREE.LinearFilter; }
     o.frustumCulled = false;
   });

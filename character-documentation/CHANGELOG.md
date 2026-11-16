@@ -85,3 +85,10 @@
 - Documentación: nueva guía [CHARACTER_PIPELINE.md](CHARACTER_PIPELINE.md); fuentes 3D en `art/aura/`.
 - Aura sigue usando el modelo anterior sin `?aura3d`. `AURA.md` sin cambios.
 
+## 2026-11-16 — Aura 3D: color plano por cara y polvo cel-shading
+- **Polvo** rehecho como en la lámina V3 (AVANCE/SALTO): dos tonos beige duros, sin contorno, animación a 12 fps. Revisión en `public/dev_vfx.html`.
+- **Color plano por cara** en la malla de juego (`bl_aura_retopo.py`, `COLOR=face`): sin textura, sin difuminado; paleta tomada de las muestras de la lámina.
+- **Normales suavizadas** para que las sombras del cel shader formen manchas grandes y limpias.
+- `models.js`: usa el color por vértice del GLB cuando no hay textura. Simulación sin cambios.
+- Capturas: `references/aura/f3/vfx_polvo_cel.png`, `f4_color_por_cara.png`.
+
