@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { createAuraDetail } from './aura-detail.js';
 import { installAuraPersonality } from './aura-personality.js';
+import { createAuraSkinned3D } from './aura-skinned3d.js';
 
 const get = (id) => document.getElementById(id);
 const stage = get('preview-stage');
@@ -18,6 +19,8 @@ const weaponButton = get('preview-weapon');
 const zoomIn = get('preview-zoom-in');
 const zoomOut = get('preview-zoom-out');
 const fileInput = get('preview-upload');
+const rigButton = get('preview-rig');
+const slashButton = get('preview-slash');
 
 function notice(message, error = false) {
   status.textContent = message;
@@ -103,7 +106,11 @@ const fallback = createAuraDetail(THREE, materials);
 scene.add(fallback.root);
 const personality = installAuraPersonality(THREE, fallback);
 fallback.weapon.visible = false;
+const rigged = createAuraSkinned3D(THREE, ramp);
+scene.add(rigged.root);
+rigged.root.visible = false;
 let dagger = false;
+let showingRig = false;
 
 // GLB cargado desde public/assets/previews/ o arrastrado por el usuario.
 let imported = null;
@@ -154,17 +161,24 @@ function applyClip() {
   activeAction.paused = !motion;
 }
 function syncControls() {
-  fallback.root.visible = showingFallback;
-  if (imported) imported.visible = !showingFallback;
+  fallback.root.visible = !showingRig && showingFallback;
+  rigged.root.visible = showingRig;
+  if (imported) imported.visible = !showingRig && !showingFallback;
   fallbackButton.disabled = !imported;
-  fallbackButton.textContent = showingFallback
-    ? (referenceOnly ? 'Ver relieve de Aura' : 'Mostrar modelo GLB')
+  fallbackButton.textContent = showingFallback || showingRig
+    ? (referenceOnly ? 'Ver relieve aprobado' : 'Mostrar modelo GLB')
     : 'Comparar con V3';
-  weaponButton.disabled = !showingFallback;
-  poseButton.disabled = !showingFallback && referenceOnly;
-  motionButton.disabled = !showingFallback && referenceOnly;
-  fallback.weapon.visible = showingFallback && dagger;
-  weaponButton.setAttribute('aria-pressed', String(dagger && showingFallback));
+  rigButton.textContent = showingRig ? 'Volver al concept 2.5D' : 'Probar 3D con esqueleto';
+  rigButton.setAttribute('aria-pressed', String(showingRig));
+  slashButton.disabled = !showingRig;
+  weaponButton.disabled = !(showingFallback || showingRig);
+  poseButton.disabled = !showingRig && !showingFallback && referenceOnly;
+  motionButton.disabled = !showingRig && !showingFallback && referenceOnly;
+  fallback.weapon.visible = !showingRig && showingFallback && dagger;
+  rigged.setDagger(showingRig && dagger);
+  rigged.setAction(currentPose);
+  rigged.setMoving(motion);
+  weaponButton.setAttribute('aria-pressed', String(dagger && (showingFallback || showingRig)));
   poseButton.textContent = currentPose === 'guard' ? 'Pose relajada' : 'Pose de combate';
   motionButton.textContent = motion ? 'Pausar movimiento' : 'Reanudar movimiento';
 }
@@ -184,6 +198,7 @@ motionButton.addEventListener('click', () => {
 weaponButton.addEventListener('click', () => { dagger = !dagger; syncControls(); });
 fallbackButton.addEventListener('click', () => {
   if (!imported) return;
+  showingRig = false;
   showingFallback = !showingFallback;
   if (!showingFallback) applyClip();
   syncControls();
@@ -238,6 +253,23 @@ function preserveReferenceColors(root) {
     obj.material = Array.isArray(obj.material) ? obj.material.map(convert) : convert(obj.material);
   });
 }
+rigButton.addEventListener('click', () => {
+  showingRig = !showingRig;
+  if(showingRig) showingFallback = false;
+  else showingFallback = false; // Return to concept / imported GLB.
+  syncControls();
+  assetStatus.textContent = showingRig
+    ? 'Rig V1: 3D volumétrico + SkinnedMesh + huesos; prototipo sin escultura final.'
+    : 'Comparación visual: ' + (referenceOnly ? 'relieve de concept 2.5D' : 'GLB cargado');
+  notice(showingRig
+    ? 'Primer cuerpo 3D animable. Revisa hombros, rodillas, máscara, pelo y espada/daga en cámara lateral.'
+    : 'Volviendo al concepto de referencia.');
+});
+slashButton.addEventListener('click', () => {
+  if (!showingRig) return;
+  rigged.triggerSlash();
+});
+
 function acceptGLTF(gltf, label, {conceptRelief = false} = {}) {
   referenceOnly = conceptRelief;
   if (conceptRelief) {
@@ -258,6 +290,7 @@ function acceptGLTF(gltf, label, {conceptRelief = false} = {}) {
   importedMixer = clips.length ? new THREE.AnimationMixer(gltf.scene) : null;
   activeAction = null;
   showingFallback = false;
+  showingRig = false;
   currentPose = 'idle';
   applyClip();
   syncControls();
@@ -360,7 +393,8 @@ loadConfiguredGLB();
 const clock = new THREE.Clock();
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
-  if (showingFallback) personality.update(dt);
+  if (showingRig) rigged.update(dt);
+  else if (showingFallback) personality.update(dt);
   else if (importedMixer && motion) importedMixer.update(dt);
   renderer.render(scene, camera);
   requestAnimationFrame(animate);

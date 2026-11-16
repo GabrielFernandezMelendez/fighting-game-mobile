@@ -15,7 +15,7 @@
     <a class="aura-preview-back" href="index.html#settings" aria-label="Volver a ajustes">‹ Volver a ajustes</a>
     <div>
       <div class="aura-preview-kicker">NEÓN / Taller de personajes</div>
-      <h1>Aura <span>· Visor lateral GLB</span></h1>
+      <h1>Aura <span>· Concept + rig 3D</span></h1>
     </div>
     <span class="aura-preview-phase">Fase C · Pipeline de producción</span>
   </header>
@@ -24,6 +24,8 @@
       <canvas id="aura-canvas" aria-label="Vista lateral fija del personaje Aura, sin rotación"></canvas>
       <div class="aura-preview-legend">Cámara lateral fija · 2.5D · sin rotación</div>
       <div class="aura-preview-controls">
+        <button id="preview-rig" type="button" aria-pressed="false">Probar 3D con esqueleto</button>
+        <button id="preview-slash" type="button" disabled>Animar ataque</button>
         <button id="preview-fallback" type="button" disabled>Mostrar modelo GLB</button>
         <button id="preview-pose" type="button">Pose de combate</button>
         <button id="preview-motion" type="button">Pausar movimiento</button>
@@ -35,7 +37,8 @@
     </div>
     <aside class="aura-preview-panel">
       <h2>La Centella</h2>
-      <p>La presentación del personaje ahora usa una cámara lateral fija, como en un fighting game 2.5D. Estamos preparando el paso de los prototipos a un modelo creado en Blender.</p>
+      <p>Compara el concept aprobado con un <strong>primer modelo volumétrico 3D con esqueleto y deformación real</strong>. La cámara lateral permanece fija. El rig V1 es una prueba técnica, todavía lejos del nivel final de modelado artístico.</p>
+      <p class="aura-preview-rig-note"><strong>Nuevo · V6:</strong> «Probar 3D con esqueleto» activa la primera malla deformable. Puedes cambiar guardia, pausar respiración y pulsar «Animar ataque». El relieve del concept sigue siendo la referencia visual.</p>
       <div class="aura-preview-import">
         <h3>Probar modelo GLB</h3>
         <label for="preview-upload" class="aura-preview-upload">Probar GLB local</label>
@@ -64,7 +67,7 @@
         <span style="--swatch:#202027">Grafito</span>
         <span style="--swatch:#ff7a1a">Naranja</span>
       </div>
-      <p class="aura-preview-warning"><strong>Modelo experimental.</strong> Si no hay un GLB de producción, verás el modelo V3, que es solo una referencia provisional. Al cargar un GLB se conservan colores y texturas y se aplican sombras toon para la revisión; las animaciones se usan si existen. Esta página no modifica el personaje jugable, hitboxes ni la selección de arma.</p>
+      <p class="aura-preview-warning"><strong>Modelo experimental.</strong> Si no hay un GLB de producción, verás el modelo V3, que es solo una referencia provisional. Al cargar un GLB se conservan colores y texturas y se aplican sombras toon para la revisión; las animaciones se usan si existen. El rig V1 anima un cuerpo tridimensional con huesos y skinning, pero aún NO es el GLB de producción ni iguala el modelado del concept. Esta página no modifica el personaje jugable, hitboxes ni la selección de arma.</p>
       <p id="preview-status" class="aura-preview-status" role="status">Preparando la vista 3D…</p>
       <a href="https://github.com/GabrielFernandezMelendez/fighting-game-mobile/blob/main/character-documentation/AURA.md" target="_blank" rel="noopener" class="aura-preview-doc">Consultar ficha de personaje ↗</a>
     </aside>

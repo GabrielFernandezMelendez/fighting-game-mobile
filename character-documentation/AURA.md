@@ -1,6 +1,6 @@
 # AURA — La Centella
 
-**Versión:** 1.5 · **Fecha:** 2026-11-16  
+**Versión:** 1.6 · **Fecha:** 2026-11-16  
 **Estado:** A (dirección funcional definida); B (concept visual propuesto); C (blockout Blender programado, todavía sin exportación validada); D (integración pendiente).
 
 ## 1. Línea base implementada — no confundir con propuestas
@@ -185,3 +185,14 @@ Esta ilustración es una **referencia de dirección de arte**, no una lámina t�
 - Sigue pendiente modelar, riggear, animar y probar el personaje verdaderamente tridimensional para las cuatro armas.
 
 [Detalles y procedimiento](AURA_CONCEPT_RELIEF.md).
+
+## 11. V6 — Rig técnico 3D con skinning (2026-11-16)
+
+**Estado:** prototipo tridimensional deformable y animado **en el visor**, no modelo de producción. Versión anterior archivada en [history/AURA-v1.5.md](history/AURA-v1.5.md).
+
+- El usuario conserva el **relieve 2.5D del concept** como referencia visual de partida. El botón `Probar 3D con esqueleto` activa un primer personaje realmente volumétrico, con `SkinnedMesh`, `Skeleton`, 17 huesos y pesos de skinning en los vértices.
+- Se han implementado un `Idle` de respiración, un estado `Guard` y un ataque de daga de prueba mediante rotación de huesos. Estos movimientos **no afectan gameplay**.
+- La geometría es una prueba técnica de modelado por secciones elípticas, no la escultura orgánica de Blender. El modelo necesita más fidelidad anatómica, máscara, ropa, mechones, UV, retopología y animaciones authored para alcanzar el concept.
+- **No existe todavía un GLB riggeado exportado**, ni se ha comprobado clipping/móvil en un navegador real.
+- Se conserva la regla de una sola arma elegida antes del combate; la daga visual de rig es solo una prueba.
+- [Plan técnico y límites](AURA_RIG_V1.md).
