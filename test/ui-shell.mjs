@@ -33,12 +33,21 @@ const preview = readFileSync(new URL('../public/js/aura-preview.js', import.meta
 const personality = readFileSync(new URL('../public/js/aura-personality.js', import.meta.url), 'utf8');
 const detail = readFileSync(new URL('../public/js/aura-detail.js', import.meta.url), 'utf8');
 const config = JSON.parse(readFileSync(new URL('../public/assets/previews/aura.json', import.meta.url),'utf8'));
-assert.equal(config.modelUrl, null, 'no GLB should be claimed as deployed before review');
+assert.equal(config.modelUrl, 'assets/previews/aura-concept-relief.glb',
+  'approved concept relief should load by default');
+assert.equal(config.previewType, 'concept-relief',
+  'reference-only preview must not be labeled as production model');
+assert.equal(config.productionModelUrl, null,
+  'the production rigged model has not been delivered');
 assert.ok(preview.includes('new THREE.OrthographicCamera('), 'side orthographic camera missing');
 assert.ok(!preview.includes('canvas.addEventListener(\'pointermove\''), 'orbit dragging must be disabled');
 assert.ok(preview.includes('new GLTFLoader()'), 'GLB loader missing');
 assert.ok(preview.includes("URL.createObjectURL(image)"), 'local hi-res image support missing');
 assert.ok(preview.includes('loader.parseAsync(buffer'), 'local GLB test path missing');
+assert.ok(preview.includes('preserveReferenceColors(gltf.scene)'),
+  'reference paint colors must not be overwritten by toon shader');
+assert.ok(preview.includes("config.previewType === 'concept-relief'"),
+  '3D concept relief should be distinguished from rigged production GLB');
 assert.ok(preview.includes('createAuraDetail(THREE, materials)'), 'V3 fallback must remain available');
 assert.ok(preview.includes('installAuraPersonality(THREE, fallback)'), 'V3 fallback idle missing');
 assert.ok(personality.includes('export function installAuraPersonality'), 'personality factory missing');
