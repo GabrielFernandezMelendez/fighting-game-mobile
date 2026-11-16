@@ -308,7 +308,7 @@ function loop(now) {
   input.drawTrails && input.drawTrails();
   fpsN++; fpsT += dt;
   if (fpsT >= 0.5) {
-    let t = `${Math.round(fpsN / fpsT)} fps · peor ${Math.round(worst * 1000)} ms · ${R.drawCalls} draw calls`;
+    let t = `${Math.round(fpsN / fpsT)} fps · peor ${Math.round(worst * 1000)} ms · ${R.drawCalls} draw calls · ${R.useModels ? "modelos v3" : "SIN MODELOS: " + (R.modelError || "?")}`;
     if (app.mode === 'online' && app.ls && app.link) t += ` · ping ${Math.round(app.link.rtt)} ms · retardo ${app.ls.delay} f · resync ${app.ls.resyncs}`;
     $('#perf').textContent = t; fpsN = 0; fpsT = 0; worst = 0;
   }

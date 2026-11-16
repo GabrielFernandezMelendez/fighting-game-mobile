@@ -45,7 +45,7 @@ export class Renderer3D {
       await this.lib.preload(models);
       for (const m of models) this.gltf[m] = await this.lib.loadChar(m);
       this.useModels = true;
-    } catch (e) { console.warn('Modelos no disponibles, uso el muñeco procedural', e); this.useModels = false; }
+    } catch (e) { console.warn('Modelos no disponibles, uso el muñeco procedural', e); this.useModels = false; this.modelError = String((e && e.message) || e).slice(0, 60); }
   }
 
   // ---------- Geometrías con caché ----------
