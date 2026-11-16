@@ -60,3 +60,13 @@
  .aura-preview-stage{height:72dvh}
  .aura-preview-reference img{max-height:125px}
 }
+
+/* V5: conserva el concept de alta resolución sin aplicar filtros pixelados. */
+.aura-preview-reference img{width:100%;height:auto;max-height:360px;object-fit:contain;image-rendering:auto}
+#aura-concept-open{display:block;width:100%;background:#171622;border-radius:10px;overflow:hidden}
+.aura-preview-reference-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:stretch}
+.aura-preview-reference-actions .aura-preview-upload{flex:1;min-width:130px;font-size:13px}
+.aura-preview-reference-actions input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#preview-concept-zoom{border:1px solid #806551;border-radius:9px;background:#302535;color:white;padding:9px 12px;cursor:pointer}
+.aura-preview-hint{font-size:12px!important;line-height:1.45!important;color:#bdb5c9!important}
+.aura-preview-reference .aura-preview-status{font-size:12px;line-height:1.4}
