@@ -42,6 +42,10 @@ export const CEL_PRESETS = {
   default: { shade: '#7b6d98', band: 0.12, rim: 0.22 },
   pelo:    { shade: '#9a8ac4', band: 0.22, rim: 0.14 },
   mascara: { shade: '#a39db8', band: 0.28, rim: 0.12 },
+  borgona: { shade: '#a06682', band: 0.10, rim: 0.13 },
+  granate: { shade: '#96607e', band: 0.11, rim: 0.10 },
+  vacio:   { shade: '#4b3052', band: 0.28, rim: 0 },
+  vendas:  { shade: '#b78a8b', band: 0.10, rim: 0.05 },
   piel:    { shade: '#c08680', band: 0.10, rim: 0.10 },
 };
 // Sombra por ZONA (multiplica al color base). Evita que la sombra de la chaqueta marfil se vuelva violeta
@@ -178,7 +182,7 @@ function addOutlineNormals(geo) {
 
 // Juego de clips por modelo: los modelos RPG comparten 'anims'; los esqueletos propios llevan el suyo
 // (mismos nombres de hueso, distinta pose de reposo → el retarget se hace por esqueleto).
-export const MODEL_ANIMS = { aura: 'aura_anims' };
+export const MODEL_ANIMS = { aura: 'aura_anims', sombra: 'aura_anims' };
 export const animSetFor = model => MODEL_ANIMS[model] || 'anims';
 
 export class ModelLibrary {

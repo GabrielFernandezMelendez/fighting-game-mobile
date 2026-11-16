@@ -106,3 +106,8 @@
 - **Polvo** rehecho sin tinta ni picos: cuerpo pegado al suelo, volutas onduladas y volumen cel de tres tonos, como en la lámina.
 - Captura: `references/aura/f3/f4_zonas_por_pixel.png`. Simulación sin cambios.
 
+## 2026-11-16 — Primer prototipo 3D de Sombra
+
+- [Fuente editable y notas de revisión](../art/sombra/README.md). Malla propia de Blender con materiales planos y pesos, basada en la lámina de Sombra.
+- Prueba experimental con `?aura3d` en el modo Práctica para Aura y Sombra. `?sombra3d` activa solo el prototipo de Sombra. Comparte esqueleto y clips con Aura. La selección de arma sigue pasando por el socket de la mano.
+- Capturas de Blender en `references/sombra/prototype/`. Pendiente de revisión visual en partida con WebGL y en un móvil real.

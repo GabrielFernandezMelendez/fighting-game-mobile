@@ -8,9 +8,12 @@ import { ModelLibrary, ModelFighter } from './models.js';
 import { clipFor } from './anims.js';
 import { VFX } from './vfx.js';
 
-// Prueba de la Aura imagen→3D (pipeline F2) sin sustituir al personaje jugable: añadir ?aura3d a la URL
-const AURA3D = typeof location !== 'undefined' && new URLSearchParams(location.search).has('aura3d');
+// ?aura3d activa ambos prototipos. ?sombra3d permite revisar solo a Sombra.
+const previewFlags = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
+const AURA3D = previewFlags.has('aura3d');
 const AURA3D_OVERRIDE = { model: 'aura', outline: 0.016, doubleSide: true, modelHeight: 1.78, cel: true };
+const SOMBRA3D = AURA3D || previewFlags.has('sombra3d');
+const SOMBRA3D_OVERRIDE = { model: 'sombra', outline: 0.012, modelHeight: 1.78, cel: true };
 
 const PALETTES = {
   white: { white: '#f2f2f6', whiteB: '#dfe1e8', suit: '#2f3342', suitL: '#41465a', acc: '#ff7a1a', neon: '#ffd23f', neonO: '#ff9a3c', visor: '#ff8a2c', visorE: '#5a1e00' },
@@ -53,6 +56,14 @@ export class Renderer3D {
       for (const m of models) this.gltf[m] = await this.lib.loadChar(m);
       this.useModels = true;
     } catch (e) { console.warn('Modelos no disponibles, uso el muñeco procedural', e); this.useModels = false; this.modelError = String((e && e.message) || e).slice(0, 60); }
+    if (this.useModels && SOMBRA3D) {
+      try {
+        await this.lib.preload([...Object.keys(this.gltf), 'sombra']);
+        this.gltf.sombra = await this.lib.loadChar('sombra');
+      } catch (e) {
+        console.warn('Sombra 3D no disponible, se usa el modelo habitual', e);
+      }
+    }
   }
 
   // ---------- Geometrías con caché ----------
@@ -125,6 +136,7 @@ export class Renderer3D {
 
   buildFighter(C, wk = C.weapon) {
     if (AURA3D && C.id === 'aura' && this.gltf.aura) C = { ...C, ...AURA3D_OVERRIDE };
+    if (SOMBRA3D && C.id === 'sombra' && this.gltf.sombra) C = { ...C, ...SOMBRA3D_OVERRIDE };
     if (this.useModels && C.model && this.gltf[C.model]) return this.buildModelFighter(C, wk);
     return this.buildProcFighter(C, wk);
   }
