@@ -63,7 +63,7 @@ def make_relief(source: Path, output: Path):
     texture = Image.fromarray(rgba, "RGBA")
 
     # Curved relief: subtle convex X-depth from silhouette distance.
-    step = 2
+    step = 4  # reviewed preview quality; fewer triangles, same full-res texture
     grid_w = (w - 1) // step + 1
     grid_h = (h - 1) // step + 1
     xs = np.linspace(0, w - 1, grid_w)
