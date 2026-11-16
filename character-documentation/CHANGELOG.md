@@ -27,6 +27,12 @@
 - Sin cambios al combate, a los archivos GLB de producción ni al sistema de armas.
 - Pendiente validación visual y rigging real.
 
+## 2026-11-16 — Aura v1.4: pipeline de modelado y revisión lateral
+- Se archivó [AURA-v1.3.md](history/AURA-v1.3.md).
+- Nuevo visor de cámara lateral fija, ensayo de GLB local y manifiesto para modelos publicados.
+- Se congela el enfoque procedural V3 como referencia de comparación, no como asset de producción.
+- Guía [Blender → GLB → Three.js](AURA_GLB_PIPELINE.md); sin GLB definitivo ni alteraciones de gameplay.
+
 ## Plantilla para revisiones
 ### FECHA — PERSONAJE vX.Y
 - Estado: propuesto / aprobado / implementado

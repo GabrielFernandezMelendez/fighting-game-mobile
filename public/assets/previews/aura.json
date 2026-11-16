@@ -1,0 +1,8 @@
+{
+  "character": "aura",
+  "modelUrl": null,
+  "note": "Set modelUrl to assets/previews/aura-production.glb only after adding a reviewed GLB in the same PR. Null intentionally selects the V3 fallback.",
+  "camera": "fixed-side-orthographic",
+  "forwardAxis": "+Z",
+  "upAxis": "+Y"
+}

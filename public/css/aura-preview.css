@@ -40,3 +40,23 @@
 #preview-motion{border-color:#6a6484}
 .aura-preview-controls{max-width:100%;padding:0 2px}
 @media(max-width:760px){.aura-preview-controls button{font-size:11px;padding:6px 7px}}
+
+/* Iteración V4: visor lateral fijo y comparación con asset GLB real. */
+#aura-canvas{cursor:default;touch-action:auto}
+#aura-canvas:active{cursor:default}
+.aura-preview-controls{z-index:2}
+.aura-preview-controls #preview-fallback:not(:disabled){border-color:#ff7a1a}
+.aura-preview-import,.aura-preview-reference{border-top:1px solid #42374d;padding-top:12px;display:flex;flex-direction:column;gap:8px}
+.aura-preview-import input[type=file]{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.aura-preview-upload{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid #ff7a1a;color:#fff;font-weight:700;background:rgba(91,46,23,.85);padding:10px;border-radius:9px}
+.aura-preview-upload:focus-within{outline:2px solid #fff}
+.aura-preview-import p{font-size:13px}
+.aura-preview-asset-status{color:#ffbe8a!important}
+.aura-preview-reference img{display:block;max-width:100%;height:auto;max-height:210px;object-fit:contain;background:#10101a;border-radius:9px}
+.aura-preview-reference a{color:#ffb16d;font-size:14px}
+.aura-preview-status[data-error=true]{color:#ff9393!important}
+@media(max-height:500px) and (orientation:landscape){
+ .aura-preview-panel{max-height:77dvh;overflow:auto}
+ .aura-preview-stage{height:72dvh}
+ .aura-preview-reference img{max-height:125px}
+}
