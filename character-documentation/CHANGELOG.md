@@ -131,3 +131,11 @@
 - `public/js/cpu.js`: CPU por cartas/tácticas con capacidad de ejecución y presión (modelo de Street Fighter 6), niveles con puntos débiles claros (Skullgirls) y sin lectura de botones. Ver `docs/CPU.md`.
 - Test `test/cpu.mjs` (en CI). La simulación y el online no cambian.
 
+## 2026-11-17 — Interfaz NEÓN (guía de estilo aplicada)
+- Nueva interfaz en todas las pantallas según la guía aprobada: Megrim (logo), Zalando Sans Expanded (interfaz), paleta fija, botones con chaflán, paneles con pestaña, octógonos y franja diagonal con el acento de cada luchador. Maquetas: lienzo «NEÓN · Interfaz».
+- Portada: capa animada en vídeo (`img/ui/duel.mp4`, bucle de 6 s) separada de los botones; imagen fija con movimiento reducido (sistema o Ajustes › Movimiento reducido).
+- Selección: los puntos que suma el arma a Fuerza/Destreza se ven en **cian (foco)**; la regla sale de cómo escala el daño de cada arma (`damageMult`).
+- Controles táctiles: Agarre y Bloqueo **a la misma altura que antes** (42 %), ahora octogonales. Pendiente: que el jugador los mueva y escale (estilo COD Mobile).
+- Estados de botón: borde iluminado al pasar el ratón, anillo cian con teclado, escala 0,97 al pulsar, gris al desactivar, «Conectando…» sin cambiar de tamaño.
+- Sin cambios en simulación, online ni CPU (salvo textos más cortos de las dificultades).
+

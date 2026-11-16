@@ -13,12 +13,14 @@ const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAl
 const coarse = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 
 // ---------- Ajustes persistentes ----------
-const settings = Object.assign({ quality: coarse ? 1 : 2, fps: true, vibration: true, opacity: 55, btn: 78, delay: 0, cpuLevel: 1, cpuRival: 'sombra' }, (() => { try { return JSON.parse(localStorage.getItem('neon-settings') || '{}'); } catch { return {}; } })());
+const settings = Object.assign({ quality: coarse ? 1 : 2, fps: true, vibration: true, opacity: 55, btn: 78, delay: 0, cpuLevel: 1, cpuRival: 'sombra', motion: false }, (() => { try { return JSON.parse(localStorage.getItem('neon-settings') || '{}'); } catch { return {}; } })());
 const saveSettings = () => { try { localStorage.setItem('neon-settings', JSON.stringify(settings)); } catch {} };
 function applySettings() {
   document.documentElement.style.setProperty('--ctl-opacity', settings.opacity / 100);
   document.documentElement.style.setProperty('--btn-size', settings.btn + 'px');
   $('#perf').style.display = settings.fps ? 'block' : 'none';
+  document.body.classList.toggle('reduce-motion', !!settings.motion);
+  syncMenuMotion();
   if (R) R.applyQuality(+settings.quality);
 }
 
@@ -32,7 +34,16 @@ window.__app = app;
 
 // ---------- Navegación entre pantallas ----------
 let current = 's-menu';
-function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); current = id; }
+function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); current = id; syncMenuMotion(); }
+// Portada: el vídeo en bucle (capa aparte de los botones) solo corre con el menú visible y sin movimiento reducido
+const reduceMQ = matchMedia('(prefers-reduced-motion: reduce)');
+function syncMenuMotion() {
+  const v = document.querySelector('.duel-loop'), box = document.querySelector('.duel'); if (!v) return;
+  const play = current === 's-menu' && !settings.motion && !reduceMQ.matches;
+  if (play) { v.play().then(() => box.classList.add('playing')).catch(() => box.classList.remove('playing')); }
+  else { v.pause(); box.classList.remove('playing'); }
+}
+reduceMQ.addEventListener?.('change', syncMenuMotion);
 function go(id) { app.stack.push(current); show(id); }
 function back() {
   if (current === 's-settings' && app.returnToGame) { app.returnToGame = false; $$('.screen').forEach(s => s.classList.remove('on')); current = null; app.stack.pop(); return; }
@@ -60,6 +71,23 @@ $$('[data-go]').forEach(b => b.addEventListener('click', () => {
 //  SELECCIÓN DE PERSONAJE
 // =====================================================================
 const WNAMES = { dagger: 'Daga', sword: 'Espada', hammer: 'Martillo', spear: 'Lanza' };
+// Arte de interfaz (recortes de las láminas de concept): retrato para miniaturas y cuerpo entero para escenas
+const ART = id => ({ head: `img/ui/head_${id}.jpg`, body: `img/ui/body_${id}.png` });
+// Puntos que suma el arma a Fuerza y Destreza según cuánto escala su daño con cada atributo (damageMult en data.js)
+const weaponBonus = w => { const S = WEAPONS[w].scale; return { fuerza: Math.round(Math.max(0, S.str - 0.5) * 2.5), destreza: Math.round(Math.max(0, S.dex - 0.5) * 2.5) }; };
+const meter = (n, bonus = 0) => '<span class="meter">' + Array.from({ length: 10 }, (_, i) => `<i class="${i < n ? 'f' : i < n + bonus ? 'w' : ''}"></i>`).join('') + '</span>';
+function cardEl(id, onPick) {
+  const C = CHARS[id], c = document.createElement('button');
+  c.className = 'card'; c.dataset.id = id; c.style.setProperty('--acc', C.accent); c.setAttribute('aria-label', C.name);
+  c.innerHTML = `<img src="${ART(id).head}" alt="">`; c.addEventListener('click', onPick);
+  return c;
+}
+function showFighter(prefix, id) {
+  const C = CHARS[id], scr = $(prefix === 'sel' ? '#s-select' : '#s-rival');
+  scr.style.setProperty('--acc', C.accent);
+  $('#' + prefix + 'Body').src = ART(id).body;
+  $('#' + prefix + 'Name').innerHTML = `<h3>${C.name}</h3><span>${C.title}${prefix === 'riv' ? ' · CPU' : ''}</span>`;
+}
 const WKEYS = ['dagger', 'sword', 'hammer', 'spear'];
 const scaleDots = v => '●'.repeat(v <= 0.35 ? 1 : v <= 0.75 ? 2 : 3).padEnd(3, '○');
 function buildSelect() {
@@ -67,10 +95,7 @@ function buildSelect() {
   const box = $('#selCards'); box.innerHTML = '';
   for (const id of ROSTER) {
     const C = CHARS[id];
-    const c = document.createElement('div'); c.className = 'card'; c.dataset.id = id; c.style.setProperty('--acc', C.accent);
-    c.innerHTML = `<img src="${C.portrait}" alt=""><div class="cname"><b>${C.name}</b><span>${C.title}</span></div>`;
-    c.addEventListener('click', () => { if (!app.myReady) pickChar(id); });
-    box.appendChild(c);
+    box.appendChild(cardEl(id, () => { if (!app.myReady) pickChar(id); }));
   }
   pickChar(app.myChar || 'aura', app.myWeapon);
   updateRivalSelect();
@@ -78,15 +103,16 @@ function buildSelect() {
 function pickChar(id, weapon) {
   if (id !== app.myChar || !app.myWeapon) app.myWeapon = weapon || CHARS[id].weapon;
   app.myChar = id; const C = CHARS[id];
-  $$('.card').forEach(c => c.classList.toggle('on', c.dataset.id === id));
-  const d = $('#selDetail'); d.style.setProperty('--acc', C.accent);
-  const bar = n => '<span class="dots">' + [1, 2, 3, 4, 5, 6, 7, 8].map(i => `<i class="${i <= n ? 'f' : ''}"></i>`).join('') + '</span>';
-  d.innerHTML = `<h3>${C.name}</h3><div class="ttl">${C.title}</div><p style="margin:0">${C.desc}</p>
-    <div class="stats">${Object.entries(C.stats).map(([k, v]) => `<div class="stat"><span>${STAT_NAMES[k]}</span>${bar(v)}</div>`).join('')}</div>
-    <div class="passive"><b>Habilidad: ${C.passive}</b>${C.passiveDesc}</div>
-    <div class="wpick-t">Arma</div>
-    <div class="wpick">${WKEYS.map(w => { const W = WEAPONS[w]; return `<button class="wchip${w === app.myWeapon ? ' on' : ''}" data-w="${w}">${WSVG[w]}<b>${W.name}${w === C.weapon ? ' <i title="Arma insignia">◆</i>' : ''}</b><span>Fue ${scaleDots(W.scale.str)}<br>Des ${scaleDots(W.scale.dex)}</span></button>`; }).join('')}</div>
-    <button class="mbtn hot" id="bConfirm">${app.mode === 'online' ? (app.myReady ? 'Esperando rival…' : 'Listo') : app.mode === 'cpu' ? 'Elegir rival ›' : 'Luchar'}</button>`;
+  $$('#selCards .card').forEach(c => { c.classList.toggle('on', c.dataset.id === id); c.setAttribute('aria-selected', c.dataset.id === id); });
+  showFighter('sel', id);
+  const d = $('#selDetail'), wb = weaponBonus(app.myWeapon);
+  const plus = Object.entries(wb).filter(([, v]) => v).map(([k, v]) => `${STAT_NAMES[k]} +${v}`).join(', ');
+  d.innerHTML = `<span class="ptab">Ficha</span><p class="desc">${C.desc}</p>
+    <div class="stats">${Object.entries(C.stats).map(([k, v]) => `<span>${STAT_NAMES[k]}</span>${meter(v, wb[k] || 0)}`).join('')}</div>
+    <p class="wbonus">${plus ? `Con ${WEAPONS[app.myWeapon].name.toLowerCase()}: <b>${plus}</b>` : `${WEAPONS[app.myWeapon].name}: sin bonificación`}</p>
+    <div class="passive"><b>${C.passive}.</b> ${C.passiveDesc}</div>
+    <div class="wpick" role="radiogroup" aria-label="Arma">${WKEYS.map(w => `<button class="mbtn wchip${w === app.myWeapon ? ' on' : ''}" data-w="${w}" role="radio" aria-checked="${w === app.myWeapon}">${WSVG[w]}<b>${WEAPONS[w].name}${w === C.weapon ? ' <i title="Arma insignia">◆</i>' : ''}</b></button>`).join('')}</div>
+    <button class="mbtn hot go" id="bConfirm">${app.mode === 'online' ? (app.myReady ? 'Esperando rival…' : 'Listo') : app.mode === 'cpu' ? 'Elegir rival' : 'Luchar'}</button>`;
   d.querySelectorAll('.wchip').forEach(b => b.addEventListener('click', () => { if (!app.myReady) { app.myWeapon = b.dataset.w; pickChar(id, b.dataset.w); } }));
   $('#bConfirm').addEventListener('click', confirmChar);
   if (app.mode === 'online') app.link.send({ t: 'pick', c: id, w: app.myWeapon, ready: false });
@@ -104,7 +130,7 @@ function updateRivalSelect() {
   pill.style.display = '';
   const r = app.rivalSel;
   pill.textContent = r ? `Rival: ${CHARS[r.c].name} · ${WNAMES[r.w]}${app.rivalReady ? ' ✓ listo' : ' · eligiendo'}` : 'Rival: eligiendo…';
-  $$('.card').forEach(c => c.classList.toggle('rival', !!r && c.dataset.id === r.c));
+  $$('#selCards .card').forEach(c => c.classList.toggle('rival', !!r && c.dataset.id === r.c));
 }
 
 // =====================================================================
@@ -120,8 +146,8 @@ function buildArmory() {
   const box = $('#armoryList'); box.innerHTML = '';
   for (const id of ROSTER) {
     const C = CHARS[id], W = WEAPONS[C.weapon];
-    const c = document.createElement('div'); c.className = 'wcard'; c.style.borderColor = C.accent;
-    c.innerHTML = `${WSVG[C.weapon]}<b>${W.name}</b><small>${W.style}</small><span class="who">La usa ${C.name} · 10 ataques · ${COMBOS[C.weapon].length} combos</span>`;
+    const c = document.createElement('button'); c.className = 'wcard'; c.style.setProperty('--acc', C.accent);
+    c.innerHTML = `${WSVG[C.weapon]}<b>${W.name}</b><small>${W.style}</small><span class="who">${C.name} · 10 golpes · ${COMBOS[C.weapon].length} combos</span>`;
     c.addEventListener('click', () => { app.myChar = id; app.myWeapon = C.weapon; startPractice({ c: id, w: C.weapon }, true); });
     box.appendChild(c);
   }
@@ -170,18 +196,23 @@ function resetPositions(close = false) {
   app.cp = null; input.enabled = true;
 }
 
+// ---------- Pantalla VS (online y CPU) ----------
+function vsScreen(chars) {
+  chars.forEach((sel, i) => {
+    const el = $(i ? '#vsR' : '#vsL'); el.style.setProperty('--acc', CHARS[sel.c].accent);
+    el.innerHTML = `<i class="band"></i><img src="${ART(sel.c).body}" alt=""><div class="vname">${CHARS[sel.c].name}<small>${WNAMES[sel.w]}</small></div>`;
+  });
+}
+
 // ---------- Contra la CPU ----------
 function buildRival() {
   app.cpuLevel = settings.cpuLevel ?? 1;
   const rival = ROSTER.includes(settings.cpuRival) ? settings.cpuRival : ROSTER.find(id => id !== app.myChar);
-  $('#rivMe').textContent = 'Tú: ' + CHARS[app.myChar].name; $('#rivMe').style.display = '';
+  $('#rivMe').textContent = 'Tú: ' + CHARS[app.myChar].name + ' · ' + WNAMES[app.myWeapon || CHARS[app.myChar].weapon];
   const box = $('#rivCards'); box.innerHTML = '';
   for (const id of ROSTER) {
     const C = CHARS[id];
-    const c = document.createElement('div'); c.className = 'card'; c.dataset.id = id; c.style.setProperty('--acc', C.accent);
-    c.innerHTML = `<img src="${C.portrait}" alt=""><div class="cname"><b>${C.name}</b><span>${C.title}</span></div>`;
-    c.addEventListener('click', () => pickRival(id));
-    box.appendChild(c);
+    box.appendChild(cardEl(id, () => pickRival(id)));
   }
   pickRival(rival);
 }
@@ -190,11 +221,11 @@ function pickRival(id) {
   const C = CHARS[id], lv = app.cpuLevel;
   $$('#rivCards .card').forEach(c => c.classList.toggle('on', c.dataset.id === id));
   const d = $('#rivDetail'); d.style.setProperty('--acc', C.accent);
-  d.innerHTML = `<h3>${C.name}</h3><div class="ttl">rival · controlado por la CPU</div>
-    <div class="wpick-t">Dificultad</div>
-    <div class="lvl-grid">${CPU_LEVELS.map((L, i) => `<button class="lvl${i === lv ? ' on' : ''}" data-lv="${i}"><b><i>${'◆'.repeat(i + 1)}${'◇'.repeat(3 - i)}</i> ${L.name}</b><span>${L.desc}</span></button>`).join('')}</div>
+  showFighter('riv', id);
+  d.innerHTML = `<span class="ptab">Dificultad</span>
+    ${CPU_LEVELS.map((L, i) => `<button class="lvl${i === lv ? ' on' : ''}" data-lv="${i}" aria-pressed="${i === lv}"><span class="pips4">${[0, 1, 2, 3].map(k => `<i class="${k <= i ? 'f' : ''}"></i>`).join('')}</span><div><b>${L.name}</b><span>${L.desc}</span></div></button>`).join('')}
     <p class="lvl-lesson">${CPU_LEVELS[lv].lesson}</p>
-    <button class="mbtn hot" id="bCpuFight">Luchar</button>`;
+    <button class="mbtn hot go" id="bCpuFight">Luchar</button>`;
   d.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => { app.cpuLevel = settings.cpuLevel = +b.dataset.lv; saveSettings(); pickRival(id); }));
   $('#bCpuFight').addEventListener('click', startCpuMatch);
 }
@@ -202,9 +233,8 @@ async function startCpuMatch() {
   app.mode = 'cpu';
   $$('.overlay').forEach(o => o.classList.remove('on'));
   const chars = [{ c: app.myChar, w: app.myWeapon || CHARS[app.myChar].weapon }, { c: settings.cpuRival, w: CHARS[settings.cpuRival].weapon }];
-  const side = sel => `<img src="${CHARS[sel.c].portrait}" alt=""><div class="vname">${CHARS[sel.c].name}<small>${WNAMES[sel.w]}</small></div>`;
-  $('#vsL').innerHTML = side(chars[0]); $('#vsR').innerHTML = side(chars[1]);
-  $('#vsInfo').textContent = `CPU · ${CPU_LEVELS[app.cpuLevel].name} · al mejor de 3`;
+  vsScreen(chars);
+  $('#vsInfo').textContent = `CPU ${CPU_LEVELS[app.cpuLevel].name} — al mejor de 3 rondas`;
   exitGame(); show('s-vs');
   await ensureRenderer(); R.setFighters(chars);
   await new Promise(r => setTimeout(r, 1600));
@@ -249,7 +279,7 @@ function playDemo(steps, name) {
 // =====================================================================
 function resetLobby() {
   leaveOnline();
-  $('#hostCode').textContent = '— — — — —'; $('#bCopy').disabled = true; $('#bHost').disabled = false; $('#bJoin').disabled = false;
+  $('#hostCode').textContent = '— — — — —'; $('#bCopy').disabled = true; $('#bHost').disabled = false; setBusy('#bJoin', null);
   $('#lobbyStatus').textContent = (typeof window.Peer === 'function' || location.hash.includes('mocknet')) ? '' : 'No se pudo cargar PeerJS (¿sin internet?).';
 }
 $('#bHost').addEventListener('click', async () => {
@@ -261,11 +291,17 @@ $('#bHost').addEventListener('click', async () => {
 });
 $('#bCopy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(app.code); toast('Código copiado'); } catch { toast('Código: ' + app.code); } });
 $('#joinCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+// Acción que tarda: el botón conserva su tamaño y muestra un rótulo de espera
+function setBusy(sel, label) {
+  const b = $(sel);
+  if (label) { b.dataset.label ??= b.textContent; b.style.minWidth = b.offsetWidth + 'px'; b.classList.add('busy'); b.disabled = true; b.innerHTML = `<i class="spin" aria-hidden="true"></i>${label}`; }
+  else { b.classList.remove('busy'); b.disabled = false; if (b.dataset.label) b.textContent = b.dataset.label; b.style.minWidth = ''; }
+}
 $('#bJoin').addEventListener('click', async () => {
   const code = $('#joinCode').value.trim(); if (code.length !== 5) { $('#lobbyStatus').textContent = 'El código tiene 5 caracteres.'; return; }
-  leaveOnline(); app.link = makeLink(); $('#bJoin').disabled = true; $('#lobbyStatus').textContent = 'Conectando…';
+  leaveOnline(); app.link = makeLink(); setBusy('#bJoin', 'Conectando…'); $('#lobbyStatus').textContent = '';
   try { await app.link.join(code); onConnected(1); }
-  catch (e) { $('#lobbyStatus').textContent = e.message; $('#bJoin').disabled = false; }
+  catch (e) { $('#lobbyStatus').textContent = e.message; setBusy('#bJoin', null); }
 });
 // Enlace de pruebas sin internet: dos pestañas del mismo navegador (añade #mocknet a la URL)
 class MockLink {
@@ -307,9 +343,8 @@ async function beginOnlineMatch(chars, delay, mid) {
   app.mid = mid; app.ls = null; app.pendingNet = app.pendingNet.filter(m => m.mid === mid); app.rematch = { me: false, rival: false };
   $$('.overlay').forEach(o => o.classList.remove('on'));
   // pantalla VS
-  const side = sel => `<img src="${CHARS[sel.c].portrait}" alt=""><div class="vname">${CHARS[sel.c].name}<small>${WNAMES[sel.w]}</small></div>`;
-  $('#vsL').innerHTML = side(chars[0]); $('#vsR').innerHTML = side(chars[1]);
-  $('#vsInfo').textContent = `al mejor de 3 · 3 min por ronda · retardo ${delay} f`;
+  vsScreen(chars);
+  $('#vsInfo').textContent = `Online — al mejor de 3 rondas · retardo ${delay} f`;
   show('s-vs');
   await ensureRenderer(); R.setFighters(chars);
   await new Promise(r => setTimeout(r, 2200));
@@ -403,15 +438,17 @@ function updateHUD(M) {
 }
 function showResults(M, local) {
   app.results = true;
-  $('#resTitle').textContent = M.matchWinner === local ? '¡Victoria!' : 'Derrota';
+  const won = M.matchWinner === local, W = M.fighters[M.matchWinner >= 0 ? M.matchWinner : local];
+  $('#resTitle').textContent = won ? 'Victoria' : 'Derrota';
   $('#resScore').textContent = `${M.wins[local]} — ${M.wins[1 - local]}`;
-  $('#resChars').innerHTML = M.fighters.map((F, i) => `<div class="${i === M.matchWinner ? 'win' : ''}"><img src="${CHARS[F.charId].portrait}" alt=""></div>`).join('');
+  $('#resChars').style.setProperty('--acc', CHARS[W.charId].accent);
+  $('#resChars').innerHTML = `<i class="band"></i><img src="${ART(W.charId).body}" alt="">`;
   $('#bReselect').textContent = app.mode === 'cpu' ? 'Cambiar rival' : 'Cambiar luchador';
   updateResultsHint();
   $('#s-results').classList.add('on');
 }
 function updateResultsHint() {
-  if (app.mode === 'cpu') { $('#resHint').textContent = `CPU · ${CPU_LEVELS[app.cpuLevel].name}`; return; }
+  if (app.mode === 'cpu') { const O = app.M.fighters[1]; $('#resHint').textContent = `Contra ${CHARS[O.charId].name} — CPU ${CPU_LEVELS[app.cpuLevel].name}`; return; }
   $('#resHint').textContent = app.rematch.rival ? 'Tu rival quiere la revancha' : app.rematch.me ? 'Esperando a tu rival…' : '';
 }
 $('#bRematch').addEventListener('click', () => { if (app.mode === 'cpu') { startCpuMatch(); return; } if (app.rematch.me) return; app.rematch.me = true; app.link.send({ t: 'rematch' }); updateResultsHint(); maybeRematch(); });
@@ -433,9 +470,9 @@ function exitGameKeep() { app.returnToGame = true; }
 $('#bBoxes').addEventListener('click', e => { app.boxes = !app.boxes; e.currentTarget.classList.toggle('on', app.boxes); });
 
 // ---------- Ajustes ----------
-$('#setQuality').value = settings.quality; $('#setFps').checked = settings.fps; $('#setVib').checked = settings.vibration;
+$('#setQuality').value = settings.quality; $('#setMotion').checked = !!settings.motion; $('#setFps').checked = settings.fps; $('#setVib').checked = settings.vibration;
 $('#setOpacity').value = settings.opacity; $('#setBtn').value = settings.btn; $('#setDelay').value = settings.delay;
-for (const [id, key, conv] of [['#setQuality', 'quality', Number], ['#setFps', 'fps', null], ['#setVib', 'vibration', null], ['#setOpacity', 'opacity', Number], ['#setBtn', 'btn', Number], ['#setDelay', 'delay', Number]]) {
+for (const [id, key, conv] of [['#setQuality', 'quality', Number], ['#setMotion', 'motion', null], ['#setFps', 'fps', null], ['#setVib', 'vibration', null], ['#setOpacity', 'opacity', Number], ['#setBtn', 'btn', Number], ['#setDelay', 'delay', Number]]) {
   $(id).addEventListener('input', e => { settings[key] = e.target.type === 'checkbox' ? e.target.checked : conv(e.target.value); saveSettings(); applySettings(); });
 }
 
