@@ -43,11 +43,6 @@ $('#bAuraPreview').addEventListener('click', () => {
   // Separate preview route, leaving match data and the production renderer untouched.
   window.location.assign('./aura_preview.html');
 });
-// Return from the standalone viewer to Settings, including from a refreshed page.
-if (window.location.hash === '#settings') {
-  show('s-settings');
-  history.replaceState(null, '', window.location.pathname + window.location.search);
-}
 
 function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); if (ms) t._h = setTimeout(() => t.style.display = 'none', ms); }
 
@@ -400,4 +395,7 @@ for (const [id, key, conv] of [['#setQuality', 'quality', Number], ['#setFps', '
 })();
 
 applySettings();
-show('s-menu');
+if (window.location.hash === '#settings') {
+  show('s-settings');
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+} else show('s-menu');
