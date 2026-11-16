@@ -30,6 +30,12 @@ Three.js + cel-shading. Online 1 vs 1 P2P (PeerJS / WebRTC) con lockstep determi
 - **GitHub Pages**: automático en cada push a `main` (`.github/workflows/pages.yml`, pasa antes los tests).
 - **Firebase** (opcional): `firebase deploy --only hosting`
 
+## Ver el blockout experimental de Aura
+
+En el menú principal, entra en **Ajustes → Ver personaje Aura · Vista 3D**. También puedes abrir directamente `aura_preview.html` una vez desplegada la web.
+
+La vista 3D tiene giro con ratón o dedo, zoom y botones para frente, perfil y espalda. Utiliza `MeshToonMaterial` en un **modelo procedural simplificado** que representa el blockout, **no** el GLB final ni el personaje animado del juego. Este visor es independiente del renderizador de combate y no afecta a `cleric.glb`, las hitboxes ni la simulación. Código: `public/js/aura-preview.js`; estilos: `public/css/aura-preview.css`.
+
 ## Regenerar modelos y animaciones
 1. Descarga RPG Characters, UAL1 y UAL2 (Standard) de Quaternius y descomprímelos en `assets_raw/rpg`, `assets_raw/ual1`, `assets_raw/ual`.
 2. `pip install bpy` (Python 3.13) y ejecuta:
