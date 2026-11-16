@@ -92,3 +92,9 @@
 - `models.js`: usa el color por vértice del GLB cuando no hay textura. Simulación sin cambios.
 - Capturas: `references/aura/f3/vfx_polvo_cel.png`, `f4_color_por_cara.png`.
 
+## 2026-11-16 — Aura 3D: tinta de cómic
+- **Líneas de tinta interiores** en el personaje (`models.js`, `prepareInk`): fronteras entre zonas de color y pliegues marcados; contorno exterior de Aura 0,012 → 0,016 para separar piernas y brazos superpuestos.
+- **Manos**: el guante es grafito con dedos de piel; se quitan los grises (`bl_aura_flatcolor.py`).
+- **Polvo** más en pico, con contorno de tinta y rayas de velocidad negras.
+- Captura: `references/aura/f3/f4_tinta_comic.png`. Simulación sin cambios.
+

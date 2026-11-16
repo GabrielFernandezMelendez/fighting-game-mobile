@@ -7,12 +7,12 @@
 // =====================================================================
 const TRAIL_N = 12;            // muestras de la estela
 const DUST_POOL = 24, STAR_POOL = 6;
-// Polvo como en la lámina V3 (AVANCE / SALTO): nube beige de dos tonos, sin contorno,
+// Polvo como en la lámina V3 (AVANCE / SALTO): nube beige de dos tonos con contorno de tinta y rayas de cómic,
 // con lenguas puntiagudas que se arrastran hacia atrás y se deshace en huecos (no se desvanece).
 const DUST_LIGHT = '#e2d5c5', DUST_SHADE = '#a28d82';
 const DUST_FPS = 12;           // animación limitada: la forma cambia a 12 fps como en el anime
 const DUST_FRAG = `
-uniform float uT, uDir, uSeed, uW, uH; uniform vec3 uLight, uShade; varying vec2 vUv;
+uniform float uT, uDir, uSeed, uW, uH, uInkW; uniform vec3 uLight, uShade, uInk; varying vec2 vUv;
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
@@ -27,16 +27,19 @@ float field(vec2 p){
     float r = (0.42 - fi * 0.075) * (0.5 + 0.5 * g) * (0.85 + 0.3 * j);
     f = smax(f, r - length(p - c), 0.08);
   }
-  for (int i = 0; i < 3; i++) {                                  // lenguas afiladas hacia atrás y arriba
+  for (int i = 0; i < 5; i++) {                                  // lenguas afiladas hacia atrás y arriba
     float fi = float(i), j = hash(vec2(fi + 7.0, uSeed));
-    vec2 b = vec2(0.25 + fi * 0.36, 0.42 - fi * 0.06) * g;
-    float a = 0.18 + 0.30 * j + fi * 0.12, len = (0.70 + 0.3 * j) * g + uT * 0.3, wid = 0.24 - fi * 0.04;
+    vec2 b = vec2(0.18 + fi * 0.24, 0.46 - fi * 0.06) * g;
+    float a = 0.25 + 0.55 * j + fi * 0.10, len = (0.75 + 0.35 * j - fi * 0.05) * g + uT * 0.3, wid = 0.26 - fi * 0.03;
     vec2 q = p - b; q = vec2(q.x * cos(a) + q.y * sin(a), -q.x * sin(a) + q.y * cos(a));
     q.y -= 0.12 * q.x * q.x;                                     // se curvan como en la lámina
-    float w = wid * g * pow(clamp(1.0 - q.x / max(len, 0.05), 0.0, 1.0), 0.8);
+    float w = wid * g * pow(clamp(1.0 - q.x / max(len, 0.05), 0.0, 1.0), 1.35);   // punta afilada
     f = smax(f, min(min(w - abs(q.y), q.x + 0.15), len - q.x) - 0.01, 0.05);
   }
-  f += (vnoise(p * 7.0 + uSeed) - 0.5) * 0.05;                   // borde algo irregular
+  f += (vnoise(p * 7.0 + uSeed) - 0.5) * 0.04;                   // borde algo irregular
+  // corona de picos en la parte alta (como las llamas de polvo de la lámina)
+  float tri = abs(fract(p.x * 3.2 + p.y * 1.2 + uSeed * 0.37) * 2.0 - 1.0);
+  f += (0.11 * pow(tri, 2.2) - 0.035) * smoothstep(0.12, 0.38, p.y);
   float e = smoothstep(0.3, 1.0, uT);                            // se rompe en huecos y adelgaza
   f -= e * (0.06 + 0.30 * vnoise(p * 3.5 + uSeed * 3.1));
   return f;
@@ -45,12 +48,26 @@ void main(){
   vec2 p = vec2((vUv.x - 0.5) * 2.0 * uW, vUv.y * uH * 1.5) / uH;
   p.x = uDir == 0.0 ? abs(p.x) : -uDir * p.x;
   if (p.y < 0.0) discard;
-  float f = field(p);
-  if (f < 0.0) discard;
+  float f = field(p), fw = max(fwidth(f), 1e-4);
+  if (f < 0.0) {
+    // rayas de velocidad de cómic detrás de la nube (solo al principio)
+    float sl = 0.0;
+    for (int i = 0; i < 3; i++) {
+      float fi = float(i), j = hash(vec2(fi + 21.0, uSeed));
+      float y0 = 0.22 + fi * 0.26 + j * 0.1, x0 = 0.85 + j * 0.35 + uT * 0.9, x1 = x0 + 0.5 + 0.35 * j;
+      float d = abs(p.y - y0 - (p.x - x0) * 0.18), along = clamp((p.x - x0) / (x1 - x0), 0.0, 1.0);
+      if (p.x > x0 && p.x < x1) sl = max(sl, step(d, 0.03 * (1.0 - along * along)));
+    }
+    if (sl * step(uT, 0.55) < 0.5) discard;
+    gl_FragColor = vec4(uInk, 1.0);
+    #include <colorspace_fragment>
+    return;
+  }
   // dos tonos duros: la zona cuyo vecino hacia abajo-delante queda fuera es sombra
   vec2 L = normalize(vec2(-0.4, 1.0));
   float under = field(p - L * 0.2);
   vec3 col = under < 0.03 ? uShade : uLight;
+  col = (f / min(fw, 0.02) < uInkW) ? uInk : col;                               // contorno de tinta (px)
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
 }`;
@@ -64,7 +81,8 @@ export class VFX {
     for (let i = 0; i < DUST_POOL; i++) {
       const mat = new THREE.ShaderMaterial({
         uniforms: { uT: { value: 0 }, uDir: { value: 0 }, uSeed: { value: 0 }, uW: { value: 1 }, uH: { value: 0.5 },
-          uLight: { value: new THREE.Color(DUST_LIGHT) }, uShade: { value: new THREE.Color(DUST_SHADE) } },
+          uLight: { value: new THREE.Color(DUST_LIGHT) }, uShade: { value: new THREE.Color(DUST_SHADE) },
+          uInk: { value: new THREE.Color('#0c0912') }, uInkW: { value: 3.0 } },
         vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
         fragmentShader: DUST_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
       });
