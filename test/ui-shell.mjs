@@ -15,17 +15,25 @@ assert.ok(
 );
 assert.ok(main.includes("show('s-menu')"), 'main menu initialization missing');
 assert.ok(viewer.includes('id="aura-canvas"'), 'Aura 3D viewer canvas missing');
-assert.ok(viewer.includes('id="preview-mode"'), 'V1/V2 comparison button missing');
-assert.ok(viewer.includes('id="preview-weapon"'), 'optional dagger button missing');
-assert.ok(viewer.includes('id="preview-pose"'), 'guard/idle pose button missing');
-assert.ok(viewer.includes('id="preview-motion"'), 'motion toggle missing');
+// The side-view preview is intentionally not an orbit/3D blockout editor.
+for (const id of ['preview-fallback','preview-weapon','preview-pose','preview-motion',
+  'preview-reset','preview-zoom-in','preview-zoom-out','preview-upload','preview-asset-status']) {
+  assert.ok(viewer.includes('id="' + id + '"'), 'missing sideview control ' + id);
+}
+for (const retired of ['preview-front','preview-side','preview-back','preview-mode']) {
+  assert.ok(!viewer.includes('id="' + retired + '"'), 'retired orbit control ' + retired + ' remains');
+}
 const preview = readFileSync(new URL('../public/js/aura-preview.js', import.meta.url), 'utf8');
-const detail = readFileSync(new URL('../public/js/aura-detail.js', import.meta.url), 'utf8');
-assert.ok(preview.includes("createAuraDetail(THREE, mats)"), 'detail V2 is not created in viewer');
-assert.ok(detail.includes("export function createAuraDetail("), 'detail model factory missing');
-assert.ok(detail.includes("AURA_SIGNATURE_DAGGER"), 'dagger must remain separate from character');
 const personality = readFileSync(new URL('../public/js/aura-personality.js', import.meta.url), 'utf8');
-assert.ok(preview.includes("installAuraPersonality(THREE, detailed)"), 'V3 personality is not installed');
-assert.ok(personality.includes("export function installAuraPersonality"), 'personality factory is missing');
-assert.ok(personality.includes("setPose") && personality.includes("setPlaying"), 'pose and pause controls are missing');
-console.log('UI shell regression checks passed');
+const detail = readFileSync(new URL('../public/js/aura-detail.js', import.meta.url), 'utf8');
+const config = JSON.parse(readFileSync(new URL('../public/assets/previews/aura.json', import.meta.url),'utf8'));
+assert.equal(config.modelUrl, null, 'no GLB should be claimed as deployed before review');
+assert.ok(preview.includes('new THREE.OrthographicCamera('), 'side orthographic camera missing');
+assert.ok(!preview.includes('canvas.addEventListener(\'pointermove\''), 'orbit dragging must be disabled');
+assert.ok(preview.includes('new GLTFLoader()'), 'GLB loader missing');
+assert.ok(preview.includes('loader.parseAsync(buffer'), 'local GLB test path missing');
+assert.ok(preview.includes('createAuraDetail(THREE, materials)'), 'V3 fallback must remain available');
+assert.ok(preview.includes('installAuraPersonality(THREE, fallback)'), 'V3 fallback idle missing');
+assert.ok(personality.includes('export function installAuraPersonality'), 'personality factory missing');
+assert.ok(detail.includes('AURA_SIGNATURE_DAGGER'), 'signature dagger must remain separate');
+console.log('UI shell / Aura sideview GLB preview checks passed');
