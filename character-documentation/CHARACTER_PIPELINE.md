@@ -30,6 +30,8 @@ modelo riggeado                             art/<pj>/..._05_rig.blend → public
 F4/F7 juego: cel shader + contorno + VFX    public/js/models.js, render.js, vfx.js
 ```
 
+Otros personajes: los scripts leen `CHAR=<pj>` y `tools/neon_chars.py` (ver `art/sombra/README.md` para los comandos de Sombra).
+
 Herramientas: Blender 4.x/5.x (`bpy`, se ejecuta sin interfaz), Python 3 con `numpy`, `onnxruntime` (solo F0), navegador para TRELLIS.2.
 Licencias: TRELLIS.2 (MIT) ✅. **Hunyuan3D descartado**: su licencia excluye la UE. Meshy gratuito no permite descargar. No usar assets de otros juegos.
 

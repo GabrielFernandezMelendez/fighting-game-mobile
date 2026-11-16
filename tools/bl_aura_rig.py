@@ -11,12 +11,17 @@ Se escala a 2.76 de alto, igual que los modelos RPG, para que models.js y bl_ret
 import bpy, sys, os
 from mathutils import Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from bl_fighter_armature import H, J, P, create_fighter_armature
+from bl_fighter_armature import H, J, P, create_fighter_armature, fit_joints
+CHAR = os.environ.get('CHAR', 'aura'); NAME = CHAR.capitalize()
 args = sys.argv[sys.argv.index('--') + 1:]
 src, out = args[0], args[1]
 
 bpy.ops.wm.open_mainfile(filepath=src)
-mesh = next(o for o in bpy.data.objects if o.type == 'MESH'); mesh.name = 'Aura'
+mesh = next(o for o in bpy.data.objects if o.type == 'MESH'); mesh.name = NAME
+# FIT_JOINTS=1 (por defecto fuera de Aura): codos, muñecas, rodillas y tobillos medidos en la malla
+if os.environ.get('FIT_JOINTS', '0' if CHAR == 'aura' else '1') == '1':
+    import numpy as np
+    fit_joints(np.array([tuple(mesh.matrix_world @ v.co) for v in mesh.data.vertices]))
 # escalar a la altura del rig del juego y apoyar los pies en z=0
 mesh.scale = (H, H, H); mesh.location = (0, 0, 0.5 * H)
 bpy.ops.object.select_all(action='DESELECT'); mesh.select_set(True); bpy.context.view_layer.objects.active = mesh
@@ -41,8 +46,8 @@ import os
 donor_path = os.environ.get('WEIGHTS_FROM')
 if donor_path and unweighted > 0.1 * len(mesh.data.vertices):
     with bpy.data.libraries.load(donor_path) as (src_data, dst_data):
-        dst_data.objects = [n for n in src_data.objects if n == 'Aura']
-    donor = dst_data.objects[0]; donor.name = 'Aura_donor'; bpy.context.collection.objects.link(donor)
+        dst_data.objects = [n for n in src_data.objects if n == NAME]
+    donor = dst_data.objects[0]; donor.name = NAME + '_donor'; bpy.context.collection.objects.link(donor)
     donor.parent = None; donor.modifiers.clear()
     for g in list(mesh.vertex_groups): mesh.vertex_groups.remove(g)
     for g in donor.vertex_groups: mesh.vertex_groups.new(name=g.name)
@@ -69,7 +74,7 @@ if os.environ.get('LEG_WEIGHTS', '1') == '1':
     def dist_seg(p, a, b):
         q, f = intersect_point_line(p, a, b); f = max(0, min(1, f)); return (p - (a + (b - a) * f)).length
     for v in mesh.data.vertices:
-        if v.co.z > crotch or abs(v.co.x) > 0.15 * H: continue
+        if v.co.z > crotch or (abs(v.co.x) > 0.15 * H and v.co.z > 0.36 * H): continue   # manos fuera; bombachos anchos dentro
         t = min(1.0, (crotch - v.co.z) / ramp)
         w = {mesh.vertex_groups[g.group].name: g.weight for g in v.groups}
         trunk = sum(val for n, val in w.items() if n not in allleg)
@@ -152,6 +157,54 @@ if os.environ.get('LEG_WEIGHTS', '1') == '1':
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.vertex_group_normalize_all(lock_active=False)
     print('perneras: vértices reasignados', moved)
+# Puentes mano-muslo: si el remallado por vóxeles fundió los dedos con el pantalón, el suavizado vuelve a
+# mezclar pesos. Se repite la separación brazo/pierna y se borran las caras que unen ambos lados (huecos
+# minúsculos, invisibles con doble cara); así la mano no arrastra el pantalón ni al revés.
+if os.environ.get('LEG_WEIGHTS', '1') == '1':
+    import bmesh
+    cat = {}
+    for g in mesh.vertex_groups:
+        b = g.name.split('.')[0]
+        cat[g.index] = 'arm' if b in ('UpperArm', 'LowerArm', 'Fist', 'Fist1') else 'leg' if b in ('UpperLeg', 'LowerLeg', 'Foot') else 'body'
+    dom = []
+    for v in mesh.data.vertices:
+        acc = {'arm': 0.0, 'leg': 0.0, 'body': 0.0}
+        for g in v.groups: acc[cat[g.group]] += g.weight
+        if acc['arm'] > 0.01 and acc['leg'] > 0.01:
+            drop = 'arm' if acc['leg'] >= acc['arm'] else 'leg'
+            for g in list(v.groups):
+                if cat[g.group] == drop: mesh.vertex_groups[g.group].remove([v.index])
+            acc[drop] = 0
+        dom.append(max(acc, key=acc.get))
+    bm = bmesh.new(); bm.from_mesh(mesh.data); bm.faces.ensure_lookup_table()
+    bad = [f for f in bm.faces if {dom[v.index] for v in f.verts} >= {'arm', 'leg'}]
+    bmesh.ops.delete(bm, geom=bad, context='FACES'); bm.to_mesh(mesh.data); bm.free(); mesh.data.update()
+    bpy.ops.object.select_all(action='DESELECT'); mesh.select_set(True); bpy.context.view_layer.objects.active = mesh
+    bpy.ops.object.vertex_group_normalize_all(lock_active=False)
+    print('puentes mano-muslo: caras borradas', len(bad))
+# Accesorios colgados cerca de la mano (bolsa, correas, hebillas): sin pesos de brazo, o se estiran
+# con la mano al atacar o saltar. Se usa la zona por vértice de COLOR=label (neon_zones).
+NO_ARM = {'sombra': {'cuero', 'correa', 'metal'}}.get(CHAR, set())
+if NO_ARM and mesh.get('neon_zones') and 'Col' in mesh.data.color_attributes:
+    zones = str(mesh['neon_zones']).split(','); ca = mesh.data.color_attributes['Col'].data
+    armg = {g.index for g in mesh.vertex_groups if g.name.split('.')[0] in ('UpperArm', 'LowerArm', 'Fist', 'Fist1')}
+    gi = {g.name: g.index for g in mesh.vertex_groups}; fixed = 0
+    for v in mesh.data.vertices:
+        z = zones[min(int(ca[v.index].color[0] * 16), len(zones) - 1)]
+        if z not in NO_ARM or v.co.z > 0.74 * H: continue
+        # solo lo que cuelga lejos del eje del brazo (la bolsa), no los guantes ni las vendas
+        sd = 'L' if v.co.x > 0 else 'R'
+        da = min(dseg(v.co, P(J[n][0]), P(J[n][1])) for n in (f'LowerArm.{sd}', f'Fist.{sd}', f'Fist1.{sd}'))
+        if da < 0.035 * H: continue
+        ws = [(g.group, g.weight) for g in v.groups if g.group in armg and g.weight > 0]
+        if not ws: continue
+        for g, _ in ws: mesh.vertex_groups[g].remove([v.index])
+        if not any(g.weight > 0.01 for g in v.groups):
+            mesh.vertex_groups['Hips' if v.co.z < 0.6 * H else 'Torso'].add([v.index], 1.0, 'REPLACE')
+        fixed += 1
+    bpy.ops.object.select_all(action='DESELECT'); mesh.select_set(True); bpy.context.view_layer.objects.active = mesh
+    bpy.ops.object.vertex_group_normalize_all(lock_active=False)
+    print('accesorios sin peso de brazo', fixed)
 bpy.ops.wm.save_as_mainfile(filepath=out + '.blend')
 bpy.ops.object.select_all(action='SELECT')
 has_col = any(o.type == 'MESH' and o.data.color_attributes for o in bpy.data.objects)

@@ -53,6 +53,9 @@ export const CEL_PRESETS = {
 export const ZONE_SHADE = {
   chaqueta: '#c9b6b4', pantalon: '#8f7bb4', gris: '#9a8fb0', grafito: '#8a7fa0', negro: '#9a90b0',
   naranja: '#d8826e', pelo: '#a493d0', mascara: '#aaa3c0', piel: '#d39c90', metal: '#9f97b6',
+  // Sombra: rojos que en sombra van a vino/ciruela, nunca al mismo tono que la zona vecina
+  capucha: '#946c8a', tela: '#7c6a98', granate: '#8a7c9e', carmesi: '#a56c86', cuero: '#9c8292',
+  correa: '#b29ca2', vendas: '#c7a8aa',
 };
 export const INK = { color: '#140f1c', width: 1.3, minLuma: 0.22, minLumaLin: 0.04, crease: -0.25 };   // crease: coseno del pliegue que también lleva tinta   // px a cada lado de la frontera (≈2 px en total)
 
@@ -182,7 +185,7 @@ function addOutlineNormals(geo) {
 
 // Juego de clips por modelo: los modelos RPG comparten 'anims'; los esqueletos propios llevan el suyo
 // (mismos nombres de hueso, distinta pose de reposo → el retarget se hace por esqueleto).
-export const MODEL_ANIMS = { aura: 'aura_anims', sombra: 'aura_anims' };
+export const MODEL_ANIMS = { aura: 'aura_anims', sombra: 'sombra_anims' };
 export const animSetFor = model => MODEL_ANIMS[model] || 'anims';
 
 export class ModelLibrary {

@@ -6,20 +6,20 @@ limpia las zonas con votación por vecinos y guarda:
   - "Col"     color plano (sustituye al anterior; el original queda en "Col_src")
   - "LblCol"  etiqueta de zona codificada en rojo (para separar pelo/máscara/piel en materiales)
 
-  python tools/bl_aura_flatcolor.py -- <entrada_recolor.blend> <salida.blend>
+  [CHAR=aura|sombra] python tools/bl_aura_flatcolor.py -- <entrada_recolor.blend> <salida.blend>
+
+La paleta sale de tools/neon_chars.py; las reglas de zona de cada personaje están abajo.
 """
 import bpy, sys
 import numpy as np
 args = sys.argv[sys.argv.index('--') + 1:]
 src, out = args[0], args[1]
 
-# Paleta (sRGB) medida en la hoja de giro y el model sheet de Aura V3
-PALETTE = [
-  ('chaqueta',  '#E8DACB'), ('pantalon', '#8E7686'), ('gris',     '#776471'),
-  ('grafito',   '#3B313E'), ('negro',    '#1B171F'), ('naranja',  '#FF7A1A'),
-  ('pelo',      '#E3D9EE'), ('mascara',  '#D5CFD3'), ('piel',     '#E2B39E'),
-  ('metal',     '#A6A1AA'),
-]
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import neon_chars
+C = neon_chars.get()                      # CHAR=aura|sombra (tools/neon_chars.py)
+PALETTE = C['palette']
 NAMES = [n for n, _ in PALETTE]
 LABEL_ID = {n: i for i, n in enumerate(NAMES)}
 
@@ -44,32 +44,61 @@ pal = np.array([hex2rgb(h) for _, h in PALETTE]); pal_lab = lab(pal); v_lab = la
 # la luminosidad pesa menos: la textura trae sombras horneadas que no deben cambiar de material
 d = (((v_lab[:, None, :] - pal_lab[None]) * np.array([0.45, 1.0, 1.0])) ** 2).sum(-1)
 # reglas de zona: pelo y máscara solo en la cabeza; piel no en la cabeza (la máscara la cubre)
-head = zn > 0.83
-d[~head, LABEL_ID['pelo']] += 2e3; d[~head, LABEL_ID['mascara']] += 2e3
-d[head, LABEL_ID['piel']] += 400; d[head, LABEL_ID['chaqueta']] += 300
-lbl = d.argmin(1)
 ID = LABEL_ID; x, y = co[:, 0] / (zmax - zmin), co[:, 1] / (zmax - zmin)   # coordenadas relativas a la altura
 def setw(mask, to): lbl[mask] = ID[to]
-# reglas por zona del diseño (medidas sobre la hoja de giro)
-pants = (zn < 0.53) & (zn > 0.13)
-setw(pants & (lbl == ID['gris']), 'pantalon')                      # el pantalón es un solo tono
-setw(pants & (lbl == ID['metal']), 'pantalon')
-strap = (np.abs(x + 0.075) < 0.03) & (zn > 0.3)                    # correa colgante del muslo derecho
-setw((zn < 0.47) & (zn > 0.13) & ~strap & np.isin(lbl, [ID['grafito'], ID['negro']]), 'pantalon')  # pliegues oscuros = sombra horneada
-jacket = (zn > 0.56) & (zn < 0.83) & (np.abs(x) > 0.05)
-setw(jacket & np.isin(lbl, [ID['gris'], ID['metal']]), 'chaqueta')
-abdomen = (zn > 0.55) & (zn < 0.67) & (np.abs(x) < 0.08) & (y < 0.02)
-fingers = (np.abs(x) > 0.16) & (zn > 0.38) & (zn < 0.5)
-setw((lbl == ID['piel']) & ~abdomen & ~fingers, 'chaqueta')       # piel solo en abdomen y dedos
-face = head & (y < -0.01) & (zn < 0.935) & (np.abs(x) < 0.06)
-setw(head & ~face & np.isin(lbl, [ID['metal'], ID['gris'], ID['mascara'], ID['chaqueta']]), 'pelo')
-setw(face & np.isin(lbl, [ID['pelo'], ID['metal'], ID['chaqueta']]), 'mascara')
-# manos: guante sin dedos grafito (con acento naranja) + dedos de piel; nada gris/beige/violeta en la mano
-hand = (np.abs(x) > 0.158) & (zn > 0.37) & (zn < 0.47)
-setw(hand & np.isin(lbl, [ID['gris'], ID['metal'], ID['pantalon'], ID['chaqueta'], ID['negro']]), 'grafito')
-boots = zn < 0.13; soles = zn < 0.03
-setw(boots & ~soles & np.isin(lbl, [ID['chaqueta'], ID['piel'], ID['pantalon']]), 'grafito')
-setw(soles & np.isin(lbl, [ID['piel'], ID['pantalon'], ID['gris']]), 'chaqueta')
+def ban(mask, names, cost=2e3):            # prohíbe zonas en una parte del cuerpo antes de clasificar
+    for n in names: d[mask, LABEL_ID[n]] += cost
+if C['name'] == 'aura':
+    head = zn > 0.83
+    d[~head, LABEL_ID['pelo']] += 2e3; d[~head, LABEL_ID['mascara']] += 2e3
+    d[head, LABEL_ID['piel']] += 400; d[head, LABEL_ID['chaqueta']] += 300
+    lbl = d.argmin(1)
+    # reglas por zona del diseño (medidas sobre la hoja de giro)
+    pants = (zn < 0.53) & (zn > 0.13)
+    setw(pants & (lbl == ID['gris']), 'pantalon')                      # el pantalón es un solo tono
+    setw(pants & (lbl == ID['metal']), 'pantalon')
+    strap = (np.abs(x + 0.075) < 0.03) & (zn > 0.3)                    # correa colgante del muslo derecho
+    setw((zn < 0.47) & (zn > 0.13) & ~strap & np.isin(lbl, [ID['grafito'], ID['negro']]), 'pantalon')  # pliegues oscuros = sombra horneada
+    jacket = (zn > 0.56) & (zn < 0.83) & (np.abs(x) > 0.05)
+    setw(jacket & np.isin(lbl, [ID['gris'], ID['metal']]), 'chaqueta')
+    abdomen = (zn > 0.55) & (zn < 0.67) & (np.abs(x) < 0.08) & (y < 0.02)
+    fingers = (np.abs(x) > 0.16) & (zn > 0.38) & (zn < 0.5)
+    setw((lbl == ID['piel']) & ~abdomen & ~fingers, 'chaqueta')       # piel solo en abdomen y dedos
+    face = head & (y < -0.01) & (zn < 0.935) & (np.abs(x) < 0.06)
+    setw(head & ~face & np.isin(lbl, [ID['metal'], ID['gris'], ID['mascara'], ID['chaqueta']]), 'pelo')
+    setw(face & np.isin(lbl, [ID['pelo'], ID['metal'], ID['chaqueta']]), 'mascara')
+    # manos: guante sin dedos grafito (con acento naranja) + dedos de piel; nada gris/beige/violeta en la mano
+    hand = (np.abs(x) > 0.158) & (zn > 0.37) & (zn < 0.47)
+    setw(hand & np.isin(lbl, [ID['gris'], ID['metal'], ID['pantalon'], ID['chaqueta'], ID['negro']]), 'grafito')
+    boots = zn < 0.13; soles = zn < 0.03
+    setw(boots & ~soles & np.isin(lbl, [ID['chaqueta'], ID['piel'], ID['pantalon']]), 'grafito')
+    setw(soles & np.isin(lbl, [ID['piel'], ID['pantalon'], ID['gris']]), 'chaqueta')
+
+
+elif C['name'] == 'sombra':
+    # medidas sobre la hoja de modelo de Sombra (zn 0 pies … 1 punta de la capucha)
+    head = zn > 0.80
+    face = head & (y < -0.03) & (np.abs(x) < 0.055) & (zn < 0.935) & (zn > 0.845)  # hueco negro de la capucha
+    arms = (np.abs(x) > 0.115) & (zn > 0.42)                    # por debajo, lo ancho es el pantalón bombacho
+    hands = arms & (zn < 0.50)
+    bandage = arms & (zn >= 0.46) & (zn < 0.60)
+    upperarm = arms & (zn >= 0.56)
+    boots = zn < 0.13
+    ban(head, ['piel', 'vendas', 'cuero', 'correa', 'tela', 'granate', 'metal', 'grafito'])
+    ban(~(zn > 0.70), ['capucha'], 300)                         # la capucha/bufanda solo arriba
+    ban(~bandage, ['vendas'], 250); ban(~(upperarm | hands), ['piel'], 400)
+    lbl = d.argmin(1)
+    setw(face & np.isin(lbl, [ID['negro'], ID['grafito'], ID['granate'], ID['tela']]), 'negro')
+    setw(head & ~face & np.isin(lbl, [ID['negro'], ID['carmesi']]), 'capucha')
+    pants = (zn > 0.13) & (zn < 0.52) & ~arms
+    setw(pants & np.isin(lbl, [ID['granate'], ID['grafito'], ID['negro']]), 'tela')   # pliegues = sombra horneada
+    torso = (zn >= 0.52) & (zn < 0.74) & ~arms
+    setw(torso & np.isin(lbl, [ID['granate'], ID['negro']]), 'tela')
+    setw(arms & ~bandage & ~hands & np.isin(lbl, [ID['tela'], ID['granate'], ID['negro']]), 'grafito')   # manguito oscuro
+    setw(hands & ~np.isin(lbl, [ID['piel'], ID['vendas']]), 'grafito')                                  # guante sin dedos
+    setw(bandage & np.isin(lbl, [ID['correa'], ID['piel']]), 'vendas')                                  # antebrazo vendado
+    setw(upperarm & ~bandage & np.isin(lbl, [ID['correa'], ID['vendas'], ID['cuero']]), 'piel')        # hombro descubierto
+    setw(boots & np.isin(lbl, [ID['tela'], ID['granate'], ID['negro'], ID['cuero']]), 'grafito')
 
 # votación por vecinos para quitar manchas (6 pasadas)
 E = np.empty(len(me.edges) * 2, np.int32); me.edges.foreach_get('vertices', E); E = E.reshape(-1, 2)

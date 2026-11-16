@@ -111,3 +111,13 @@
 - [Fuente editable y notas de revisión](../art/sombra/README.md). Malla propia de Blender con materiales planos y pesos, basada en la lámina de Sombra.
 - Prueba experimental con `?aura3d` en el modo Práctica para Aura y Sombra. `?sombra3d` activa solo el prototipo de Sombra. Comparte esqueleto y clips con Aura. La selección de arma sigue pasando por el socket de la mano.
 - Capturas de Blender en `references/sombra/prototype/`. Pendiente de revisión visual en partida con WebGL y en un móvil real.
+
+## 2026-11-16 — Sombra 3D por el pipeline de Aura (F0–F7)
+- **F0** lámina y vistas aisladas (`references/sombra/`). **F1** malla de TRELLIS.2 desde la vista frontal.
+- **F2a–F3** recolor con la hoja (`VIEWS=sombra_ ORANGE_FIX=0`) y color plano con paleta y reglas de zona propias (capucha, hueco negro, vendas en antebrazos, piel en hombros, guantes, botas).
+- **Scripts generalizados**: `tools/neon_chars.py` (paleta, colores finales y materiales por personaje, `CHAR=`); `bl_fighter_armature.fit_joints` ajusta codos, muñecas, rodillas y tobillos a la malla (`FIT_JOINTS`); el rig quita pesos de brazo a la bolsa/correas lejos de la mano y borra los puentes mano-muslo que deja el remallado.
+- **F6** clips UAL retargeteados a su esqueleto (`sombra_anims.glb`; antes usaba los de Aura).
+- **F7** `sombra.glb` nuevo con zonas por píxel, tinta y sombra por zona (`ZONE_SHADE` con tonos vino/ciruela). Contorno 0,016, doble cara. El prototipo hecho a mano (PR #17) queda en `art/sombra/` como referencia.
+- Capturas: `references/sombra/f1–f3/`. Simulación sin cambios. Sigue detrás de `?sombra3d` / `?aura3d`.
+- Pendiente: franja carmesí del pantalón (se pierde a 30 k), hueco de la capucha, prueba en móvil.
+
