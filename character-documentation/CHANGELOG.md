@@ -49,6 +49,22 @@
 - Sin GLB riggeado exportado, ni malla esculpida en Blender, ni cambios a las armas o gameplay.
 - Ver [AURA_RIG_V1.md](AURA_RIG_V1.md).
 
+## 2026-11-16 — Aura v1.7: pipeline 3D de producción
+- Estado: propuesto (plan) · F0 implementada.
+- Archivada [AURA-v1.6.md](history/AURA-v1.6.md); nueva guía [AURA_PIPELINE_3D.md](AURA_PIPELINE_3D.md).
+- Decisión: abandonar la geometría procedural como método del personaje final; adoptar pipeline híbrido IA + Blender + shader toon propio.
+- Añadidas referencias aisladas (`references/aura/`), hoja RGB original sin paleta reducida y `tools/prep_concept_views.py`.
+- Hunyuan3D descartado: su licencia excluye la UE. Candidatos F1: TRELLIS.2, TripoSG, Tripo, Meshy.
+- Impacto en animaciones/balance/network: ninguno.
+
+## 2026-11-16 — Aura F2 automatizada: malla TRELLIS riggeada y animada (prueba)
+- Estado: implementado como **prueba** detrás de `?aura3d`; el personaje jugable no cambia.
+- Malla de TRELLIS.2 → color corregido con la hoja de giro → 30 k triángulos con textura horneada → esqueleto propio con pesos automáticos → 44 clips UAL retargeteados.
+- Scripts: `bl_aura_recolor.py`, `bl_aura_retopo.py`, `bl_aura_rig.py`; `bl_retarget.py` admite `TARGET`/`ANIMS_NAME`.
+- Render: clips por modelo, doble cara opcional, contorno con offset de profundidad.
+- Impacto en animaciones/balance/network: ninguno en el modo por defecto. Tests en verde.
+- Pendiente: separar piernas, retopología con loops y piezas de máscara/pelo en Blender.
+
 ## Plantilla para revisiones
 ### FECHA — PERSONAJE vX.Y
 - Estado: propuesto / aprobado / implementado

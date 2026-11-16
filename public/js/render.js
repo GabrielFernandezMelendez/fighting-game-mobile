@@ -7,6 +7,10 @@ import { toWorld, hurtbox, getMove } from './sim.js';
 import { ModelLibrary, ModelFighter } from './models.js';
 import { clipFor } from './anims.js';
 
+// Prueba de la Aura imagen→3D (pipeline F2) sin sustituir al personaje jugable: añadir ?aura3d a la URL
+const AURA3D = typeof location !== 'undefined' && new URLSearchParams(location.search).has('aura3d');
+const AURA3D_OVERRIDE = { model: 'aura', outline: 0.012, doubleSide: true, modelHeight: 1.78 };
+
 const PALETTES = {
   white: { white: '#f2f2f6', whiteB: '#dfe1e8', suit: '#2f3342', suitL: '#41465a', acc: '#ff7a1a', neon: '#ffd23f', neonO: '#ff9a3c', visor: '#ff8a2c', visorE: '#5a1e00' },
   vega: { white: '#d93a9e', whiteB: '#a92a7a', suit: '#16171e', suitL: '#232532', acc: '#20e3e3', neon: '#46f6ff', neonO: '#ff5ad0', visor: '#2ad4ff', visorE: '#003040' },
@@ -42,6 +46,7 @@ export class Renderer3D {
     this.lib = new ModelLibrary(); this.gltf = {};
     try {
       const models = [...new Set(Object.values(CHARS).map(c => c.model).filter(Boolean))];
+      if (AURA3D) models.push('aura');
       await this.lib.preload(models);
       for (const m of models) this.gltf[m] = await this.lib.loadChar(m);
       this.useModels = true;
@@ -117,6 +122,7 @@ export class Renderer3D {
   disposeRig(r) { this.scene.remove(r.root); for (const s of r.hairSegs) this.scene.remove(s); this.scene.remove(r.shadow); }
 
   buildFighter(C, wk = C.weapon) {
+    if (AURA3D && C.id === 'aura' && this.gltf.aura) C = { ...C, ...AURA3D_OVERRIDE };
     if (this.useModels && C.model && this.gltf[C.model]) return this.buildModelFighter(C, wk);
     return this.buildProcFighter(C, wk);
   }
@@ -124,7 +130,7 @@ export class Renderer3D {
   // Personaje con modelo + clips retargeteados
   buildModelFighter(C, wk) {
     const T = this.T, g = this.geo();
-    const mf = new ModelFighter(this.lib, this.gltf[C.model], { height: 1.75, outline: 0.02 });
+    const mf = new ModelFighter(this.lib, this.gltf[C.model], { height: C.modelHeight || 1.75, outline: C.outline || 0.02, model: C.model, doubleSide: !!C.doubleSide });
     if (C.tint) for (const m of mf.mats) m.color.set(C.tint);
     this.scene.add(mf.root);
     // arma en el hueso Weapon.R, orientada como el arma original del pack (hoja hacia arriba en reposo)
@@ -149,7 +155,7 @@ export class Renderer3D {
     return { C, model: mf, root: mf.root, shadow, hairSegs: [], hairPts: [], flashMats: [] };
   }
   poseModel(rig, F) {
-    const mf = rig.model, s = F.scale, a = clipFor(F, this.lib.meta);
+    const mf = rig.model, s = F.scale, a = clipFor(F, mf.meta);
     mf.pose(a.clip, a.t, a.blend || 0);
     mf.root.position.set(F.x, F.y, 0); mf.root.scale.set(-F.face * s, s, s);
     rig.shadow.position.x = F.x; rig.shadow.scale.setScalar(s * Math.max(0.4, 1 - Math.max(0, F.y) * 0.35));

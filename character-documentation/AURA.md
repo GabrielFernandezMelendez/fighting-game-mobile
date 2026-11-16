@@ -1,6 +1,6 @@
 # AURA — La Centella
 
-**Versión:** 1.6 · **Fecha:** 2026-11-16  
+**Versión:** 1.7 · **Fecha:** 2026-11-16  
 **Estado:** A (dirección funcional definida); B (concept visual propuesto); C (blockout Blender programado, todavía sin exportación validada); D (integración pendiente).
 
 ## 1. Línea base implementada — no confundir con propuestas
@@ -196,3 +196,14 @@ Esta ilustración es una **referencia de dirección de arte**, no una lámina t�
 - **No existe todavía un GLB riggeado exportado**, ni se ha comprobado clipping/móvil en un navegador real.
 - Se conserva la regla de una sola arma elegida antes del combate; la daga visual de rig es solo una prueba.
 - [Plan técnico y límites](AURA_RIG_V1.md).
+
+## 12. v1.7 — Pipeline 3D de producción (2026-11-16)
+
+**Estado:** plan aprobable; F0 completada. Versión anterior archivada en [history/AURA-v1.6.md](history/AURA-v1.6.md).
+
+- Se abandona la geometría procedural de Three.js como método para el personaje final; V1–V3/V6 y el relieve V5 quedan como referencia.
+- Nuevo método: **concept → vistas aisladas → imagen→3D → Blender → color plano → shader toon NEÓN → rig → animación → GLB**.
+- F0 hecha: vistas frontal, lateral, espalda y 3/4 aisladas en `references/aura/`, generadas con `tools/prep_concept_views.py`. Explica el fallo de Meshy: se le pasaba la hoja completa.
+- Hunyuan3D descartado por licencia (excluye la UE). Candidatos: TRELLIS.2, TripoSG, Tripo y Meshy.
+- Sin cambios de gameplay ni del modelo jugable.
+- [Plan completo](AURA_PIPELINE_3D.md).
