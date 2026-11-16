@@ -7,10 +7,11 @@ import { toWorld, hurtbox, getMove } from './sim.js';
 import { ModelLibrary, ModelFighter } from './models.js';
 import { clipFor } from './anims.js';
 import { VFX } from './vfx.js';
+import { isInstalledApp } from './app-mode.js';
 
-// ?aura3d activa ambos prototipos. ?sombra3d permite revisar solo a Sombra.
+// La app instalada y ?aura3d activan ambos modelos. ?sombra3d permite revisar solo a Sombra.
 const previewFlags = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
-const AURA3D = previewFlags.has('aura3d');
+const AURA3D = isInstalledApp() || previewFlags.has('aura3d');
 const AURA3D_OVERRIDE = { model: 'aura', outline: 0.016, doubleSide: true, modelHeight: 1.78, cel: true };
 const SOMBRA3D = AURA3D || previewFlags.has('sombra3d');
 const SOMBRA3D_OVERRIDE = { model: 'sombra', outline: 0.016, doubleSide: true, modelHeight: 1.78, cel: true };
@@ -51,17 +52,20 @@ export class Renderer3D {
     this.lib = new ModelLibrary(); this.gltf = {};
     try {
       const models = [...new Set(Object.values(CHARS).map(c => c.model).filter(Boolean))];
-      if (AURA3D) models.push('aura');
       await this.lib.preload(models);
       for (const m of models) this.gltf[m] = await this.lib.loadChar(m);
       this.useModels = true;
     } catch (e) { console.warn('Modelos no disponibles, uso el muñeco procedural', e); this.useModels = false; this.modelError = String((e && e.message) || e).slice(0, 60); }
-    if (this.useModels && SOMBRA3D) {
+    if (!this.useModels) return;
+    const previews = [];
+    if (AURA3D) previews.push('aura');
+    if (SOMBRA3D) previews.push('sombra');
+    for (const model of previews) {
       try {
-        await this.lib.preload([...Object.keys(this.gltf), 'sombra']);
-        this.gltf.sombra = await this.lib.loadChar('sombra');
+        await this.lib.preload([...Object.keys(this.gltf), model]);
+        this.gltf[model] = await this.lib.loadChar(model);
       } catch (e) {
-        console.warn('Sombra 3D no disponible, se usa el modelo habitual', e);
+        console.warn(`Modelo 3D de ${model} no disponible, se usa el modelo habitual`, e);
       }
     }
   }
