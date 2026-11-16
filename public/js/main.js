@@ -128,7 +128,7 @@ function buildArmory() {
 //  ENTRAR / SALIR DEL COMBATE
 // =====================================================================
 async function ensureRenderer() {
-  if (!R) { R = new Renderer3D(); await R.init($('#game')); }
+  if (!R) { R = new Renderer3D(); await R.init($('#game')); app.R = R; }
   R.applyQuality(+settings.quality);
 }
 async function enterGame() {

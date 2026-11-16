@@ -6,20 +6,70 @@
 //  - Polvo al hacer dash, backdash, saltar y aterrizar.
 // =====================================================================
 const TRAIL_N = 12;            // muestras de la estela
-const DUST_POOL = 28, STAR_POOL = 6;
+const DUST_POOL = 24, STAR_POOL = 6;
+// Polvo como en la lámina V3 (AVANCE / SALTO): nube beige de dos tonos, sin contorno,
+// con lenguas puntiagudas que se arrastran hacia atrás y se deshace en huecos (no se desvanece).
+const DUST_LIGHT = '#e2d5c5', DUST_SHADE = '#a28d82';
+const DUST_FPS = 12;           // animación limitada: la forma cambia a 12 fps como en el anime
+const DUST_FRAG = `
+uniform float uT, uDir, uSeed, uW, uH; uniform vec3 uLight, uShade; varying vec2 vUv;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+float smax(float a, float b, float k){ float h = clamp(0.5 + 0.5 * (a - b) / k, 0.0, 1.0); return mix(b, a, h) + k * h * (1.0 - h); }
+// p en unidades de altura de la nube; x positiva = hacia atrás (la estela)
+float field(vec2 p){
+  float g = 1.0 - pow(1.0 - min(1.0, uT * 2.4), 3.0);          // crece muy rápido y se frena
+  float f = -1.0;
+  for (int i = 0; i < 4; i++) {                                  // bolas de la nube, menores hacia la cola
+    float fi = float(i), j = hash(vec2(fi, uSeed));
+    vec2 c = vec2((0.18 + fi * 0.36) * g + uT * 0.3 * fi, 0.30 - fi * 0.05 + uT * 0.10 + j * 0.05);
+    float r = (0.42 - fi * 0.075) * (0.5 + 0.5 * g) * (0.85 + 0.3 * j);
+    f = smax(f, r - length(p - c), 0.08);
+  }
+  for (int i = 0; i < 3; i++) {                                  // lenguas afiladas hacia atrás y arriba
+    float fi = float(i), j = hash(vec2(fi + 7.0, uSeed));
+    vec2 b = vec2(0.25 + fi * 0.36, 0.42 - fi * 0.06) * g;
+    float a = 0.18 + 0.30 * j + fi * 0.12, len = (0.70 + 0.3 * j) * g + uT * 0.3, wid = 0.24 - fi * 0.04;
+    vec2 q = p - b; q = vec2(q.x * cos(a) + q.y * sin(a), -q.x * sin(a) + q.y * cos(a));
+    q.y -= 0.12 * q.x * q.x;                                     // se curvan como en la lámina
+    float w = wid * g * pow(clamp(1.0 - q.x / max(len, 0.05), 0.0, 1.0), 0.8);
+    f = smax(f, min(min(w - abs(q.y), q.x + 0.15), len - q.x) - 0.01, 0.05);
+  }
+  f += (vnoise(p * 7.0 + uSeed) - 0.5) * 0.05;                   // borde algo irregular
+  float e = smoothstep(0.3, 1.0, uT);                            // se rompe en huecos y adelgaza
+  f -= e * (0.06 + 0.30 * vnoise(p * 3.5 + uSeed * 3.1));
+  return f;
+}
+void main(){
+  vec2 p = vec2((vUv.x - 0.5) * 2.0 * uW, vUv.y * uH * 1.5) / uH;
+  p.x = uDir == 0.0 ? abs(p.x) : -uDir * p.x;
+  if (p.y < 0.0) discard;
+  float f = field(p);
+  if (f < 0.0) discard;
+  // dos tonos duros: la zona cuyo vecino hacia abajo-delante queda fuera es sombra
+  vec2 L = normalize(vec2(-0.4, 1.0));
+  float under = field(p - L * 0.2);
+  vec3 col = under < 0.03 ? uShade : uLight;
+  gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
+}`;
 
 export class VFX {
   constructor(THREE, scene) {
     this.T = THREE; this.scene = scene;
     this.trails = []; this.dust = []; this.stars = [];
-    // polvo: discos planos con borde, mirando a cámara
-    const dGeo = new THREE.CircleGeometry(1, 14), dEdge = new THREE.RingGeometry(0.86, 1, 14);
+    // polvo cel-shading: un quad por nube, la forma se dibuja en el shader (ver DUST_FRAG)
+    const dGeo = new THREE.PlaneGeometry(1, 1); dGeo.translate(0, 0.5, 0);
     for (let i = 0; i < DUST_POOL; i++) {
-      const g = new THREE.Group();
-      const fill = new THREE.Mesh(dGeo, new THREE.MeshBasicMaterial({ color: '#d9d3e6', transparent: true, depthWrite: false }));
-      const edge = new THREE.Mesh(dEdge, new THREE.MeshBasicMaterial({ color: '#6b6280', transparent: true, depthWrite: false }));
-      edge.position.z = 0.001; g.add(fill, edge); g.visible = false; scene.add(g);
-      this.dust.push({ g, fill, edge, life: 0 });
+      const mat = new THREE.ShaderMaterial({
+        uniforms: { uT: { value: 0 }, uDir: { value: 0 }, uSeed: { value: 0 }, uW: { value: 1 }, uH: { value: 0.5 },
+          uLight: { value: new THREE.Color(DUST_LIGHT) }, uShade: { value: new THREE.Color(DUST_SHADE) } },
+        vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: DUST_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+      });
+      const g = new THREE.Mesh(dGeo, mat); g.visible = false; g.renderOrder = 4; g.frustumCulled = false; scene.add(g);
+      this.dust.push({ g, mat, life: 0 });
     }
     // estrella de impacto de 8 puntas
     const sh = new THREE.Shape();
@@ -47,7 +97,7 @@ export class VFX {
     const mat = new T.ShaderMaterial({
       uniforms: { color: { value: new T.Color(color) }, core: { value: new T.Color('#fff3d6') } },
       vertexShader: 'attribute float a; varying float va; varying float vside; void main(){ va = a; vside = float(gl_VertexID % 2); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader: 'uniform vec3 color; uniform vec3 core; varying float va; varying float vside; void main(){ if (va < 0.02) discard; vec3 c = vside > 0.62 && va > 0.45 ? core : color; gl_FragColor = vec4(c, step(0.15, va) * 0.95); }',
+      fragmentShader: 'uniform vec3 color; uniform vec3 core; varying float va; varying float vside; void main(){ if (va < 0.02) discard; vec3 c = vside > 0.62 && va > 0.45 ? core : color; gl_FragColor = vec4(c, step(0.15, va) * 0.95);\n#include <colorspace_fragment>\n}',
       transparent: true, depthWrite: false, side: T.DoubleSide,
     });
     const mesh = new T.Mesh(geo, mat); mesh.frustumCulled = false; mesh.renderOrder = 5; this.scene.add(mesh);
@@ -79,14 +129,18 @@ export class VFX {
   }
 
   // ---------- polvo e impactos ----------
-  puff(x, y, dir = 0, big = false) {
-    const n = big ? 5 : 3;
-    for (let i = 0; i < n; i++) {
-      const d = this.dust.find(p => p.life <= 0); if (!d) return;
-      d.life = 1; d.x = x - dir * (0.1 + i * 0.07); d.y = y + 0.06 + Math.random() * 0.05;
-      d.vx = -dir * (0.9 + Math.random() * 1.2) + (dir ? 0 : (Math.random() - 0.5) * 2.4); d.vy = 0.25 + Math.random() * 0.5;
-      d.s = (big ? 0.11 : 0.08) + Math.random() * 0.05; d.g.visible = true;
-    }
+  // dir: dirección del movimiento (-1/1); 0 = nube a ambos lados (salto, aterrizaje)
+  puff(x, y, dir = 0, big = false, age = 0) {
+    const d = this.dust.find(p => p.life <= 0) || this.dust[0];
+    d.life = 1; d.age = age; d.dur = big ? 0.5 : 0.38; d.x = x; d.y = y;
+    const u = d.mat.uniforms; u.uDir.value = dir; u.uSeed.value = Math.floor(Math.random() * 97);
+    u.uH.value = big ? 0.5 : 0.36; u.uW.value = big ? 1.1 : 0.7;
+    d.g.scale.set(2 * u.uW.value, u.uH.value * 1.5, 1); d.g.visible = true;
+    this.stepDust(d);
+  }
+  stepDust(d) {
+    const t = Math.floor(d.age * DUST_FPS) / DUST_FPS / d.dur;   // escalonado
+    d.mat.uniforms.uT.value = Math.min(1, t); d.life = t >= 1 ? 0 : 1;
   }
   star(x, y, color) {
     const s = this.stars.find(p => p.life <= 0) || this.stars[0];
@@ -95,11 +149,8 @@ export class VFX {
   update(dt, camera) {
     for (const d of this.dust) {
       if (d.life <= 0) { d.g.visible = false; continue; }
-      d.life -= dt * 2.2; d.x += d.vx * dt; d.y += d.vy * dt; d.vx *= 0.9; d.vy *= 0.92;
-      const sc = d.s * (1.6 - d.life * 0.6);
-      d.g.position.set(d.x, d.y, 0.3); d.g.scale.setScalar(sc); d.g.quaternion.copy(camera.quaternion);
-      // animación limitada: la opacidad cae en escalones
-      const o = Math.ceil(Math.max(0, d.life) * 3) / 3; d.fill.material.opacity = o * 0.9; d.edge.material.opacity = o;
+      d.age += dt; this.stepDust(d);
+      d.g.position.set(d.x, d.y, -0.2); d.g.quaternion.copy(camera.quaternion);   // detrás del luchador, como en la lámina
     }
     for (const s of this.stars) {
       if (s.life <= 0) { s.g.visible = false; continue; }
