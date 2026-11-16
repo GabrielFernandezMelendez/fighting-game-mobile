@@ -2,6 +2,7 @@
 // Geometria procedural inspirada en tools/bl_aura_blockout.py y en el turnaround aprobado.
 import * as THREE from 'three';
 import { createAuraDetail } from './aura-detail.js';
+import { installAuraPersonality } from './aura-personality.js';
 
 const canvas = document.querySelector('#aura-canvas');
 const stage = document.querySelector('#preview-stage');
@@ -115,10 +116,21 @@ for (let i=0;i<9;i++) {
 // Switchable preview: legacy geometry remains to compare silhouette changes.
 // Detailed mesh is still a procedural art study (NOT a rigged glTF asset).
 const detailed = createAuraDetail(THREE, mats);
+const personality = installAuraPersonality(THREE, detailed);
 scene.add(detailed.root);
 aura.visible = false; // The new detailed revision is the default review view.
 let detailMode = true;
 let daggerShown = false;
+const poseButton = document.querySelector('#preview-pose');
+const motionButton = document.querySelector('#preview-motion');
+poseButton.addEventListener('click',()=>{
+  personality.setPose(personality.pose === 'guard' ? 'idle' : 'guard');
+  poseButton.textContent = personality.pose === 'guard' ? 'Pose relajada' : 'Pose de combate';
+});
+motionButton.addEventListener('click',()=>{
+  personality.setPlaying(!personality.playing);
+  motionButton.textContent = personality.playing ? 'Pausar movimiento' : 'Reanudar movimiento';
+});
 const modeButton = document.querySelector('#preview-mode');
 const weaponButton = document.querySelector('#preview-weapon');
 function updatePreviewMode() {
@@ -126,10 +138,12 @@ function updatePreviewMode() {
   aura.visible = !detailMode;
   modeButton.textContent = detailMode ? 'Ver blockout V1' : 'Ver detalle V2';
   weaponButton.disabled = !detailMode;
+  poseButton.disabled = !detailMode;
+  motionButton.disabled = !detailMode;
   detailed.weapon.visible = detailMode && daggerShown;
   weaponButton.setAttribute('aria-pressed',String(detailMode && daggerShown));
   info.textContent = detailMode
-    ? 'Detalle V2 procedural · sin rigging · sin integración jugable'
+    ? 'Aura V3 · respiración, actitud y movimiento secundario · prototipo sin rigging'
     : 'Blockout V1 · comparación de geometría inicial';
 }
 modeButton.addEventListener('click',()=>{detailMode=!detailMode;updatePreviewMode();});
@@ -176,5 +190,10 @@ function resize() {
 window.addEventListener('resize',resize);
 reset();resize();
 // updatePreviewMode() communicates the currently selected model.
-function animate() { renderer.render(scene,camera);requestAnimationFrame(animate); }
+const clock = new THREE.Clock();
+function animate() {
+  personality.update(clock.getDelta());
+  renderer.render(scene,camera);
+  requestAnimationFrame(animate);
+}
 animate();
