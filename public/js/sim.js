@@ -7,7 +7,9 @@ import { DT, D2R, L, STAGE, ROUND_FRAMES, WINS_NEEDED, G, CR, SQ, AIR_UP, AIR_DN
 const dir = th => [Math.sin(th), -Math.cos(th)];
 export const NO_INPUT = { dx: 0, up: false, down: false, block: false, act: null };
 const REACTION = ['hit', 'blockstun', 'launched', 'down', 'getup', 'thrown', 'win', 'lose'];
-const THROWABLE = ['idle', 'walkF', 'walkB', 'crouch', 'block', 'cblock', 'land'];
+const THROWABLE = ['idle', 'walkF', 'walkB', 'crouch', 'block', 'cblock', 'land', 'dashF', 'dashB'];
+// Dash por doble pulsación de dirección (66 / 44): ventana entre pulsaciones y duración en frames
+export const DASH = { window: 12, fwdFrames: 16, backFrames: 18, fwdSpeed: 7.8, backSpeed: 6.4, fwdCancel: 7 };
 
 // ---------- Utilidades de poses ----------
 export function lerpPose(a, b, t) {
@@ -61,7 +63,7 @@ function makeFighter(idx, sel, x, face) {
   return { idx, charId, wk: sel.w || C.weapon, x, y: 0, vx: 0, vy: 0, face, state: 'idle', f: 0, t: idx * 17, move: null, hitDone: false,
     chain: 0, airUsed: [], airJumpsLeft: C.airJumps, prevUp: false, buffer: [], pose: G, blendFrom: null, blend: 0, J: null,
     hipY: 0.9, airBase: 0.9, hp: C.hp, maxHp: C.hp, stun: 0, react: 'high', push: 0, juggle: 0, comboHits: 0, comboDmg: 0, comboIdle: 0,
-    superJump: false, jumpDir: 0, ko: false, blockLow: false, scale: C.scale };
+    superJump: false, jumpDir: 0, ko: false, blockLow: false, scale: C.scale, prevDx: 0, tapDir: 0, tapT: -99 };
 }
 export function createMatch({ mode = 'training', chars = [{ c: 'aura', w: 'dagger' }, { c: 'dummy', w: 'none' }] } = {}) {
   chars = chars.map(x => typeof x === 'string' ? { c: x, w: CHARS[x].weapon } : x);
@@ -164,6 +166,13 @@ function updateFighter(M, F, O, input) {
   F.t++;
   const C = CHARS[F.charId];
   const upEdge = input.up && !F.prevUp;
+  // doble pulsación de dirección (flanco de subida) → dash; la detección corre siempre para no perder toques
+  let dashTap = null;
+  if (input.dx && input.dx !== F.prevDx) {
+    if (input.dx === F.tapDir && M.frame - F.tapT <= DASH.window && !input.down && !input.up) dashTap = input.dx === F.face ? 'dashF' : 'dashB';
+    F.tapDir = dashTap ? 0 : input.dx; F.tapT = M.frame;
+  }
+  F.prevDx = input.dx;
   if (F.state === 'win' || F.state === 'lose') { F.f++; return; }
   // ---- estados de reacción (recibiendo golpes) ----
   switch (F.state) {
@@ -206,6 +215,7 @@ function updateFighter(M, F, O, input) {
     F.f++;
     if (F.f >= 3) {
       F.airBase = F.hipY; setState(F, 'air'); F.airUsed = []; F.airJumpsLeft = C.airJumps;
+      M.events.push({ type: 'dust', x: F.x, dir: 0 });
       F.vy = F.superJump ? C.jumpV * 1.24 : C.jumpV; F.vx = F.superJump ? F.face * 1.1 : F.jumpDir * 2.8; F.superJump = false;
     }
     return;
@@ -219,8 +229,23 @@ function updateFighter(M, F, O, input) {
     return;
   }
   if (F.state === 'land') { F.f++; if (F.f >= 5) setState(F, 'idle'); return; }
+  if (F.state === 'dashF' || F.state === 'dashB') {
+    F.f++;
+    const fwd = F.state === 'dashF', dur = fwd ? DASH.fwdFrames : DASH.backFrames;
+    const sp = (fwd ? DASH.fwdSpeed : -DASH.backSpeed) * (F.f < 5 ? 1 : Math.pow(0.84, F.f - 4));
+    F.x += F.face * sp * DT;
+    // el dash hacia delante se puede cancelar en ataque a partir de cierto frame
+    if (fwd && F.f >= DASH.fwdCancel) {
+      const a = takeAction(F);
+      if (a === 'grab') { F.chain = 0; startAttack(F, 'grab'); return; }
+      if (a) { const k = (input.down && a === 'tap') ? 'g_down' : 'g_' + a; if (WEAPONS[F.wk].moves[k]) { F.chain = 0; startAttack(F, k); return; } }
+    }
+    if (F.f >= dur) setState(F, 'idle');
+    return;
+  }
 
   // ---- estados neutros en el suelo ----
+  if (dashTap) { setState(F, dashTap); M.events.push({ type: 'dust', x: F.x, dir: dashTap === 'dashF' ? F.face : -F.face, big: true }); return; }
   if (input.up) { F.jumpDir = input.dx; setState(F, 'prejump'); return; }
   const a = takeAction(F);
   if (a === 'grab') { F.chain = 0; startAttack(F, 'grab'); return; }
@@ -297,10 +322,11 @@ export function finalizePose(F) {
   else if (F.state === 'down') pose = DOWN;
   else if (F.state === 'thrown') pose = HELD;
   else {
-    const a = ANIM[F.state === 'blockstun' ? 'blockstun' : F.state] || ANIM.idle;
+    const st = F.state === 'dashF' ? 'walkF' : F.state === 'dashB' ? 'walkB' : F.state;
+    const a = ANIM[st === 'blockstun' ? 'blockstun' : st] || ANIM.idle;
     pose = sample(a.keys, (F.state === 'idle' || F.state === 'win') ? F.t : F.f, a.loop);
     // el brazo del arma mantiene su guardia en estados neutros
-    if (['idle', 'walkF', 'walkB', 'prejump', 'land'].includes(F.state)) pose = { ...pose, aN: W.guard };
+    if (['idle', 'walkF', 'walkB', 'prejump', 'land', 'dashF', 'dashB'].includes(F.state)) pose = { ...pose, aN: W.guard };
     if (F.state === 'crouch') pose = { ...pose, aN: W.crouchGuard || W.guard };
   }
   if (F.blend > 0 && F.blendFrom) { pose = lerpPose(pose, F.blendFrom, F.blend / 6); F.blend--; }
@@ -384,5 +410,5 @@ function applyHit(M, A, D, { m, x, y }) {
 // ¿Aceptará el luchador una nueva acción ahora mismo? (para los combos de demostración)
 export function readyFor(F) {
   if (F.state === 'attack') { const m = getMove(F); return F.hitDone && m.hit && F.f > m.active[0]; }
-  return ['idle', 'walkF', 'walkB', 'crouch', 'air', 'block', 'cblock'].includes(F.state);
+  return ['idle', 'walkF', 'walkB', 'crouch', 'air', 'block', 'cblock', 'dashF'].includes(F.state);
 }

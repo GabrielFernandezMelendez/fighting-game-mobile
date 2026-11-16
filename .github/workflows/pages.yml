@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: node test/combos.mjs && node test/moves.mjs && node test/online.mjs && node test/ui-shell.mjs
+      - run: node test/combos.mjs && node test/moves.mjs && node test/online.mjs && node test/ui-shell.mjs && node test/dash.mjs
   deploy:
     needs: test
     runs-on: ubuntu-latest

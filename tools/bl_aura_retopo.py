@@ -86,6 +86,28 @@ hi.select_set(True); lo.select_set(True); ctx.view_layer.objects.active = lo
 bpy.ops.object.bake(type='EMIT', use_selected_to_active=True, cage_extrusion=0.02, max_ray_distance=0.08, margin=4)
 img.filepath_raw = out + '_color.png'; img.file_format = 'PNG'; img.save()
 print('bake ok')
+# materiales por zona (pelo, máscara, piel, ropa) a partir de la etiqueta de bl_aura_flatcolor.py
+if 'LblCol' in hi.data.color_attributes:
+    import numpy as np
+    from mathutils.kdtree import KDTree
+    names = ['chaqueta', 'pantalon', 'gris', 'grafito', 'negro', 'naranja', 'pelo', 'mascara', 'piel', 'metal']
+    group = {'pelo': 'Aura_pelo', 'mascara': 'Aura_mascara', 'piel': 'Aura_piel'}
+    enc = np.empty(len(hi.data.vertices) * 4, np.float32); hi.data.color_attributes['LblCol'].data.foreach_get('color', enc)
+    lab_hi = np.floor(enc.reshape(-1, 4)[:, 0] * 16).astype(int)
+    kd = KDTree(len(hi.data.vertices))
+    for i, v in enumerate(hi.data.vertices): kd.insert(hi.matrix_world @ v.co, i)
+    kd.balance()
+    lab_lo = [lab_hi[kd.find(lo.matrix_world @ v.co)[1]] for v in lo.data.vertices]
+    slots = ['Aura_ropa', 'Aura_pelo', 'Aura_mascara', 'Aura_piel']
+    for nm in slots[1:]:
+        m2 = mat.copy(); m2.name = nm; lo.data.materials.append(m2)
+    mat.name = 'Aura_ropa'
+    cnt = {k: 0 for k in slots}
+    for p in lo.data.polygons:
+        votes = {}
+        for vi in p.vertices: g = group.get(names[min(lab_lo[vi], 9)], 'Aura_ropa'); votes[g] = votes.get(g, 0) + 1
+        best = max(votes, key=votes.get); p.material_index = slots.index(best); cnt[best] += 1
+    print('MATERIALES', cnt)
 # limpiar y exportar
 bpy.data.objects.remove(hi, do_unlink=True)
 bpy.ops.wm.save_as_mainfile(filepath=out + '.blend')

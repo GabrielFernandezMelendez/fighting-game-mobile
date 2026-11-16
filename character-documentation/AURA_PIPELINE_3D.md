@@ -101,7 +101,8 @@ Integración (`models.js` / `render.js`): juego de clips por modelo (`MODEL_ANIM
 **Limitaciones conocidas (para F2 manual en Blender):**
 - ~~Perneras como falda~~: no era una membrana (los cortes horizontales muestran las piernas separadas) sino **pesos**: el bone heat dejaba el pantalón ancho en Body/Hips. `bl_aura_rig.py` ahora pasa ese peso a las piernas por debajo de la entrepierna, repartido por cercanía (`LEG_WEIGHTS=1`, por defecto). Quedan picos pequeños en la parte trasera del muslo con la pierna muy levantada. Captura: `references/aura/f2/f2c_pesos_perneras.png`.
 - Malla triangulada sin loops de articulación: los codos y rodillas se deforman de forma blanda.
-- Máscara y pelo no son piezas separadas (van al hueso de la cabeza por peso).
+- ~~Picos en rodillas al saltar~~: corregido (separación mano/pierna y mezcla de rodilla desplazada). Ver F5 en [CHARACTER_PIPELINE.md](CHARACTER_PIPELINE.md).
+- Máscara y pelo tienen **material propio** (`Aura_mascara`, `Aura_pelo`) pero siguen siendo la misma malla: separarlos como piezas y remodelarlos es trabajo manual.
 - UV fragmentadas (Smart UV sobre triángulos): desperdicia textura; con retopo manual se rehacen.
 - Proporciones: Aura es más realista que los modelos RPG (cabezones); mezclarlos en pantalla cambia la escala aparente.
 
@@ -110,7 +111,12 @@ Integración (`models.js` / `render.js`): juego de clips por modelo (`MODEL_ANIM
 - Repintar zonas mal proyectadas y separar colores por material según la paleta (marfil, lavanda, gris violeta, grafito, naranja).
 - Sin iluminación horneada: el shader pone las sombras.
 
+#### Resultado F3 (2026-11-16)
+`tools/bl_aura_flatcolor.py`: paleta del concept en Lab + reglas por zona + votación de vecinos. Elimina las sombras horneadas que salían como manchas. Captura: `references/aura/f3/f3_color_plano.png`.
+
 ### F4 — Shader toon NEÓN (Three.js)
+**Resultado (2026-11-16):** `makeCel` en `models.js`, activo solo para Aura con `?aura3d`. Dos bandas duras, sombra con color por material (`CEL_PRESETS`), luz clave fija a la cámara, rim naranja. Pendiente: normales editadas en máscara/pelo y grosor de contorno por vértice. Capturas: `references/aura/f3/f4_*.png`.
+
 Sustituye al `MeshToonMaterial` genérico en `models.js` solo tras comparación visual y de FPS.
 - Color base + **color de sombra propio por material** (no oscurecer el base).
 - Umbral de sombra modulable por un canal de textura/vértice (zonas siempre en sombra bajo cuello y mangas).

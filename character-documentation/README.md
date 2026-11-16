@@ -13,6 +13,7 @@ Esta carpeta es la referencia de diseño para los integrantes del proyecto. Mant
 - [ROSTER.md](ROSTER.md): estado actual verificado de Aura, Vega, Kai y Sombra.
 - [AURA.md](AURA.md): diseño funcional A y diseño visual B de Aura, junto a la línea base implementada.
 - [Referencia de alta resolución y relieve 2.5D](AURA_CONCEPT_RELIEF.md): archivos de arte, generación de GLB de comparación y limitaciones.
+- **[Pipeline de creación de personajes (guía completa)](CHARACTER_PIPELINE.md)**: pasos, scripts, comandos y entrega a artistas. Fuentes 3D en `art/<pj>/`.
 - **[Pipeline 3D de producción de Aura](AURA_PIPELINE_3D.md): plan vigente para llevar el concept a un modelo 3D jugable.**
 - `references/aura/`: vistas aisladas del concept para imagen→3D y hoja RGB original.
 - [Rig técnico V1 de Aura](AURA_RIG_V1.md): nueva malla volumétrica con skinning y pruebas de animación, todavía sin escultura final.
