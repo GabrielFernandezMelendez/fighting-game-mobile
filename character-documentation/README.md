@@ -12,6 +12,7 @@ Esta carpeta es la referencia de diseño para los integrantes del proyecto. Mant
 ## Ficheros
 - [ROSTER.md](ROSTER.md): estado actual verificado de Aura, Vega, Kai y Sombra.
 - [AURA.md](AURA.md): diseño funcional A y diseño visual B de Aura, junto a la línea base implementada.
+- [Referencia de alta resolución y relieve 2.5D](AURA_CONCEPT_RELIEF.md): archivos de arte, generación de GLB de comparación y limitaciones.
 - [Preview del turnaround de Aura](images/aura-turnaround-preview.svg): referencia visual aprobada (versión reducida); conservar el original de alta resolución para el modelado.
 - [Guía MeshToonMaterial de Aura](AURA_TOON_MATERIALS.md): bandas toon, materiales y validación visual.
 - `tools/bl_aura_blockout.py`: generador Blender para un primer blockout **no riggeado**, todavía sin validar en Blender.
