@@ -35,6 +35,7 @@ Concept aprobado
 - `tools/prep_concept_views.py` recorta cada vista de la hoja y quita el fondo con un modelo de segmentación anime (`isnet-anime`).
 - Salida en `character-documentation/references/aura/`: `aura_{front,side,back,q34}_{1024,rgba}.png`, hoja RGB original `aura_sheet_v3_rgb.png` y `aura_views_contact.png`.
 - **Limitación:** cada vista mide ~450 px de alto en la hoja (1672×941). Para F1 conviene escalar ×4 con un upscaler anime (p. ej. 4x‑AnimeSharp en ComfyUI) o, mejor, conseguir/generar la hoja a mayor resolución.
+- **Mejor fuente:** la hoja de giro `aura_turnaround_v3.png` (1448×1086, vistas de ~700 px). Sus recortes están en `references/aura/turnaround/` y son la entrada recomendada para F1.
 - Las vistas son coherentes en proporción (misma altura, pose A). La vista lateral mira a la izquierda; el fondo de la espalda está limpio de paneles vecinos.
 
 ### F1 — Imagen→3D: prueba comparativa
@@ -49,6 +50,12 @@ Generar **una malla por herramienta con las mismas referencias** y comparar desd
 | **TripoSG** (VAST) | 1 vista | Gratis, local (>8 GB recomendado: probar fp16/offload) | MIT | Solo forma; buena definición de bordes |
 | **Tripo** (web) | multivista front/side/back | Cuota gratuita | Revisar plan | Textura y auto-rig incluidos |
 | **Meshy** (web) | `aura_front_1024.png` (no la hoja) | Cuota gratuita; descarga con suscripción | Revisar plan | Repetir la prueba con la vista aislada |
+
+#### Resultado 1 — TRELLIS.2, vista frontal de la hoja V3 (2026-11-16)
+Previsualización en `references/aura/f1/trellis2_front_preview.jpg` (normales, malla blanca y textura).
+- ✅ Silueta, proporciones, mechones de pelo con volumen, chaqueta corta, cuello alto, pantalón ancho, botas con suela gruesa, correas.
+- ⚠️ Máscara y cara poco definidas; manos simplificadas; textura con naranja virando a amarillo; superficie facetada.
+- ❌ GLB no descargado: la extracción agotó la cuota gratuita de ZeroGPU sin sesión. Repetir con sesión de Hugging Face iniciada y usando la vista de `turnaround/`.
 
 Evaluación (en este orden, no por "más detalle"): silueta lateral → máscara → pelo → proporciones → volumen de ropa → topología. Se documentan capturas lado a lado con el concept en `references/aura/f1/`.
 **Criterio de salida:** una base cuya silueta lateral y proporciones encajen con el concept; máscara y pelo se rehacen en F2 de todas formas.
