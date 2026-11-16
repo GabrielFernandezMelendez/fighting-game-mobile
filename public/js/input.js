@@ -1,7 +1,10 @@
 // =====================================================================
 //  ENTRADA LOCAL: teclado (depuración en PC) y táctil (móvil)
 //  Mitad izquierda: swipes de movimiento + Agarre | Mitad derecha: ataques + Bloqueo
+//  Movimiento: swipe y SOLTAR = paso corto; dos swipes seguidos = dash; swipe y MANTENER = caminar
+//  (como el antiguo joystick: mientras el dedo siga apartado del punto de inicio). Abajo mantenido = agacharse.
 // =====================================================================
+const HOLD_DEAD = 18;   // px: zona muerta al mantener (volver el dedo al centro = parar)
 const swipeMotion = {
   left: { dx: -1, frames: 6 }, right: { dx: 1, frames: 6 },
   up: { up: true, frames: 12 }, down: { down: true, frames: 12 },
@@ -25,10 +28,22 @@ export class LocalInput {
     const motion = this.motion;
     this.motionSampled = !!motion;
     if (motion && --motion.frames === 0) this.motion = null;
+    const hold = this.heldMotion();
     return {
-      dx: motion?.dx ?? this.dx, up: !!motion?.up || this.up, down: !!motion?.down || this.down,
+      dx: motion?.dx ?? (hold.dx || this.dx), up: !!motion?.up || this.up, down: !!motion?.down || hold.down || this.down,
       block: this.block || this.touchBlock, act: this.queue.shift() || null,
     };
+  }
+  // Swipe mantenido en la mitad izquierda: dirección según lo lejos que esté el dedo de donde empezó
+  heldMotion() {
+    let dx = 0, down = false;
+    for (const s of this.touches.values()) {
+      if (s.zone !== 'move' || !s.hold) continue;
+      const ox = s.x - s.x0, oy = s.y - s.y0;
+      if (s.hold === 'h' && Math.abs(ox) >= HOLD_DEAD) dx = Math.sign(ox);
+      if (s.hold === 'down' && oy >= HOLD_DEAD) down = true;
+    }
+    return { dx, down };
   }
   push(a) { if (this.enabled) { this.queue.push(a); if (this.queue.length > 3) this.queue.shift(); } }
   clear() {
@@ -67,7 +82,7 @@ export class LocalInput {
 
     const trackSwipe = (s, x, y) => {
       if (s.zone === 'grab') return;
-      s.pts.push([x, y]);
+      s.pts.push([x, y]); s.x = x; s.y = y;
       if (s.swiped) return;
       const dx = x - s.x0, dy = y - s.y0;
       const movement = s.zone === 'move';
@@ -80,6 +95,7 @@ export class LocalInput {
       const direction = horizontal ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
       if (movement) {
         if (this.swipes.length < 3) this.swipes.push(swipeMotion[direction]);
+        s.hold = horizontal ? 'h' : direction === 'down' ? 'down' : null;   // mantener = caminar / agacharse
       } else {
         s.zone = 'attack';
         this.syncTouchButtons();
@@ -99,7 +115,7 @@ export class LocalInput {
           continue;
         }
         const zone = hitBtn(block, x, y) ? 'block' : (x < root.clientWidth / 2 ? 'move' : 'attack');
-        this.touches.set(t.identifier, { zone, x0: x, y0: y, t0: performance.now(), swiped: false, pts: [[x, y]] });
+        this.touches.set(t.identifier, { zone, x0: x, y0: y, x, y, t0: performance.now(), swiped: false, hold: null, pts: [[x, y]] });
       }
       this.syncTouchButtons();
     }, { passive: false });

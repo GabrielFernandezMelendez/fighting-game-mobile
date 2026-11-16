@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - name: Tests
-        run: node test/combos.mjs && node test/moves.mjs && node test/online.mjs && node test/ui-shell.mjs && node test/dash.mjs
+        run: node test/combos.mjs && node test/moves.mjs && node test/online.mjs && node test/ui-shell.mjs && node test/dash.mjs && node test/swipe-hold.mjs
       - name: Aviso si falta el secreto
         if: env.HAS_SA != 'true'
         run: echo "::warning::Falta el secreto FIREBASE_SERVICE_ACCOUNT_PELEASDEMO; no se despliega (ver docs/DEPLOY.md)."
@@ -37,4 +37,5 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PELEASDEMO }}
           projectId: peleasdemo
-          channelId: ${{ github.event_name == 'pull_request' && '' || 'live' }}
+          # ojo: en expresiones de GitHub '' es falso, así que `cond && '' || 'live'` daba siempre 'live'
+          channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || 'live' }}

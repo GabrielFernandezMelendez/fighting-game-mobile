@@ -121,3 +121,8 @@
 - Capturas: `references/sombra/f1–f3/`. Simulación sin cambios. Sigue detrás de `?sombra3d` / `?aura3d`.
 - Pendiente: franja carmesí del pantalón (se pierde a 30 k), hueco de la capucha, prueba en móvil.
 
+## 2026-11-16 — Controles táctiles: caminar manteniendo el swipe
+- Sin joystick, la mitad izquierda vuelve a permitir caminar: **swipe y mantener** = caminar mientras el dedo siga apartado de donde empezó (volver al centro = parar; cruzar al otro lado = caminar hacia atrás). **Swipe abajo mantenido** = agacharse.
+- El dash no cambia: dos swipes soltando entre ellos. Mantener no genera dash (no hay flanco de subida).
+- Test nuevo `test/swipe-hold.mjs` (en CI). Ayuda de controles actualizada. Simulación y online sin cambios: solo cambia cómo se genera `dx`/`down` en `input.js`.
+
