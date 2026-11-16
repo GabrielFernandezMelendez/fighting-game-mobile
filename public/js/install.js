@@ -1,13 +1,12 @@
+import { appDisplayModes, isInstalledApp } from './app-mode.js';
+
 const button = document.querySelector('#bInstall');
 const guide = document.querySelector('#installGuide');
-const standalone = matchMedia('(display-mode: standalone)');
-const fullscreen = matchMedia('(display-mode: fullscreen)');
 const isIOS = typeof navigator.standalone === 'boolean' || /iPhone|iPad|iPod/.test(navigator.userAgent);
 let installPrompt = null;
 
 function updateButton() {
-  button.hidden = navigator.standalone === true || standalone.matches ||
-    (fullscreen.matches && !document.fullscreenElement);
+  button.hidden = isInstalledApp();
 }
 
 addEventListener('beforeinstallprompt', event => {
@@ -20,8 +19,7 @@ addEventListener('appinstalled', () => {
   button.hidden = true;
 });
 
-standalone.addEventListener('change', updateButton);
-fullscreen.addEventListener('change', updateButton);
+for (const mode of appDisplayModes) mode?.addEventListener('change', updateButton);
 addEventListener('fullscreenchange', updateButton);
 updateButton();
 
