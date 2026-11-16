@@ -44,12 +44,55 @@ export const CEL_PRESETS = {
   mascara: { shade: '#a39db8', band: 0.28, rim: 0.12 },
   piel:    { shade: '#c08680', band: 0.10, rim: 0.10 },
 };
+export const INK = { color: '#140f1c', width: 1.0, minLuma: 0.22, crease: -0.25 };   // crease: coseno del pliegue que también lleva tinta   // px a cada lado de la frontera (≈2 px en total)
+
+// Marca las aristas donde cambia el color plano (por cara) entre todas las mallas del modelo, incluso entre
+// materiales distintos (pelo/máscara/piel/ropa son primitivas separadas en el GLB). Convierte a no indexado y
+// añade bary (baricéntricas) e inkE (1 = la arista opuesta a esa esquina lleva tinta).
+export function prepareInk(scene) {
+  const meshes = []; scene.traverse(o => { if (o.isMesh && o.geometry.attributes.color && !(o.material && o.material.map)) meshes.push(o); });
+  if (!meshes.length) return 0;
+  const P = q => `${Math.round(q[0] * 1e4)},${Math.round(q[1] * 1e4)},${Math.round(q[2] * 1e4)}`;
+  const edges = new Map(), tris = [];
+  for (const o of meshes) {
+    let g = o.geometry; if (g.index) { g = g.toNonIndexed(); o.geometry = g; }
+    const pos = g.attributes.position, col = g.attributes.color, n = pos.count / 3, keys = [];
+    for (let t = 0; t < n; t++) {
+      const c = Math.round(col.getX(t * 3) * 255) * 65536 + Math.round(col.getY(t * 3) * 255) * 256 + Math.round(col.getZ(t * 3) * 255);
+      const q = [0, 1, 2].map(k => new THREE.Vector3(pos.getX(t * 3 + k), pos.getY(t * 3 + k), pos.getZ(t * 3 + k)));
+      const v = q.map(w => P(w.toArray()));
+      const nrm = new THREE.Vector3().subVectors(q[1], q[0]).cross(new THREE.Vector3().subVectors(q[2], q[0])).normalize();
+      const ek = [0, 1, 2].map(k => { const a = v[(k + 1) % 3], b = v[(k + 2) % 3]; return a < b ? a + '|' + b : b + '|' + a; });
+      ek.forEach(e => { const l = edges.get(e); l ? l.push({ c, nrm }) : edges.set(e, [{ c, nrm }]); });
+      keys.push({ c, ek, nrm });
+    }
+    tris.push({ g, keys });
+  }
+  let marked = 0;
+  const luma = c => (0.299 * (c >> 16) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255;
+  for (const { g, keys } of tris) {
+    const bary = new Float32Array(keys.length * 9), ink = new Float32Array(keys.length * 9);
+    keys.forEach(({ c, ek, nrm }, t) => {
+      // junto a zonas casi negras (grafito/negro) la tinta no se ve y solo ensucia: se omite
+      const m = luma(c) < INK.minLuma ? [0, 0, 0] : ek.map(e => edges.get(e).some(o => luma(o.c) >= INK.minLuma && (o.c !== c || o.nrm.dot(nrm) < INK.crease)) ? 1 : 0);
+      for (let k = 0; k < 3; k++) { bary[t * 9 + k * 3 + k] = 1; ink.set(m, t * 9 + k * 3); }
+      marked += m[0] + m[1] + m[2];
+    });
+    g.setAttribute('bary', new THREE.BufferAttribute(bary, 3)); g.setAttribute('inkE', new THREE.BufferAttribute(ink, 3));
+  }
+  return marked;
+}
+
 export function makeCel(mat, preset, rimColor = '#ff9a50') {
   const P = preset || CEL_PRESETS.default;
-  mat.userData.cel = { uShade: { value: new THREE.Color(P.shade) }, uBand: { value: P.band }, uRim: { value: new THREE.Color(rimColor).multiplyScalar(P.rim) } };
+  mat.userData.cel = { uShade: { value: new THREE.Color(P.shade) }, uBand: { value: P.band }, uRim: { value: new THREE.Color(rimColor).multiplyScalar(P.rim) },
+    uInk: { value: new THREE.Color(INK.color) }, uInkW: { value: INK.width } };
   mat.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, mat.userData.cel);
-    sh.fragmentShader = 'uniform vec3 uShade; uniform float uBand; uniform vec3 uRim;\n' + sh.fragmentShader.replace('#include <opaque_fragment>', `
+    // líneas de tinta interiores (cómic): aristas entre zonas de color marcadas por prepareInk()
+    sh.vertexShader = 'attribute vec3 bary; attribute vec3 inkE; varying vec3 vBary; varying vec3 vInkE;\n' +
+      sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vBary = bary; vInkE = inkE;');
+    sh.fragmentShader = 'uniform vec3 uShade; uniform float uBand; uniform vec3 uRim; uniform vec3 uInk; uniform float uInkW; varying vec3 vBary; varying vec3 vInkE;\n' + sh.fragmentShader.replace('#include <opaque_fragment>', `
       vec3 alb = diffuseColor.rgb;
       // luz clave fija respecto a la cámara (arriba y a un lado): sombras legibles en la vista lateral
       float nl = dot(normal, normalize(vec3(0.62, 0.58, 0.52)));
@@ -57,10 +100,14 @@ export function makeCel(mat, preset, rimColor = '#ff9a50') {
       vec3 cel = mix(alb * uShade, alb, lit);
       float fres = 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
       cel += uRim * step(0.62, fres) * lit;
+      vec3 bd = vBary / max(fwidth(vBary), vec3(1e-5));              // distancia a cada arista en píxeles
+      bd += (1.0 - step(0.5, vInkE)) * 1e4;                           // solo las aristas de frontera
+      float ink = 1.0 - smoothstep(uInkW - 0.6, uInkW + 0.6, min(bd.x, min(bd.y, bd.z)));
+      cel = mix(cel, uInk, ink);
       outgoingLight = cel + totalEmissiveRadiance;
       #include <opaque_fragment>`);
   };
-  mat.customProgramCacheKey = () => 'neon-cel';
+  mat.customProgramCacheKey = () => 'neon-cel-ink';
   mat.needsUpdate = true;
   return mat;
 }
@@ -106,6 +153,7 @@ export class ModelLibrary {
 }
 
 function prepare(scene) {
+  prepareInk(scene);   // antes del contorno: cambia la geometría a no indexada
   scene.traverse(o => {
     if (!o.isMesh) return;
     addOutlineNormals(o.geometry);

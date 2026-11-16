@@ -64,6 +64,9 @@ setw((lbl == ID['piel']) & ~abdomen & ~fingers, 'chaqueta')       # piel solo en
 face = head & (y < -0.01) & (zn < 0.935) & (np.abs(x) < 0.06)
 setw(head & ~face & np.isin(lbl, [ID['metal'], ID['gris'], ID['mascara'], ID['chaqueta']]), 'pelo')
 setw(face & np.isin(lbl, [ID['pelo'], ID['metal'], ID['chaqueta']]), 'mascara')
+# manos: guante sin dedos grafito (con acento naranja) + dedos de piel; nada gris/beige/violeta en la mano
+hand = (np.abs(x) > 0.158) & (zn > 0.37) & (zn < 0.47)
+setw(hand & np.isin(lbl, [ID['gris'], ID['metal'], ID['pantalon'], ID['chaqueta'], ID['negro']]), 'grafito')
 boots = zn < 0.13; soles = zn < 0.03
 setw(boots & ~soles & np.isin(lbl, [ID['chaqueta'], ID['piel'], ID['pantalon']]), 'grafito')
 setw(soles & np.isin(lbl, [ID['piel'], ID['pantalon'], ID['gris']]), 'chaqueta')
