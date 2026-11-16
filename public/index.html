@@ -140,6 +140,7 @@
     <label>Opacidad de los controles<input type="range" id="setOpacity" min="20" max="100"></label>
     <label>Tamaño de los botones<input type="range" id="setBtn" min="60" max="110"></label>
     <label>Retardo online<select id="setDelay"><option value="0">Automático</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>8</option></select></label>
+    <button type="button" id="bInstall" class="mbtn">Añadir NEÓN a inicio</button>
     <div class="aura-preview-setting"><button type="button" id="bAuraPreview" class="mbtn hot">Ver personaje Aura · Vista 3D</button><small>Revisa el blockout experimental con cel-shading sin alterar el luchador actual.</small></div>
   </div>
 </section>
@@ -176,8 +177,22 @@
   <div class="armory" id="armoryList"></div>
 </section>
 
+<dialog id="installGuide" aria-labelledby="installTitle">
+  <form method="dialog">
+    <h2 id="installTitle">Añadir NEÓN a inicio</h2>
+    <ol id="installStepsIOS" hidden>
+      <li>Abre NEÓN en Safari.</li>
+      <li>Toca <strong>Compartir → Añadir a pantalla de inicio</strong>.</li>
+      <li>Activa <strong>Abrir como app web</strong> y toca <strong>Añadir</strong>.</li>
+    </ol>
+    <p id="installStepsBrowser" hidden>Abre el menú de tu navegador y elige <strong>Instalar aplicación</strong> o <strong>Añadir a pantalla de inicio</strong> si aparece.</p>
+    <button class="mbtn sm" autofocus>Entendido</button>
+  </form>
+</dialog>
+
 <div id="toast"></div>
 <div id="rotate">↻<span>Gira el móvil en horizontal</span></div>
+<script type="module" src="js/install.js"></script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
