@@ -15,9 +15,9 @@
     <a class="aura-preview-back" href="index.html#settings" aria-label="Volver a ajustes">‹ Volver a ajustes</a>
     <div>
       <div class="aura-preview-kicker">NEÓN / Taller de personajes</div>
-      <h1>Aura <span>· Detalle V2</span></h1>
+      <h1>Aura <span>· Personalidad V3</span></h1>
     </div>
-    <span class="aura-preview-phase">Fase C · Iteración visual 2</span>
+    <span class="aura-preview-phase">Fase C · Iteración visual 3</span>
   </header>
   <div class="aura-preview-content">
     <div class="aura-preview-stage" id="preview-stage">
@@ -30,13 +30,15 @@
         <button id="preview-reset" type="button">Restablecer</button>
         <button id="preview-mode" type="button">Ver blockout V1</button>
         <button id="preview-weapon" type="button" aria-pressed="false">Mostrar daga</button>
+        <button id="preview-pose" type="button">Pose de combate</button>
+        <button id="preview-motion" type="button">Pausar movimiento</button>
         <button id="preview-zoom-in" type="button" aria-label="Acercar">+</button>
         <button id="preview-zoom-out" type="button" aria-label="Alejar">−</button>
       </div>
     </div>
     <aside class="aura-preview-panel">
       <h2>La Centella</h2>
-      <p>Iteración 2: máscara facetada, mechones, chaqueta corta, bufanda, pantalones angulares, botas, correas y accesorios. Alterna con V1 para comparar los cambios.</p>
+      <p>Iteración 3: Aura adopta una actitud de combate, respiración, cambios de peso, inclinación de cabeza y movimiento secundario en cabello y bufanda. Cambia entre pose relajada y guardia para evaluar su personalidad.</p>
       <h3>Materiales base</h3>
       <div class="aura-preview-swatches">
         <span style="--swatch:#e7ddd5">Marfil</span>
@@ -45,7 +47,7 @@
         <span style="--swatch:#202027">Grafito</span>
         <span style="--swatch:#ff7a1a">Naranja</span>
       </div>
-      <p class="aura-preview-warning"><strong>Modelo experimental.</strong> Esta vista sigue siendo un prototipo procedural en Three.js con MeshToonMaterial: no es la malla GLB final, no tiene rigging ni animación y no sustituye al personaje del combate. La daga es solo una referencia visual opcional.</p>
+      <p class="aura-preview-warning"><strong>Modelo experimental.</strong> Esta vista es un prototipo procedural en Three.js con MeshToonMaterial y animación de presentación por grupos rígidos. No es una malla GLB terminada, ni tiene esqueleto deformable, ni clips de combate. La daga es una referencia visual independiente. El personaje del combate no cambia.</p>
       <p id="preview-status" class="aura-preview-status" role="status">Preparando la vista 3D…</p>
       <a href="https://github.com/GabrielFernandezMelendez/fighting-game-mobile/blob/main/character-documentation/AURA.md" target="_blank" rel="noopener" class="aura-preview-doc">Consultar ficha de personaje ↗</a>
     </aside>
