@@ -15,4 +15,11 @@ assert.ok(
 );
 assert.ok(main.includes("show('s-menu')"), 'main menu initialization missing');
 assert.ok(viewer.includes('id="aura-canvas"'), 'Aura 3D viewer canvas missing');
+assert.ok(viewer.includes('id="preview-mode"'), 'V1/V2 comparison button missing');
+assert.ok(viewer.includes('id="preview-weapon"'), 'optional dagger button missing');
+const preview = readFileSync(new URL('../public/js/aura-preview.js', import.meta.url), 'utf8');
+const detail = readFileSync(new URL('../public/js/aura-detail.js', import.meta.url), 'utf8');
+assert.ok(preview.includes("createAuraDetail(THREE, mats)"), 'detail V2 is not created in viewer');
+assert.ok(detail.includes("export function createAuraDetail("), 'detail model factory missing');
+assert.ok(detail.includes("AURA_SIGNATURE_DAGGER"), 'dagger must remain separate from character');
 console.log('UI shell regression checks passed');

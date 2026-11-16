@@ -1,6 +1,7 @@
 // Visualizador independiente del blockout de Aura (no sustituye el modelo del combate).
 // Geometria procedural inspirada en tools/bl_aura_blockout.py y en el turnaround aprobado.
 import * as THREE from 'three';
+import { createAuraDetail } from './aura-detail.js';
 
 const canvas = document.querySelector('#aura-canvas');
 const stage = document.querySelector('#preview-stage');
@@ -29,7 +30,8 @@ toon.minFilter = toon.magFilter = THREE.NearestFilter;
 const colors = {
   ivory: '#e7ddd5', hair: '#e8e1f2', charcoal: '#202027',
   purple: '#514956', armor: '#393640', orange: '#ff7a1a',
-  black: '#080810', skin: '#bf907f'
+  black: '#080810', skin: '#bf907f',
+  purpleLight: '#74677c', darkMetal: '#302c3a', hairShade: '#c4b6d2'
 };
 const mats = Object.fromEntries(Object.entries(colors).map(([name, color]) => [
   name, new THREE.MeshToonMaterial({color, gradientMap: toon})
@@ -110,6 +112,30 @@ for (let i=0;i<9;i++) {
     .10,.23+(i%3)*.05,[Math.sin(a)*.36,0,-Math.cos(a)*.38],'hair');
 }
 
+// Switchable preview: legacy geometry remains to compare silhouette changes.
+// Detailed mesh is still a procedural art study (NOT a rigged glTF asset).
+const detailed = createAuraDetail(THREE, mats);
+scene.add(detailed.root);
+aura.visible = false; // The new detailed revision is the default review view.
+let detailMode = true;
+let daggerShown = false;
+const modeButton = document.querySelector('#preview-mode');
+const weaponButton = document.querySelector('#preview-weapon');
+function updatePreviewMode() {
+  detailed.root.visible = detailMode;
+  aura.visible = !detailMode;
+  modeButton.textContent = detailMode ? 'Ver blockout V1' : 'Ver detalle V2';
+  weaponButton.disabled = !detailMode;
+  detailed.weapon.visible = detailMode && daggerShown;
+  weaponButton.setAttribute('aria-pressed',String(detailMode && daggerShown));
+  info.textContent = detailMode
+    ? 'Detalle V2 procedural · sin rigging · sin integración jugable'
+    : 'Blockout V1 · comparación de geometría inicial';
+}
+modeButton.addEventListener('click',()=>{detailMode=!detailMode;updatePreviewMode();});
+weaponButton.addEventListener('click',()=>{daggerShown=!daggerShown;updatePreviewMode();});
+updatePreviewMode();
+
 // Display stand and neutral figure; accessories and weapons are intentionally separate.
 const disk=new THREE.Mesh(new THREE.CylinderGeometry(.80,.84,.06,60),new THREE.MeshStandardMaterial({color:0x24202f,roughness:.88}));
 disk.position.y=-.05; scene.add(disk);
@@ -149,6 +175,6 @@ function resize() {
 }
 window.addEventListener('resize',resize);
 reset();resize();
-info.textContent='Blockout procedural · sin rigging · no integrado en combate';
+// updatePreviewMode() communicates the currently selected model.
 function animate() { renderer.render(scene,camera);requestAnimationFrame(animate); }
 animate();
