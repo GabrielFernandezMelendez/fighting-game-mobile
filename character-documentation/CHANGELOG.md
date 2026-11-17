@@ -204,3 +204,5 @@
 - Chaqueta y mangas pasan enteras a marfil (sin manchas grises ni negras del escaneo) y se alisan el triple (chaqueta) y 2,5 veces (mangas).
 - Bufanda entera en naranja, alisada el doble. Se ajusta qué es bufanda (alrededor del cuello y la caída delantera); las manchas oscuras sobre los hombros pasan a la chaqueta.
 - Islas de sombra en chaqueta y bufanda: el escaneo trae triángulos con la cara del revés y, con material a doble cara, su luz se invierte. En revisión, esas dos zonas calculan la luz con |nl| y un umbral bajo: color limpio, sombra solo donde la superficie se aparta de la luz. Alisado final: chaqueta ×8, mangas ×6, bufanda ×4.
+- Más sombra en la chaqueta, con formas grandes y limpias: el lado que se aparta de la luz se calcula con una normal «grande» (radial desde el eje del torso o del brazo, sigue al esqueleto) en vez de la del escaneo; más una franja en V bajo la bufanda y el bajo de las mangas.
+- Bufanda delimitada por forma (alrededor del cuello, por encima de un borde en V) en vez de por el color del escaneo: sin islas marfil dentro ni manchas naranja fuera. El top bajo la chaqueta queda en negro.

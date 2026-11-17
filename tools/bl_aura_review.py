@@ -31,7 +31,9 @@ def part(p):
     if c.z<0.36: return 'botas'
     if 'Fist' in b or ('LowerArm' in b and c.z<1.40 and L!=0): return 'guantes'
     rad=((c.x)**2+(c.y-0.03)**2)**0.5
-    if L in (3,4,5) and c.z>2.0 and (rad<0.21 or (abs(c.x)<0.13 and c.y<0)): return 'bufanda'
+    # bufanda por forma: todo lo que rodea el cuello por encima de un borde en V (el escaneo mezcla capas de
+    # chaqueta y bufanda ahí; por color salían islas marfil dentro y picos naranja fuera)
+    if rad<0.25 and c.z>1.99+0.55*abs(c.x) + (0.08 if c.y>0.05 else 0.0): return 'bufanda'
     if L in (3,4,5) and c.z>1.98 and abs(c.x)<0.42: return 'chaqueta'   # manchas oscuras del escaneo sobre los hombros
     if 'Arm' in b: return 'mangas'
     if L==0: return 'chaqueta'
@@ -67,7 +69,7 @@ for i,n in enumerate(names):
 #  COLOR: la parte entera pasa a una sola zona de color (adiós a manchas de otras zonas del escaneo)
 #  ALISADO: pasadas extra para las partes con la superficie más irregular
 ZONAS=dict(chaqueta=0,pantalon=1,gris=2,grafito=3,negro=4,naranja=5,pelo=6,mascara=7,piel=8,metal=9)
-COLOR={'Aura_chaqueta':'chaqueta','Aura_mangas':'chaqueta','Aura_bufanda':'naranja'}
+COLOR={'Aura_chaqueta':'chaqueta','Aura_mangas':'chaqueta','Aura_bufanda':'naranja','Aura_top':'negro'}
 ALISADO={'Aura_chaqueta':4.0,'Aura_mangas':3.0,'Aura_bufanda':3.0}
 # 2) alisado por parte con el borde fijo  3) normales suaves por parte
 for o in objs:
