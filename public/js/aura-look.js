@@ -113,6 +113,16 @@ const clothing = `
   // luz usa |nl| y un umbral más bajo: casi todo en luz, sombra solo en los bordes que se alejan de la luz.
   if (uAuraReview > 0.5 && (lb == 0.0 || lb == 5.0)) {
     float litJ = smoothstep(0.02, 0.05, abs(nl));
+    if (lb == 0.0) {
+      // sombras grandes y limpias de la chaqueta: lado que se aparta de la luz (normal grande),
+      // franja bajo la bufanda y bajo de las mangas
+      vec3 Lk = normalize(vec3(0.62, 0.58, 0.52));
+      float side = 1.0 - smoothstep(0.30, 0.34, dot(normalize(vAuraBig), Lk));
+      float hem = 1.99 + 0.55 * abs(p.x);                  // borde de la bufanda en V
+      float under = step(abs(p.x), 0.28) * step(hem - 0.06, p.y) * step(p.y, hem) * step(0.0, p.z);
+      float cuff = step(0.36, abs(p.x)) * step(p.y, 1.42);
+      litJ = min(litJ, 1.0 - max(side, max(under, cuff)));
+    }
     cel = mix(alb * shadeC, alb, litJ);
   }
   // Pliegues grandes dibujados en reposo. El sombreado del escaneo ya no
@@ -145,11 +155,22 @@ function installPaint(material, type) {
     compile(shader);
     shader.uniforms.uAuraReview = active;
     const cleanAttribute = type==='clothing' ? 'attribute vec3 aAuraLabs; varying vec3 vAuraLabs;\n' : '';
-    shader.vertexShader = cleanAttribute + 'varying vec3 vAuraRest;\n' + shader.vertexShader.replace(
+    shader.vertexShader = cleanAttribute + 'varying vec3 vAuraRest; varying vec3 vAuraBig;\n' + shader.vertexShader.replace(
       '#include <begin_vertex>',
       '#include <begin_vertex>\n vAuraRest = position;' + (cleanAttribute ? '\n vAuraLabs = aAuraLabs;' : '')
-    );
-    shader.fragmentShader = 'varying vec3 vAuraRest; uniform float uAuraReview;\n' + shader.fragmentShader
+    ).replace('#include <defaultnormal_vertex>', `#include <defaultnormal_vertex>
+      // normal "grande" de la chaqueta: dirección radial desde el eje del torso o del brazo (en reposo),
+      // ignorando el ruido del escaneo; sigue al esqueleto como la normal real
+      {
+        float side = abs(position.x) > 0.34 ? sign(position.x) * 0.47 : 0.0;
+        vec2 rd = position.xz - vec2(side, -0.01);
+        vec3 big = normalize(vec3(rd.x, 0.30, rd.y) + vec3(0.0, 0.0, 0.0001));
+        #ifdef USE_SKINNING
+          big = (skinMatrix * vec4(big, 0.0)).xyz;
+        #endif
+        vAuraBig = normalize(normalMatrix * big);
+      }`);
+    shader.fragmentShader = 'varying vec3 vAuraRest; varying vec3 vAuraBig; uniform float uAuraReview;\n' + shader.fragmentShader
       .replace('max(ink, inkL)', type==='hair' ? 'max(ink, inkL)' : 'max(ink, inkL) * (1.0 - 0.86 * uAuraReview)')
       .replace('cel += uRim', 'cel += uRim * (1.0 - 0.70 * uAuraReview)')
       .replace('outgoingLight = cel +', '{' + (details[type] || '') + '}\n outgoingLight = cel +');
