@@ -76,17 +76,26 @@ function prepareClothing(geometry) {
   geometry.setAttribute('aAuraLabs',new BufferAttribute(data,3));
 }
 
+// Máscara en revisión (coordenadas de aura_review.glb): porcelana con la luz suave de la malla
+// subdividida, dos ojos en forma de hoja (puntas redondeadas, arqueados y subiendo hacia fuera)
+// y la línea vertical de la frente, como en el concept.
 const mask = `
   vec3 p = vAuraRest;
   float x = abs(p.x - 0.002);
-  float y = p.y - (2.489 + 0.46 * (x - 0.067) + 1.2 * (x - 0.067) * (x - 0.067));
-  float taper = max(0.0, min((x - 0.031) * 0.61, (0.144 - x) * 0.44));
-  float d = abs(y) - taper;
-  float aa = max(fwidth(d), 0.00035);
-  float slit = (1.0 - smoothstep(-aa, aa, d)) * step(0.031, x) * step(x, 0.144) * step(0.045, p.z);
-  float bevel = step(0.13, x + 0.24 * (p.y - 2.47));
-  vec3 porcelain = mix(uPal[7], uPal[7] * uShd[7], bevel);
-  cel = mix(cel, mix(porcelain, uInk, slit), uAuraReview);
+  float u = (x - 0.026) / 0.104;
+  float inside = step(0.0, u) * step(u, 1.0);
+  float uc = clamp(u, 0.0, 1.0);
+  float yc = 2.492 + 0.044 * uc + 0.010 * sin(3.14159 * uc);
+  float hw = 0.019 * pow(sin(3.14159 * uc), 0.75) * (1.0 - 0.30 * uc);
+  float d = abs(p.y - yc + 0.35 * hw) - hw;
+  float aa = max(fwidth(d), 0.0004);
+  float front = step(0.05, p.z);
+  float eye = (1.0 - smoothstep(-aa, aa, d)) * inside * front;
+  float dl = abs(p.x - 0.002) - 0.0018 * smoothstep(2.655, 2.585, p.y);
+  float al = max(fwidth(dl), 0.0004);
+  float crease = (1.0 - smoothstep(-al, al, dl)) * step(2.585, p.y) * step(p.y, 2.652) * front;
+  vec3 porcelain = mix(uPal[7] * uShd[7], uPal[7], lit);
+  cel = mix(cel, mix(porcelain, uInk, max(eye, crease)), uAuraReview);
 `;
 // Pelo en revisión: tres tonos (luz, medio y sombra profunda bajo los mechones, junto a la raíz)
 // y se vuelve a pintar la tinta de los pliegues encima, para que cada mechón quede delineado.
