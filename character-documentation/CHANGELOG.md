@@ -188,3 +188,8 @@
 - Cabeza 5 cm más alta (solo malla, los huesos y clips no cambian) con un cuello corto en sombra. Máscara más estrecha, lisa y con la barbilla suavizada.
 - Ojos en forma de hoja con puntas redondeadas y línea vertical de la frente, dibujados en el shader.
 - Ajustes muestra `aura.glb` y `aura_review.glb` sobre el mismo rig; en combate, `?aurastyle` usa la malla en revisión.
+
+## 2026-11-17 — Aura en revisión: mismo diseño, alisado por partes
+- `tools/bl_aura_review.py` genera `aura_review.glb` a partir de `aura.glb` sin cambiar el diseño: divide la malla en partes (pelo, máscara, bufanda, chaqueta, mangas, guantes, top, cinturón, pantalón, botas y piel de brazos y torso) según material, color de zona y hueso dominante, y alisa cada parte por separado con sus bordes fijos.
+- Cada parte tiene sus propias normales suaves: las bandas de luz y los colores de una zona no se mezclan con la vecina. Mismos huesos, pesos y clips; 34.500 vértices (33.600 la original, solo se duplican los bordes entre partes).
+- Se descartan la cabeza elevada, la bufanda modelada y las hombreras de las propuestas anteriores. El repintado de Ajustes (paleta, ojos en forma de hoja, tres tonos de pelo con tinta) se mantiene, ajustado a la cabeza original.
