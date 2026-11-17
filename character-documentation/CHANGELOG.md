@@ -198,3 +198,8 @@
 - El combate usa ya el diseño revisado de Aura (`aura_review.glb` + repintado) en iPhone, Android y escritorio. `?auraoriginal` vuelve al de antes para comparar; `?clasico` sigue mostrando los muñecos antiguos.
 - Ajustes → **Añadir NEÓN a inicio**: si Android no ofrece el aviso de instalación, la guía muestra los pasos para Chrome (⋮ → Añadir a pantalla de inicio / Instalar aplicación) y Samsung Internet. El manifiesto declara `id` y `scope` para que Chrome la instale como app.
 - Coste: unas 13 llamadas de dibujo más por Aura (12 partes con su contorno).
+
+## 2026-11-17 — Aura: chaqueta limpia y bufanda naranja
+- `tools/bl_aura_review.py` admite ajustes por parte: color único (`COLOR`) y alisado extra (`ALISADO`).
+- Chaqueta y mangas pasan enteras a marfil (sin manchas grises ni negras del escaneo) y se alisan el triple (chaqueta) y 2,5 veces (mangas).
+- Bufanda entera en naranja, alisada el doble. Se ajusta qué es bufanda (alrededor del cuello y la caída delantera); las manchas oscuras sobre los hombros pasan a la chaqueta.
