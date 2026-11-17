@@ -323,8 +323,9 @@ svg { fill: currentColor; }
 .stage-c { display: flex; flex-direction: column; justify-content: flex-end; padding: 14px; min-height: 160px; background: var(--panel-2) center / cover;
   clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%); }
 .stage-c b { font: 700 16px/1.1 var(--f-ui); text-transform: uppercase; } .stage-c span { color: var(--text-2); font-size: 11px; }
-.stage-c.s1 { background-image: linear-gradient(transparent 40%, rgba(12,13,20,.9)), url(../img/ui/stage_azotea.jpg); box-shadow: inset 0 0 0 2px var(--naranja); }
-.stage-c.s2, .stage-c.s3 { background-image: repeating-linear-gradient(-45deg, #1C1934 0 8px, #151326 8px 16px); color: var(--text-2); }
+.stage-c { color: inherit; text-align: left; border: 0; cursor: pointer; transition: transform 120ms; }
+.stage-c.on { box-shadow: inset 0 0 0 2px var(--naranja); } .stage-c.on b::after { content: ' ✓'; color: var(--naranja); }
+.stage-c:focus-visible { box-shadow: inset 0 0 0 3px var(--foco); } .stage-c:active { transform: scale(.97); }
 .armory { flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; min-height: 0; }
 .wcard { position: relative; background: var(--panel); padding: 14px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; border: 0; text-align: left;
   clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%); box-shadow: inset 0 0 0 2px var(--line); }

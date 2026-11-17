@@ -139,3 +139,11 @@
 - Estados de botón: borde iluminado al pasar el ratón, anillo cian con teclado, escala 0,97 al pulsar, gris al desactivar, «Conectando…» sin cambiar de tamaño.
 - Sin cambios en simulación, online ni CPU (salvo textos más cortos de las dificultades).
 
+
+## 2026-11-17 — Escenarios cel-shading: Sala de pruebas, Azotea y Mercado bajo la lluvia
+- Nuevo módulo `public/js/stages.js`: cada escenario es solo decorado (`{ group, update, dispose }`); la simulación y el online no lo ven, así que el determinismo no cambia.
+- **Sala de pruebas** más detallada: carril naranja con marcas por metro, emblema octogonal, pared de paneles con franjas de luz, placa NEÓN, focos, pilares con franjas de peligro y anillos holográficos.
+- **Azotea** (portada): cielo violeta en bandas, luna y nubes planas, cometas en diagonal, ciudad en tres capas, barandilla, depósito, máquinas de aire y antena.
+- **Mercado bajo la lluvia**: fachadas con carteles, puestos con toldos a rayas, farolillos, adoquines, charcos que reflejan luz y lluvia instanciada.
+- **Contorno de tinta** (`#140f1c`, el de los personajes) en todos los objetos del escenario, con grosor que crece con la distancia para medir ≈2 px en pantalla; se oculta en calidad baja como el de los personajes.
+- Pantalla **Escenarios** funcional (miniaturas renderizadas del juego); Práctica, CPU y online usan el elegido. En online lo decide quien envía `start` y viaja en ese mensaje. `?stage=<id>` lo fuerza para pruebas.
