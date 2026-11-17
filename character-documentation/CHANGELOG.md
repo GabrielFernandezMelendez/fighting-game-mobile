@@ -176,3 +176,7 @@
 ## 2026-11-17 — Bufanda y hombreras en main; deploy solo al fusionar
 - Llegan a `main` los cambios de la PR #33 (bufanda y hombreras de Aura), que se habían fusionado sobre `feat/neon-cel-3d` cuando esa rama ya estaba en `main`.
 - CI: las PR solo pasan los tests; ya no crean canales de vista previa en Firebase. El deploy a https://peleasdemo.web.app sigue siendo automático al fusionar en `main`. Para deshacer, rollback desde Hosting.
+
+## 2026-11-17 — Aura y Sombra 3D también en el navegador del ordenador
+- Los modelos 3D de Aura y Sombra solo se activaban en la app instalada (o con `?aura3d`); en el navegador del ordenador y en Android (navegador) salían los muñecos antiguos, aunque el visor de Ajustes sí cargaba el GLB. Ahora se usan en todas partes. `?clasico` vuelve a los modelos antiguos para comparar.
+- El acabado en revisión de Aura (cabeza, bufanda, hombreras) sigue solo en Ajustes y con `?aurastyle` hasta que se apruebe.

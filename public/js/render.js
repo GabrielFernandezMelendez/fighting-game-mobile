@@ -9,12 +9,13 @@ import { clipFor } from './anims.js';
 import { VFX } from './vfx.js';
 import { buildStage as makeStage, stageById } from './stages.js';
 import { createAuraVariant } from './aura-look.js';
-import { isInstalledApp } from './app-mode.js';
 
-// La app instalada y ?aura3d activan ambos modelos. ?sombra3d permite revisar solo a Sombra.
+// Aura y Sombra usan sus modelos 3D propios en todas partes (navegador de escritorio, móvil y app instalada).
+// Antes solo se activaban en la app instalada o con ?aura3d, por eso en el navegador del ordenador
+// salían los muñecos antiguos. ?clasico vuelve a los modelos antiguos para comparar.
 const previewFlags = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
 const AURA_STYLE = previewFlags.has('aurastyle');
-const AURA3D = isInstalledApp() || previewFlags.has('aura3d') || AURA_STYLE;
+const AURA3D = !previewFlags.has('clasico') || AURA_STYLE;
 const AURA3D_OVERRIDE = { model: 'aura', outline: 0.016, doubleSide: true, modelHeight: 1.78, cel: true };
 const SOMBRA3D = AURA3D || previewFlags.has('sombra3d');
 const ROSTER_3D = previewFlags.has('roster3d');
