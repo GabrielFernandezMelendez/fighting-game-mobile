@@ -167,3 +167,8 @@
 
 - Sala, Azotea y Mercado vuelven a usar geometría de Three.js en partida. Paneles, pizarra, piedra, madera y tela usan texturas UV compartidas y sombras en tres bandas. Las ilustraciones siguen como miniaturas. La lluvia, los charcos y los cometas se dibujan en el espacio del mapa.
 - En Ajustes se puede comparar una cabeza nueva de Aura sobre el rig actual. La máscara usa planos biselados, ojos dibujados sobre esa superficie y mechones modelados por separado. El visor permite ver cabeza y hombros o el cuerpo completo en tres ángulos. `?aurastyle` habilita la comparación experimental en combate.
+
+## 2026-11-17 — Bufanda y hombreras de Aura
+
+- El acabado experimental de Ajustes y `?aurastyle` incorpora una bufanda 3D con forro naranja y solapa en V, y dos hombreras con bisel y remaches. Cada pieza está anclada a su hueso de torso o clavícula y el GLB conserva las animaciones.
+- El acabado experimental oculta la parte de la bufanda anterior que ocupaba el mismo volumen, también en su contorno. El encuadre de cabeza y hombros facilita comparar las tres piezas.

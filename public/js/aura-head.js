@@ -1,7 +1,8 @@
 import {
-  BufferAttribute, BufferGeometry, CatmullRomCurve3, Color, DoubleSide, Group, Mesh,
+  CatmullRomCurve3, DoubleSide, Group, Mesh,
   MeshBasicMaterial, SphereGeometry, Vector3,
 } from 'three';
+import { painter } from './aura-mesh.js';
 
 const HAIR = ['#F0E1FB','#DCCBED','#B7A3CC','#897697'];
 const INK = '#252032';
@@ -22,23 +23,6 @@ const LOCKS = [
   [[.029,2.681,.076,.058,.066],[.041,2.640,.145,.053,.049],[.017,2.586,.184,.039,.034],[.001,2.551,.174,0,0]],
 ];
 
-function painter() {
-  const positions=[], colors=[];
-  function face(a,b,c,hex) {
-    positions.push(...a,...b,...c);
-    const color = new Color(hex);
-    for (let i=0;i<3;i++) colors.push(color.r,color.g,color.b);
-  }
-  function quad(a,b,c,d,color) { face(a,b,c,color); face(a,c,d,color); }
-  function finish() {
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position',new BufferAttribute(new Float32Array(positions),3));
-    geometry.setAttribute('color',new BufferAttribute(new Float32Array(colors),3));
-    geometry.computeVertexNormals();
-    return geometry;
-  }
-  return { face, quad, finish };
-}
 
 function addLock(paint, control, index) {
   const curve=new CatmullRomCurve3(control.map(([x,y,z])=>new Vector3(x,y,z)));
