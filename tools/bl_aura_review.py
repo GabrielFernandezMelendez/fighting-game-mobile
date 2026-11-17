@@ -68,7 +68,7 @@ for i,n in enumerate(names):
 #  ALISADO: pasadas extra para las partes con la superficie más irregular
 ZONAS=dict(chaqueta=0,pantalon=1,gris=2,grafito=3,negro=4,naranja=5,pelo=6,mascara=7,piel=8,metal=9)
 COLOR={'Aura_chaqueta':'chaqueta','Aura_mangas':'chaqueta','Aura_bufanda':'naranja'}
-ALISADO={'Aura_chaqueta':3.0,'Aura_mangas':2.5,'Aura_bufanda':2.0}
+ALISADO={'Aura_chaqueta':4.0,'Aura_mangas':3.0,'Aura_bufanda':3.0}
 # 2) alisado por parte con el borde fijo  3) normales suaves por parte
 for o in objs:
     if o.name in COLOR:
