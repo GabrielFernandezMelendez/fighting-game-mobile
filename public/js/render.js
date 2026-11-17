@@ -8,8 +8,7 @@ import { ModelLibrary, ModelFighter } from './models.js';
 import { clipFor } from './anims.js';
 import { VFX } from './vfx.js';
 import { buildStage as makeStage, stageById } from './stages.js';
-import { attachAuraHead } from './aura-head.js';
-import { createAuraLook } from './aura-look.js';
+import { createAuraVariant } from './aura-look.js';
 import { isInstalledApp } from './app-mode.js';
 
 // La app instalada y ?aura3d activan ambos modelos. ?sombra3d permite revisar solo a Sombra.
@@ -161,10 +160,7 @@ export class Renderer3D {
     const mf = new ModelFighter(this.lib, this.gltf[C.model], { height: C.modelHeight || 1.75, outline: C.outline || 0.02, model: C.model, doubleSide: !!C.doubleSide, cel: !!C.cel, rimColor: C.accent });
     if (C.tint) for (const m of mf.mats) m.color.set(C.tint);
     this.scene.add(mf.root);
-    if (C.model==='aura' && AURA_STYLE) {
-      createAuraLook(mf)(true);
-      attachAuraHead(mf)(true);
-    }
+    if (C.model==='aura' && AURA_STYLE) createAuraVariant(mf)(true);
     // arma en el hueso Weapon.R, orientada como el arma original del pack (hoja hacia arriba en reposo)
     const hand = mf.hand(); mf.model.updateMatrixWorld(true);
     const wq = hand.getWorldQuaternion(new T.Quaternion()), ws = hand.getWorldScale(new T.Vector3()).x;
