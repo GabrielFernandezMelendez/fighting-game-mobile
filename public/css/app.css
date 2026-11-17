@@ -319,13 +319,48 @@ svg { fill: currentColor; }
 .hist li { min-height: 36px; display: flex; align-items: center; border-top: 1px solid #241F43; font-size: 12px; }
 .hist li.w::before, .hist li.l::before { content: ''; width: 8px; height: 8px; margin-right: 10px; clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
 .hist li.w::before { background: #3DDC84; } .hist li.l::before { background: var(--rojo); }
-.stages { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.stage-c { display: flex; flex-direction: column; justify-content: flex-end; padding: 14px; min-height: 160px; background: var(--panel-2) center / cover;
-  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%); }
-.stage-c b { font: 700 16px/1.1 var(--f-ui); text-transform: uppercase; } .stage-c span { color: var(--text-2); font-size: 11px; }
-.stage-c { color: inherit; text-align: left; border: 0; cursor: pointer; transition: transform 120ms; }
-.stage-c.on { box-shadow: inset 0 0 0 2px var(--naranja); } .stage-c.on b::after { content: ' ✓'; color: var(--naranja); }
-.stage-c:focus-visible { box-shadow: inset 0 0 0 3px var(--foco); } .stage-c:active { transform: scale(.97); }
+/* ---------- Selector de escenario ---------- */
+#s-stages { overflow-y: auto; touch-action: pan-y; }
+.stage-header { flex-flow: row nowrap; margin-bottom: 12px; }
+.stage-header h2 { flex: 1; font-size: clamp(14px, 2.5vw, 27px); }
+.stage-header .pill { margin-left: auto; flex: none; text-align: right; }
+.stage-picker {
+  --stage-cut: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%);
+  display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); gap: 12px;
+}
+.stage-preview {
+  margin: 0; min-width: 0; display: grid; grid-template-rows: minmax(112px, 1fr) auto;
+  background: var(--panel); clip-path: var(--stage-cut); border: 2px solid var(--line);
+}
+.stage-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.stage-preview figcaption {
+  display: grid; gap: 3px; padding: clamp(8px, 1.5vw, 18px);
+  border-top: 2px solid var(--line); color: var(--text-2);
+}
+.stage-preview strong {
+  color: var(--text); font-size: clamp(15px, 2.5vw, 32px); line-height: 1.1; text-transform: uppercase;
+}
+.stage-options { display: grid; min-width: 0; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; }
+.stages { display: grid; grid-template-rows: repeat(3, minmax(48px, 1fr)); gap: 8px; }
+.stage-c {
+  position: relative; min-width: 0; display: grid; grid-template-columns: minmax(0, 45%) 1fr; gap: 8px;
+  align-items: center; background: var(--panel); clip-path: var(--stage-cut); border: 2px solid var(--line);
+  color: var(--text); text-align: left; padding: 0 6px 0 0; overflow: hidden; cursor: pointer;
+}
+.stage-c img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: cover; }
+.stage-c b { min-width: 0; font-size: clamp(10px, 1.65vw, 22px); line-height: 1.12; text-transform: uppercase; }
+.stage-c.on { border-color: var(--naranja); }
+.stage-c.on b::after { content: ' ✓' / ''; color: var(--naranja); }
+.stage-c:focus-visible { outline: none; border-color: var(--foco); }
+.stage-c:active:not(:disabled) { transform: scale(.98); }
+.stage-c:disabled { cursor: default; }
+@media (orientation: portrait) {
+  .stage-picker { grid-template-columns: 1fr; grid-template-rows: minmax(185px, 1fr) auto; }
+  .stages { grid-template-rows: repeat(3, minmax(50px, 8vh)); }
+  .stage-c img { max-height: 100%; }
+  .stage-header { gap: 8px; }
+  .stage-header .pill { padding-inline: 4px; }
+}
 .armory { flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; min-height: 0; }
 .wcard { position: relative; background: var(--panel); padding: 14px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; border: 0; text-align: left;
   clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%); box-shadow: inset 0 0 0 2px var(--line); }

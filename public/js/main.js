@@ -26,11 +26,11 @@ function applySettings() {
 }
 
 // ---------- Estado global ----------
-let R = null;
+let R = null, rendererInit = null;
 const input = new LocalInput();
 input.bindTouch($('#touch'), { grab: $('#bGrab'), block: $('#bBlock'), trail: $('#trail') }, settings);
 const app = { mode: null, M: null, ls: null, link: null, role: 0, myChar: 'aura', myWeapon: null, rivalSel: null, myReady: false, rivalReady: false, mid: 0,
-  pendingNet: [], cp: null, cpEnd: 0, running: false, paused: false, boxes: false, results: false, lag: [1000, 1000], rematch: { me: false, rival: false }, stack: [] };
+  stagePicker: null, pendingNet: [], cp: null, cpEnd: 0, running: false, paused: false, boxes: false, results: false, lag: [1000, 1000], rematch: { me: false, rival: false }, stack: [] };
 window.__app = app;
 
 // ---------- Navegación entre pantallas ----------
@@ -47,6 +47,14 @@ function syncMenuMotion() {
 reduceMQ.addEventListener?.('change', syncMenuMotion);
 function go(id) { app.stack.push(current); show(id); }
 function back() {
+  if (current === 's-stages') {
+    if (app.stagePicker?.context === 'online') {
+      app.link.send({ t: 'stage-back', mid: app.mid + 1 });
+      if (app.role === 0) returnToOnlineSelect();
+      return;
+    }
+    app.stagePicker = null;
+  }
   if (current === 's-settings' && app.returnToGame) { app.returnToGame = false; $$('.screen').forEach(s => s.classList.remove('on')); current = null; app.stack.pop(); return; }
   if (current === 's-lobby' || (current === 's-select' && app.mode === 'online')) { leaveOnline(); app.stack = []; show('s-menu'); return; }
   show(app.stack.pop() || 's-menu');
@@ -65,7 +73,7 @@ $$('[data-go]').forEach(b => b.addEventListener('click', () => {
   else if (g === 'practice') { app.mode = 'practice'; buildSelect(); go('s-select'); }
   else if (g === 'cpu') { app.mode = 'cpu'; buildSelect(); go('s-select'); }
   else if (g === 'armory') { buildArmory(); go('s-armory'); }
-  else if (g === 'stages') { buildStages(); go('s-stages'); }
+  else if (g === 'stages') openStagePicker('settings');
   else go('s-' + g);
 }));
 
@@ -114,17 +122,17 @@ function pickChar(id, weapon) {
     <p class="wbonus">${plus ? `Con ${WEAPONS[app.myWeapon].name.toLowerCase()}: <b>${plus}</b>` : `${WEAPONS[app.myWeapon].name}: sin bonificación`}</p>
     <div class="passive"><b>${C.passive}.</b> ${C.passiveDesc}</div>
     <div class="wpick" role="radiogroup" aria-label="Arma">${WKEYS.map(w => `<button class="mbtn wchip${w === app.myWeapon ? ' on' : ''}" data-w="${w}" role="radio" aria-checked="${w === app.myWeapon}">${WSVG[w]}<b>${WEAPONS[w].name}${w === C.weapon ? ' <i title="Arma insignia">◆</i>' : ''}</b></button>`).join('')}</div>
-    <button class="mbtn hot go" id="bConfirm">${app.mode === 'online' ? (app.myReady ? 'Esperando rival…' : 'Listo') : app.mode === 'cpu' ? 'Elegir rival' : 'Luchar'}</button>`;
+    <button class="mbtn hot go" id="bConfirm">${app.mode === 'online' ? (app.myReady ? 'Esperando rival…' : 'Listo') : app.mode === 'cpu' ? 'Elegir rival' : 'Elegir escenario'}</button>`;
   d.querySelectorAll('.wchip').forEach(b => b.addEventListener('click', () => { if (!app.myReady) { app.myWeapon = b.dataset.w; pickChar(id, b.dataset.w); } }));
   $('#bConfirm').addEventListener('click', confirmChar);
   if (app.mode === 'online') app.link.send({ t: 'pick', c: id, w: app.myWeapon, ready: false });
 }
 function confirmChar() {
-  if (app.mode === 'practice') { startPractice({ c: app.myChar, w: app.myWeapon }); return; }
+  if (app.mode === 'practice') { openStagePicker('practice'); return; }
   if (app.mode === 'cpu') { buildRival(); go('s-rival'); return; }
   app.myReady = true; $('#bConfirm').textContent = 'Esperando rival…'; $('#bConfirm').disabled = true;
   app.link.send({ t: 'pick', c: app.myChar, w: app.myWeapon, ready: true });
-  if (app.role === 0) maybeStartOnline();
+  if (app.role === 0) maybeOpenOnlineStage();
 }
 function updateRivalSelect() {
   const pill = $('#selRival');
@@ -159,7 +167,12 @@ function buildArmory() {
 //  ENTRAR / SALIR DEL COMBATE
 // =====================================================================
 async function ensureRenderer() {
-  if (!R) { R = new Renderer3D(); await R.init($('#game')); app.R = R; }
+  if (!R && !rendererInit) {
+    const renderer = new Renderer3D();
+    rendererInit = renderer.init($('#game')).then(() => { R = app.R = renderer; })
+      .finally(() => { rendererInit = null; });
+  }
+  if (!R) await rendererInit;
   R.applyQuality(+settings.quality);
 }
 async function enterGame() {
@@ -184,23 +197,89 @@ function exitGame() {
 function toMenu() { exitGame(); leaveOnline(); app.stack = []; show('s-menu'); }
 
 // ---------- Escenarios ----------
-// ?stage=<id> en la URL fuerza uno (pruebas); si no, el elegido en la pantalla Escenarios.
+// ?stage=<id> arranca con ese escenario preseleccionado.
 const URL_STAGE = new URLSearchParams(location.search).get('stage');
 const myStage = () => stageById(URL_STAGE || settings.stage).id;
-function buildStages() {
-  const box = $('#stageList'); box.innerHTML = '';
-  for (const S of STAGES) {
-    const b = document.createElement('button'); b.className = 'stage-c' + (S.id === myStage() ? ' on' : ''); b.dataset.id = S.id;
-    b.setAttribute('aria-pressed', S.id === myStage()); b.style.backgroundImage = `linear-gradient(transparent 40%, rgba(12,13,20,.92)), url("${stageArtwork(S.id)}")`;
-    b.innerHTML = `<b>${S.name}</b><span>${S.desc}</span>`;
-    b.addEventListener('click', () => { settings.stage = S.id; saveSettings(); buildStages(); });
-    box.appendChild(b);
+const stageModeLabels = { cpu: 'Contra la CPU', online: '1 vs 1 online', practice: 'Práctica', settings: '' };
+const stageActions = { cpu: 'Luchar', online: 'Luchar', practice: 'Empezar práctica', settings: 'Guardar escenario' };
+
+function openStagePicker(context, initial = myStage()) {
+  app.stagePicker = { context, stage: stageById(initial).id };
+  const guest = context === 'online' && app.role === 1;
+  $('#stageMode').textContent = stageModeLabels[context];
+  $('#stageConfirm').textContent = guest ? 'El anfitrión está eligiendo…' : stageActions[context];
+  $('#stageConfirm').disabled = guest;
+  const list = $('#stageList');
+  list.replaceChildren();
+  for (const stage of STAGES) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'stage-c';
+    button.dataset.id = stage.id;
+    button.disabled = guest;
+    const image = document.createElement('img');
+    image.src = stageArtwork(stage.id);
+    image.alt = '';
+    const name = document.createElement('b');
+    name.textContent = stage.name;
+    button.append(image, name);
+    button.addEventListener('click', () => {
+      if ($('#stageConfirm').disabled) return;
+      showStageChoice(stage.id);
+      if (context === 'online') app.link.send({ t: 'stage-preview', mid: app.mid + 1, stage: stage.id });
+    });
+    list.append(button);
+  }
+  showStageChoice(app.stagePicker.stage);
+  if (context === 'online') show('s-stages');
+  else go('s-stages');
+  $('#stageTitle').focus({ preventScroll: true });
+}
+
+function showStageChoice(id) {
+  const stage = stageById(id);
+  app.stagePicker.stage = stage.id;
+  $('#stageImage').src = stageArtwork(stage.id);
+  $('#stageName').textContent = stage.name;
+  $('#stageDesc').textContent = stage.desc;
+  for (const button of $$('#stageList .stage-c')) {
+    const selected = button.dataset.id === stage.id;
+    button.classList.toggle('on', selected);
+    button.setAttribute('aria-pressed', selected);
   }
 }
 
+$('#stageConfirm').addEventListener('click', async () => {
+  const choice = app.stagePicker;
+  if (!choice || (choice.context === 'online' && (app.role !== 0 || !(app.myReady && app.rivalReady)))) return;
+  if (choice.context === 'practice') {
+    $('#stageConfirm').disabled = true;
+    try {
+      await ensureRenderer();
+    } catch (error) {
+      console.error(error);
+      if (app.stagePicker === choice) {
+        $('#stageConfirm').disabled = false;
+        toast('No se pudo cargar el escenario.');
+      }
+      return;
+    }
+    if (app.stagePicker !== choice) return;
+  }
+  app.stagePicker = null;
+  settings.stage = choice.stage;
+  saveSettings();
+  if (choice.context === 'settings') back();
+  else if (choice.context === 'practice') startPractice({ c: app.myChar, w: app.myWeapon }, false, choice.stage);
+  else if (choice.context === 'cpu') startCpuMatch(choice.stage);
+  else startOnlineMatch(choice.stage);
+});
+
 // ---------- Práctica ----------
-async function startPractice(sel, openMovesPanel = false) {
-  app.mode = 'practice'; await ensureRenderer(); R.setStage(myStage());
+async function startPractice(sel, openMovesPanel = false, stage = myStage()) {
+  app.mode = 'practice'; app.stage = stage;
+  await ensureRenderer();
+  R.setStage(stage);
   const chars = [sel, { c: 'dummy', w: 'none' }];
   app.M = createMatch({ mode: 'training', chars });
   R.setFighters(chars);
@@ -242,18 +321,19 @@ function pickRival(id) {
   d.innerHTML = `<span class="ptab">Dificultad</span>
     ${CPU_LEVELS.map((L, i) => `<button class="lvl${i === lv ? ' on' : ''}" data-lv="${i}" aria-pressed="${i === lv}"><span class="pips4">${[0, 1, 2, 3].map(k => `<i class="${k <= i ? 'f' : ''}"></i>`).join('')}</span><div><b>${L.name}</b><span>${L.desc}</span></div></button>`).join('')}
     <p class="lvl-lesson">${CPU_LEVELS[lv].lesson}</p>
-    <button class="mbtn hot go" id="bCpuFight">Luchar</button>`;
+    <button class="mbtn hot go" id="bCpuFight">Elegir escenario</button>`;
   d.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => { app.cpuLevel = settings.cpuLevel = +b.dataset.lv; saveSettings(); pickRival(id); }));
-  $('#bCpuFight').addEventListener('click', startCpuMatch);
+  $('#bCpuFight').addEventListener('click', () => openStagePicker('cpu'));
 }
-async function startCpuMatch() {
+async function startCpuMatch(stage = app.stage || myStage()) {
   app.mode = 'cpu';
+  app.stage = stage;
   $$('.overlay').forEach(o => o.classList.remove('on'));
   const chars = [{ c: app.myChar, w: app.myWeapon || CHARS[app.myChar].weapon }, { c: settings.cpuRival, w: CHARS[settings.cpuRival].weapon }];
   vsScreen(chars);
-  $('#vsInfo').textContent = `CPU ${CPU_LEVELS[app.cpuLevel].name} — al mejor de 3 rondas · ${stageById(myStage()).name}`;
+  $('#vsInfo').textContent = `CPU ${CPU_LEVELS[app.cpuLevel].name} — al mejor de 3 rondas · ${stageById(stage).name}`;
   exitGame(); show('s-vs');
-  await ensureRenderer(); R.setStage(myStage()); R.setFighters(chars);
+  await ensureRenderer(); R.setStage(stage); R.setFighters(chars);
   await new Promise(r => setTimeout(r, 1600));
   if (app.mode !== 'cpu') return;
   app.M = createMatch({ mode: 'versus', chars });
@@ -333,7 +413,7 @@ class MockLink {
 }
 const makeLink = () => location.hash.includes('mocknet') ? new MockLink() : new PeerLink();
 function onConnected(role) {
-  app.role = role; app.mode = 'online'; app.rivalSel = null; app.rivalReady = false; app.myReady = false;
+  app.role = role; app.mode = 'online'; app.stagePicker = null; app.rivalSel = null; app.rivalReady = false; app.myReady = false;
   app.link.onClose = msg => { if (app.mode === 'online') { toast(msg, 3500); toMenu(); } };
   app.link.on(onNetMessage);
   toast('¡Conectado!'); buildSelect(); show('s-select');
@@ -341,24 +421,48 @@ function onConnected(role) {
 function onNetMessage(m) {
   if (!m || !m.t) return;
   switch (m.t) {
-    case 'pick': app.rivalSel = { c: m.c, w: m.w }; app.rivalReady = m.ready; updateRivalSelect(); if (app.role === 0) maybeStartOnline(); return;
-    case 'start': beginOnlineMatch(m.chars, m.delay, m.mid, m.stage); return;
+    case 'pick': app.rivalSel = { c: m.c, w: m.w }; app.rivalReady = m.ready; updateRivalSelect(); if (app.role === 0) maybeOpenOnlineStage(); return;
+    case 'stage-preview':
+      if (app.role === 1 && m.mid === app.mid + 1 && app.myReady && app.rivalReady) {
+        if (current === 's-select') openStagePicker('online', m.stage);
+        else if (app.stagePicker?.context === 'online') showStageChoice(m.stage);
+      }
+      return;
+    case 'stage-back':
+      if (app.stagePicker?.context === 'online' && m.mid === app.mid + 1) {
+        if (app.role === 0) app.link.send({ t: 'stage-back', mid: m.mid });
+        returnToOnlineSelect();
+      }
+      return;
+    case 'start':
+      if (app.role === 1 && Number.isInteger(m.mid) && m.mid > app.mid) beginOnlineMatch(m.chars, m.delay, m.mid, m.stage);
+      return;
     case 'rematch': app.rematch.rival = true; updateResultsHint(); if (app.role === 0) maybeRematch(); return;
-    case 'reselect': app.results = false; exitGame(); app.myReady = false; app.rivalReady = false; buildSelect(); show('s-select'); return;
+    case 'reselect': app.results = false; exitGame(); returnToOnlineSelect(); return;
     case 'leave': toast('El rival ha salido', 3000); toMenu(); return;
   }
   if (m.mid !== undefined && m.mid !== app.mid) return;            // mensajes de una partida anterior
   if (app.ls) app.ls.onMessage(m); else app.pendingNet.push(m);
 }
-function maybeStartOnline() {
-  if (!(app.myReady && app.rivalReady)) return;
+function returnToOnlineSelect() {
+  app.stagePicker = null;
+  app.myReady = app.rivalReady = false;
+  buildSelect();
+  show('s-select');
+}
+function maybeOpenOnlineStage() {
+  if (current !== 's-select' || !(app.myReady && app.rivalReady)) return;
+  openStagePicker('online');
+  app.link.send({ t: 'stage-preview', mid: app.mid + 1, stage: app.stagePicker.stage });
+}
+function startOnlineMatch(stage) {
   const auto = Math.max(3, Math.min(10, Math.round(app.link.rtt / 2 / 16.7) + 2));
-  const delay = +settings.delay || auto, mid = app.mid + 1, chars = [{ c: app.myChar, w: app.myWeapon }, app.rivalSel], stage = myStage();
+  const delay = +settings.delay || auto, mid = app.mid + 1, chars = [{ c: app.myChar, w: app.myWeapon }, app.rivalSel];
   app.link.send({ t: 'start', chars, delay, mid, stage }); beginOnlineMatch(chars, delay, mid, stage);
 }
 // El escenario lo elige quien envía 'start' (solo es decorado: no afecta a la simulación ni al determinismo)
 async function beginOnlineMatch(chars, delay, mid, stage = 'sala') {
-  stage = stageById(stage).id; app.stage = stage;
+  stage = stageById(stage).id; app.stage = stage; app.stagePicker = null;
   app.mid = mid; app.ls = null; app.pendingNet = app.pendingNet.filter(m => m.mid === mid); app.rematch = { me: false, rival: false };
   $$('.overlay').forEach(o => o.classList.remove('on'));
   // pantalla VS
@@ -382,7 +486,7 @@ function maybeRematch() {
 }
 function leaveOnline() {
   if (app.link) { try { app.link.send({ t: 'leave' }); } catch {} app.link.close(); }
-  app.link = null; app.ls = null; app.pendingNet = []; if (app.mode === 'online') app.mode = null;
+  app.link = null; app.ls = null; app.pendingNet = []; app.stagePicker = null; if (app.mode === 'online') app.mode = null;
 }
 
 // =====================================================================
@@ -471,7 +575,7 @@ function updateResultsHint() {
   $('#resHint').textContent = app.rematch.rival ? 'Tu rival quiere la revancha' : app.rematch.me ? 'Esperando a tu rival…' : '';
 }
 $('#bRematch').addEventListener('click', () => { if (app.mode === 'cpu') { startCpuMatch(); return; } if (app.rematch.me) return; app.rematch.me = true; app.link.send({ t: 'rematch' }); updateResultsHint(); maybeRematch(); });
-$('#bReselect').addEventListener('click', () => { if (app.mode === 'cpu') { exitGame(); buildRival(); app.stack = ['s-menu', 's-select']; show('s-rival'); return; } app.link.send({ t: 'reselect' }); app.rivalSel = null; exitGame(); app.myReady = false; app.rivalReady = false; buildSelect(); show('s-select'); });
+$('#bReselect').addEventListener('click', () => { if (app.mode === 'cpu') { exitGame(); buildRival(); app.stack = ['s-menu', 's-select']; show('s-rival'); return; } app.link.send({ t: 'reselect' }); app.rivalSel = null; exitGame(); returnToOnlineSelect(); });
 $('#bResMenu').addEventListener('click', toMenu);
 
 // ---------- Pausa ----------

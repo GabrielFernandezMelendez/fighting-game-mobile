@@ -176,8 +176,20 @@
   </div>
 </section>
 <section class="screen" id="s-stages">
-  <header class="bar-top"><button class="back" data-back aria-label="Volver"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 2 4 8l6 6"/></svg></button><h2>Escenarios</h2><span class="pill">Toca uno para elegirlo</span></header>
-  <div class="stages" id="stageList"></div>
+  <header class="bar-top stage-header">
+    <button class="back" data-back aria-label="Volver"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 2 4 8l6 6"/></svg></button>
+    <h2 id="stageTitle" tabindex="-1">Elige escenario</h2><span class="pill" id="stageMode"></span>
+  </header>
+  <div class="stage-picker">
+    <figure class="stage-preview">
+      <img id="stageImage" alt="">
+      <figcaption aria-live="polite"><strong id="stageName"></strong><span id="stageDesc"></span></figcaption>
+    </figure>
+    <div class="stage-options">
+      <div class="stages" id="stageList" role="group" aria-label="Escenarios"></div>
+      <button class="mbtn hot" id="stageConfirm">Luchar</button>
+    </div>
+  </div>
 </section>
 
 <!-- ======================= ARMERÍA ======================= -->
