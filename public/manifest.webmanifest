@@ -1,7 +1,9 @@
 {
   "name": "NEÓN · Prototipo de pelea",
   "short_name": "NEÓN",
+  "id": "./index.html",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#0c0d14",
