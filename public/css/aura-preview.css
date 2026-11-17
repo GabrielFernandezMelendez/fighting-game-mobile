@@ -1,80 +1,55 @@
-/* Preview aislada: no altera el layout ni los estilos de combate. */
-.aura-preview-body{overflow:auto;touch-action:pan-y;background:#0c0d14}
-.aura-preview-layout{min-height:100dvh;padding:clamp(12px,3vw,30px);display:flex;flex-direction:column;gap:18px;background:radial-gradient(ellipse at 50% 20%,#25203b,#0c0d14 70%)}
-.aura-preview-header{display:flex;align-items:center;gap:22px;justify-content:space-between}
-.aura-preview-back,.aura-preview-doc{color:#fff;text-decoration:none;border:1px solid #494058;border-radius:10px;padding:10px 15px;white-space:nowrap}
-.aura-preview-back:hover,.aura-preview-doc:hover{border-color:#ff7a1a}
-.aura-preview-kicker{color:#ff9b57;text-transform:uppercase;letter-spacing:.22em;font-weight:700;font-size:12px}
-.aura-preview-header h1{font-size:clamp(24px,3.8vw,45px);margin:0;line-height:1}
-.aura-preview-header h1 span{font-size:.55em;font-weight:500;color:#b9b5c6}
-.aura-preview-phase{font-size:12px;text-transform:uppercase;letter-spacing:.12em;border:1px solid #875324;background:#352318;border-radius:99px;padding:7px 12px}
-.aura-preview-content{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,310px);gap:15px;flex:1;min-height:0}
-.aura-preview-stage{position:relative;min-height:450px;height:min(74dvh,780px);overflow:hidden;border-radius:18px;border:1px solid #473a5c;background:radial-gradient(circle at 50% 35%,#39334b 0%,#1a1827 55%,#10121b 100%)}
-#aura-canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
-#aura-canvas:active{cursor:grabbing}
-.aura-preview-legend{position:absolute;left:14px;top:12px;font-size:13px;color:#cfc5da;pointer-events:none;background:rgba(8,8,18,.65);padding:5px 8px;border-radius:8px}
-.aura-preview-controls{position:absolute;bottom:10px;left:10px;right:10px;display:flex;flex-wrap:wrap;justify-content:center;gap:7px}
-.aura-preview-controls button{cursor:pointer;border:1px solid #62526f;border-radius:8px;background:rgba(21,18,35,.9);color:#fff;padding:9px 13px;font:700 14px Rajdhani,system-ui,sans-serif}
-.aura-preview-controls button:hover,.aura-preview-controls button:focus-visible{border-color:#ff7a1a;outline:none}
-.aura-preview-panel{border:1px solid #473a5c;border-radius:18px;background:#181526;padding:20px;align-self:start;display:flex;flex-direction:column;gap:14px}
-.aura-preview-panel h2,.aura-preview-panel h3{margin:0;text-transform:uppercase;letter-spacing:.08em}
-.aura-preview-panel p{margin:0;line-height:1.45;color:#dad5e4}
-.aura-preview-panel h3{font-size:15px;color:#ff9a55}
-.aura-preview-swatches{display:flex;flex-wrap:wrap;gap:7px}
-.aura-preview-swatches span{display:inline-flex;align-items:center;gap:6px;border:1px solid #3d364b;border-radius:7px;padding:4px 7px;font-size:12px}
-.aura-preview-swatches span:before{content:"";display:block;width:17px;height:17px;background:var(--swatch);border-radius:4px;border:1px solid #ffffff33}
-.aura-preview-warning{border-left:3px solid #ff7a1a;padding:9px 10px;background:#2c211e;font-size:14px}
-.aura-preview-status{font-size:12px;color:#aaa4b5!important}
-.aura-preview-doc{align-self:flex-start;font-size:14px}
-@media(max-width:760px){.aura-preview-header{flex-wrap:wrap;gap:10px}.aura-preview-phase{display:none}.aura-preview-content{grid-template-columns:1fr}.aura-preview-stage{height:62dvh;min-height:310px}.aura-preview-panel{padding:13px}.aura-preview-layout{gap:10px}}
-@media(max-height:430px) and (orientation:landscape){.aura-preview-content{grid-template-columns:minmax(0,1fr) 235px}.aura-preview-stage{height:75dvh;min-height:240px}.aura-preview-header h1{font-size:21px}}
-
-/* Iteración V2: estados de comparación y daga en el laboratorio de Aura. */
-.aura-preview-controls button[disabled]{opacity:.38;cursor:not-allowed}
-.aura-preview-controls button[aria-pressed="true"]{border-color:#ff7a1a;background:rgba(91,46,23,.96)}
-.aura-preview-stage{isolation:isolate}
-@media(max-width:760px){.aura-preview-controls{gap:4px;left:6px;right:6px;bottom:6px}.aura-preview-controls button{font-size:12px;padding:7px 8px}}
-
-/* Aura V3: controls for animated personality review, not gameplay. */
-#preview-pose{border-color:#ff7a1a;background:rgba(91,46,23,.93)}
-#preview-motion{border-color:#6a6484}
-.aura-preview-controls{max-width:100%;padding:0 2px}
-@media(max-width:760px){.aura-preview-controls button{font-size:11px;padding:6px 7px}}
-
-/* Iteración V4: visor lateral fijo y comparación con asset GLB real. */
-#aura-canvas{cursor:default;touch-action:auto}
-#aura-canvas:active{cursor:default}
-.aura-preview-controls{z-index:2}
-.aura-preview-controls #preview-fallback:not(:disabled){border-color:#ff7a1a}
-.aura-preview-import,.aura-preview-reference{border-top:1px solid #42374d;padding-top:12px;display:flex;flex-direction:column;gap:8px}
-.aura-preview-import input[type=file]{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
-.aura-preview-upload{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid #ff7a1a;color:#fff;font-weight:700;background:rgba(91,46,23,.85);padding:10px;border-radius:9px}
-.aura-preview-upload:focus-within{outline:2px solid #fff}
-.aura-preview-import p{font-size:13px}
-.aura-preview-asset-status{color:#ffbe8a!important}
-.aura-preview-reference img{display:block;max-width:100%;height:auto;max-height:210px;object-fit:contain;background:#10101a;border-radius:9px}
-.aura-preview-reference a{color:#ffb16d;font-size:14px}
-.aura-preview-status[data-error=true]{color:#ff9393!important}
-@media(max-height:500px) and (orientation:landscape){
- .aura-preview-panel{max-height:77dvh;overflow:auto}
- .aura-preview-stage{height:72dvh}
- .aura-preview-reference img{max-height:125px}
+.aura-preview-body { overflow: auto; touch-action: pan-y; background: #0c0d14 }
+.aura-preview-layout {
+  width: min(100%, 1080px);
+  min-height: 100dvh;
+  margin-inline: auto;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+    max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  display: grid;
+  grid-template-rows: auto minmax(208px, 1fr) auto;
+  gap: 12px;
 }
-
-/* V5: conserva el concept de alta resolución sin aplicar filtros pixelados. */
-.aura-preview-reference img{width:100%;height:auto;max-height:360px;object-fit:contain;image-rendering:auto}
-#aura-concept-open{display:block;width:100%;background:#171622;border-radius:10px;overflow:hidden}
-.aura-preview-reference-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:stretch}
-.aura-preview-reference-actions .aura-preview-upload{flex:1;min-width:130px;font-size:13px}
-.aura-preview-reference-actions input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-#preview-concept-zoom{border:1px solid #806551;border-radius:9px;background:#302535;color:white;padding:9px 12px;cursor:pointer}
-.aura-preview-hint{font-size:12px!important;line-height:1.45!important;color:#bdb5c9!important}
-.aura-preview-reference .aura-preview-status{font-size:12px;line-height:1.4}
-
-/* Aura V6 — actual SkinnedMesh prototype controls, not final art. */
-#preview-rig {border-color:#ff7a1a;background:rgba(93,44,24,.94)}
-#preview-rig[aria-pressed="true"]{background:#bc5a1e;color:#0c0a11;border-color:#f8a86a}
-#preview-slash:not(:disabled){border-color:#ffbd86}
-.aura-preview-rig-note{padding:10px 12px;border-left:3px solid #ff7a1a;background:#292031;font-size:13px}
-.aura-preview-stage{min-height:480px}
-@media(max-width:760px){.aura-preview-stage{min-height:340px}}
+.aura-preview-header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  border-bottom: 2px solid #ff7a1a;
+  padding: 8px 0 12px;
+}
+.aura-preview-header h1 { margin: 0; font-size: clamp(21px, 4vw, 38px); color: #fff }
+.aura-preview-header a { color: #eceef4; font-size: 13px; text-decoration: underline }
+.aura-preview-reference { margin-left: auto }
+.aura-preview-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  background: radial-gradient(ellipse at 50% 65%, #282238, #141521 64%);
+  border: 1px solid #342d42;
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+#aura-canvas { position: absolute; inset: 0; width: 100%; height: 100% }
+#preview-status { z-index: 1; padding: 12px; color: #eceef4; text-align: center }
+.aura-preview-controls {
+  width: min(100%, 660px);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(6px, 2vw, 14px);
+}
+.aura-preview-controls button {
+  min-height: 46px;
+  padding: 8px 4px;
+  border: 1px solid #9894a6;
+  border-radius: 3px;
+  background: #181925;
+  color: #fff;
+  font: inherit;
+  font-size: clamp(12px, 2.5vw, 17px);
+  font-weight: 700;
+  cursor: pointer;
+}
+.aura-preview-controls button[aria-pressed="true"] { background: #ff7a1a; border-color: #ff7a1a; color: #15111a }
+.aura-preview-controls button:disabled { opacity: .52; cursor: wait }
+.aura-preview-controls button:focus-visible { outline: 2px solid #fff; outline-offset: 2px }
