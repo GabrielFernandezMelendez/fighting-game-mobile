@@ -14,8 +14,10 @@ import { createAuraVariant } from './aura-look.js';
 // Antes solo se activaban en la app instalada o con ?aura3d, por eso en el navegador del ordenador
 // salían los muñecos antiguos. ?clasico vuelve a los modelos antiguos para comparar.
 const previewFlags = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
-const AURA_STYLE = previewFlags.has('aurastyle');
-const AURA3D = !previewFlags.has('clasico') || AURA_STYLE;
+// Aura usa el diseño revisado (aura_review.glb + repintado) en combate en todos los dispositivos.
+// ?auraoriginal vuelve al GLB y colores de antes para comparar.
+const AURA3D = !previewFlags.has('clasico');
+const AURA_STYLE = AURA3D && !previewFlags.has('auraoriginal');
 const AURA3D_OVERRIDE = { model: 'aura', outline: 0.016, doubleSide: true, modelHeight: 1.78, cel: true };
 const SOMBRA3D = AURA3D || previewFlags.has('sombra3d');
 const ROSTER_3D = previewFlags.has('roster3d');
@@ -69,7 +71,7 @@ export class Renderer3D {
     if (!this.useModels) return;
     const previews = [];
     if (AURA3D) previews.push('aura');
-    if (AURA_STYLE) previews.push('aura_review');   // malla en revisión (cabeza mejorada en Blender)
+    if (AURA_STYLE) previews.push('aura_review');   // malla alisada por partes (tools/bl_aura_review.py)
     if (SOMBRA3D) previews.push('sombra');
     if (ROSTER_3D) previews.push(...Object.keys(ROSTER_3D_OVERRIDES));
     for (const model of previews) {

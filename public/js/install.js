@@ -3,6 +3,7 @@ import { appDisplayModes, isInstalledApp } from './app-mode.js';
 const button = document.querySelector('#bInstall');
 const guide = document.querySelector('#installGuide');
 const isIOS = typeof navigator.standalone === 'boolean' || /iPhone|iPad|iPod/.test(navigator.userAgent);
+const isAndroid = !isIOS && /Android/i.test(navigator.userAgent);
 let installPrompt = null;
 
 function updateButton() {
@@ -35,7 +36,9 @@ button.addEventListener('click', async () => {
     } catch { /* El menú del navegador sigue siendo una opción. */ }
   }
 
+  // Pasos según el sistema: iPhone/iPad (Safari), Android (Chrome y Samsung Internet) u otro navegador
   document.querySelector('#installStepsIOS').hidden = !isIOS;
-  document.querySelector('#installStepsBrowser').hidden = isIOS;
+  document.querySelector('#installStepsAndroid').hidden = !isAndroid;
+  document.querySelector('#installStepsBrowser').hidden = isIOS || isAndroid;
   guide.showModal();
 });

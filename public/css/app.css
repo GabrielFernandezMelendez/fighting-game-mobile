@@ -293,7 +293,7 @@ svg { fill: currentColor; }
 #installGuide { width: min(440px, 88vw); max-height: 80vh; max-height: 80dvh; overflow: auto; touch-action: pan-y; padding: 16px 20px; background: var(--panel); color: var(--text); border: 2px solid var(--line); }
 #installGuide::backdrop { background: rgba(6, 6, 12, .72); }
 #installGuide h2 { margin: 0 0 8px; font: 600 16px/1.2 var(--f-ui); text-transform: uppercase; }
-#installGuide ol { padding-left: 1.35em; }
+#installGuide ol { padding-left: 1.35em; margin: 6px 0 10px; } #installGuide li { margin: 4px 0; } #installGuide p { margin: 6px 0; font-size: 13px; line-height: 1.4; }
 
 /* ---------- Tienda, perfil y escenarios (maquetas) ---------- */
 .shop, .profile { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px; touch-action: pan-y; }
