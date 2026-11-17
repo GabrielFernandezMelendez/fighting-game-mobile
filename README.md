@@ -50,6 +50,17 @@ NEÓN es un prototipo de juego de lucha pensado desde el principio para pantalla
 
 Aura y Sombra ya tienen su modelo 3D propio. Vega y Kai usan todavía modelos de base mientras se terminan los suyos.
 
+### Hojas de modelo (concept art)
+
+Son la referencia de diseño de cada personaje. Incluyen vistas 3/4, frontal, perfil y espalda, expresiones, detalles, paleta de materiales y poses de referencia. Los originales están en [`art/conceptart/`](art/conceptart/).
+
+| | |
+|---|---|
+| [![Aura · hoja de modelo V3](art/conceptart/aura_hoja_de_modelo_v3.png)](art/conceptart/aura_hoja_de_modelo_v3.png) | [![Vega · hoja de modelo](art/conceptart/vega_hoja_de_modelo.png)](art/conceptart/vega_hoja_de_modelo.png) |
+| **Aura** · V3 | **Vega** |
+| [![Kai · hoja de modelo](art/conceptart/kai_hoja_de_modelo.png)](art/conceptart/kai_hoja_de_modelo.png) | [![Sombra · hoja de modelo](art/conceptart/sombra_hoja_de_modelo.png)](art/conceptart/sombra_hoja_de_modelo.png) |
+| **Kai** | **Sombra** |
+
 ## Cómo se juega
 
 **Móvil** (en horizontal):
