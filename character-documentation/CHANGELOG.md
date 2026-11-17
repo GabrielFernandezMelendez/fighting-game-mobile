@@ -162,3 +162,8 @@
 
 - Sala, Azotea y Mercado usan las ilustraciones aprobadas como fondo 2.5D en Three.js. El encuadre evita deformar la imagen, el combate conserva su cámara 3D y la lluvia, los cometas y las ondas se dibujan en capas animadas. `?stage3d` permite comparar la versión de escenarios geométricos.
 - La revisión visual de Aura limpia etiquetas de color aisladas en ropa, limita el color de pelo, máscara y piel a sus propios materiales, y aplica tinta más fina, ojos y brillo del pelo. El ajuste es reversible en el visor de Ajustes.
+
+## 2026-11-17 — Escenarios 3D pintados y nueva geometría de la cabeza de Aura
+
+- Sala, Azotea y Mercado vuelven a usar geometría de Three.js en partida. Paneles, pizarra, piedra, madera y tela usan texturas UV compartidas y sombras en tres bandas. Las ilustraciones siguen como miniaturas. La lluvia, los charcos y los cometas se dibujan en el espacio del mapa.
+- En Ajustes se puede comparar una cabeza nueva de Aura sobre el rig actual. La máscara usa planos biselados, ojos dibujados sobre esa superficie y mechones modelados por separado. El visor permite ver cabeza y hombros o el cuerpo completo en tres ángulos. `?aurastyle` habilita la comparación experimental en combate.

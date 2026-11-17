@@ -1,3 +1,5 @@
+import { celSurface, paintedTexture } from './stage-paint.js';
+
 // =====================================================================
 //  ESCENARIOS (cel-shading NEÓN)
 //  Estilo: fondos de anime 3D tipo arena de lucha (DBFZ y similares) con nuestra identidad:
@@ -10,6 +12,7 @@ export const STAGES = [
   { id: 'azotea', name: 'Azotea', desc: 'Noche en la ciudad, lluvia de cometas.' },
   { id: 'mercado', name: 'Mercado bajo la lluvia', desc: 'Puestos, farolillos y charcos.' },
 ];
+export const stageArtwork = id => new URL('../img/stages/' + id + '.webp', import.meta.url).href;
 export const stageById = id => STAGES.find(s => s.id === id) || STAGES[0];
 
 export function buildStage(id, T, opts = {}) {
@@ -20,16 +23,12 @@ export function buildStage(id, T, opts = {}) {
 
 // ---------- Herramientas comunes ----------
 function kit(T, quality) {
-  const ramps = new Map();
-  // rampa de 3 tonos duros (sombra, medio, luz): el tono de sombra es más frío, como en la guía
-  const ramp = (a, b, c) => { const k = a + b + c; if (ramps.has(k)) return ramps.get(k);
-    const d = [a, b, c].flatMap(h => { const x = new T.Color(h); return [x.r * 255, x.g * 255, x.b * 255, 255]; });
-    const tx = new T.DataTexture(new Uint8Array(d), 3, 1, T.RGBAFormat); tx.minFilter = tx.magFilter = T.NearestFilter; tx.colorSpace = T.SRGBColorSpace; tx.needsUpdate = true;
-    ramps.set(k, tx); return tx; };
-  const grey = ramp('#5c5c6e', '#a7a7b4', '#ffffff');
-  const mats = [], geos = [];
-  const keep = (m) => { mats.push(m); return m; };
-  const toon = (color, emissive = '#000000') => keep(new T.MeshToonMaterial({ color, emissive, gradientMap: grey }));
+  const mats = [], geos = [], paints = new Map();
+  const keep = m => { mats.push(m); return m; };
+  const toon = (color, emissive = '#000000', kind) => {
+    if (kind && !paints.has(kind)) paints.set(kind, paintedTexture(T,kind));
+    return keep(celSurface(new T.MeshToonMaterial({color, emissive, map:paints.get(kind) || null})));
+  };
   const flat = (color, extra = {}) => keep(new T.MeshBasicMaterial({ color, ...extra }));
   // Contorno de tinta (mismo color que el de los personajes, INK #140f1c). Casco invertido por escala: una copia
   // negra un poco más grande alrededor del centro de la pieza, vista por dentro (BackSide), así las aristas de
@@ -39,7 +38,7 @@ function kit(T, quality) {
   const INK = '#140f1c';
   const inkHull = keep(new T.MeshBasicMaterial({ color: INK, side: T.BackSide }));
   const inkFlat = keep(new T.MeshBasicMaterial({ color: INK, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 6 }));
-  const inkW = z => 0.02 * (1 + Math.abs(z) / 7);
+  const inkW = z => 0.012 + Math.min(Math.abs(z),8) * 0.0011;
   const sz = new T.Vector3(), ct = new T.Vector3();
   const hull = (mesh, z = mesh.position.z) => {
     const g = mesh.geometry; g.computeBoundingBox(); g.boundingBox.getSize(sz); g.boundingBox.getCenter(ct);
@@ -76,10 +75,10 @@ function kit(T, quality) {
     ], mat, x, y, z);
     return mesh;
   };
-  const floorTiles = (nx, nz, dx, dz, colors, z, stagger = false) => {
+  const floorTiles = (nx, nz, dx, dz, colors, z, kind, stagger = false) => {
     const g = new T.BoxGeometry(dx - 0.024, 0.05, dz - 0.023);
     geos.push(g);
-    const tiles = new T.InstancedMesh(g, toon('#ffffff'), nx * nz);
+    const tiles = new T.InstancedMesh(g, toon('#ffffff','#000000',kind), nx * nz);
     const paint = colors.map(c => new T.Color(c)), m = new T.Matrix4();
     for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
       m.makeTranslation((i - nx/2 + 0.5 + (stagger ? 0.5 * (j % 2) : 0)) * dx, -0.025, z - j * dz);
@@ -122,10 +121,10 @@ function kit(T, quality) {
   const dispose = () => {
     group.traverse(mesh => { if (mesh.isInstancedMesh) mesh.dispose(); });
     for (const g of new Set(geos)) g.dispose();
-    for (const m of mats) { m.map?.dispose(); m.dispose(); }
-    for (const r of ramps.values()) r.dispose();
+    for (const texture of new Set(mats.map(m=>m.map))) texture?.dispose();
+    for (const m of mats) m.dispose();
   };
-  return { T, quality, group, toon, flat, inkHull, inkW, add, box, graphic, floorGraphic, octPanel, floorTiles, sky, cloud, textTex, keep, geos, dispose, ramp };
+  return { T, quality, group, toon, flat, inkHull, inkW, add, box, graphic, floorGraphic, octPanel, floorTiles, sky, cloud, textTex, keep, geos, dispose };
 }
 const rnd = s => () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
 
@@ -135,7 +134,7 @@ const rnd = s => () => { s = (s * 16807) % 2147483647; return (s - 1) / 21474836
 // =====================================================================
 function sala(K) {
   const { T, group, toon, flat, box, add, textTex, graphic, octPanel, floorTiles, floorGraphic } = K;
-  floorTiles(18, 7, 1.15, 1.18, ['#302B48', '#2B2741'], 1.8);
+  floorTiles(18, 7, 1.15, 1.18, ['#343250', '#2B2946', '#302E4C'], 1.8, 'panel');
   const orange = flat('#FF7A1A'), cyan = flat('#20E3E3'), ink = flat('#140F1C');
   const floorLight = flat('#403A5B');
   for (const side of [-1, 1]) {
@@ -150,10 +149,16 @@ function sala(K) {
   const deckRing = new T.Mesh(new T.RingGeometry(.63,.67,8,1,Math.PI/8),orange);
   deckRing.rotation.x = -Math.PI/2; deckRing.scale.y = .73; deckRing.position.set(0,.007,-1.05); add(deckRing);
 
-  box(46,6,.28,toon('#2E284B'),0,3,-6.25,false);
-  box(46,.46,.4,toon('#1B1931'),0,.25,-5.98,true);
+  box(46,6,.28,toon('#302B4B'),0,3,-6.25,false);
+  box(46,.46,.4,toon('#201C37','#000000','panel'),0,.25,-5.98,true);
   box(46,.055,.16,orange,0,.81,-5.61);
-  const frame = flat('#3B3657'), face = flat('#25223E'), dark = flat('#1B192E'), edge = flat('#494365');
+  const frame = flat('#413B60'), face = flat('#292640'), dark = flat('#1C192D'), edge = flat('#51496D');
+  const strut = toon('#494260','#000000','panel');
+  for (const x of [-5.25,-1.9,1.9,5.25]) {
+    const support=box(.23,2.6,.32,strut,x,2.18,-5.66);
+    support.rotation.z=(x<0?1:-1)*.27;
+    box(.46,.20,.38,strut,x*1.05,.95,-5.67);
+  }
   for (const x of [-11.5,-6.9,-3.4,3.4,6.9,11.5]) {
     octPanel(3.16,2.15,.47,ink,x,1.98,-5.99);
     octPanel(3.08,2.08,.45,frame,x,1.98,-5.96);
@@ -179,8 +184,8 @@ function sala(K) {
     const target = new T.Mesh(new T.RingGeometry(.28,.31,8,1,Math.PI/8),cyan);
     target.position.set(x,1.99,-5.87); add(target); targets.push(target);
   }
-  return { group, background: new T.Color('#16132A'), fog: null, update(t) {
-    targets.forEach((target,i) => { target.rotation.z = Math.sin(t*.63+i)*.12; });
+  return { group, background: new T.Color('#16132A'), fog: null, update(t, dt, camera, still) {
+    targets.forEach((target,i) => { target.rotation.z = still ? 0 : Math.sin(t*.63+i)*.12; });
   }, dispose: K.dispose };
 }
 
@@ -221,7 +226,7 @@ function azotea(K) {
   layer(-21, 34, 1.5, 6.3, '#514274', '#77689C', false);
   layer(-16, 30, 0.8, 4.3, '#352954', '#B27564', true);
   layer(-11, 26, 0.5, 2.75, '#221C3B', '#E6A267', true);
-  K.floorTiles(20, 6, 1.5, 1.46, ['#454057', '#3B3652'], 1.4);
+  K.floorTiles(20, 6, 1.5, 1.46, ['#4A435E', '#3B3652', '#443E59'], 1.4, 'slate');
   const roofLight = flat('#4C455F');
   for (const x of [-5.6,-2.8,.3,3.55,6.9]) {
     K.floorGraphic([[0,0],[2,0],[1.72,.22],[.28,.22]], roofLight, x,.004,-1.4);
@@ -236,17 +241,22 @@ function azotea(K) {
     box(.19,.20,.1,rail,x,.57,-5.27,true);
   }
   // depósito de agua sobre patas, máquinas de aire y antena
-  const tankM = toon('#5B4E7E');
-  const tank = new T.Mesh(new T.CylinderGeometry(0.9, 0.9, 1.5, 12), tankM); tank.position.set(-4.9, 2.55, -4.5); add(tank, true);
-  const roof = new T.Mesh(new T.ConeGeometry(1, 0.5, 12), toon('#433A63')); roof.position.set(-4.9, 3.55, -4.5); add(roof, true);
-  for (const [dx, dz] of [[-0.6, -0.4], [0.6, -0.4], [-0.6, 0.4], [0.6, 0.4]]) box(0.08, 2.1, 0.08, rail, -4.9 + dx, .93, -4.5 + dz, true);
+  const tankM = toon('#605573','#000000','roof');
+  const tank = new T.Mesh(new T.CylinderGeometry(0.72, 0.76, 1.14, 12), tankM); tank.position.set(-3.93, 2.11, -5.2); add(tank, true);
+  const roof = new T.Mesh(new T.ConeGeometry(.82, .38, 12), toon('#433A63')); roof.position.set(-3.93, 2.87, -5.2); add(roof, true);
+  for (const [dx, dz] of [[-0.6, -0.4], [0.6, -0.4], [-0.6, 0.4], [0.6, 0.4]]) box(0.08, 1.55, 0.08, rail, -3.93 + dx, .775, -5.2 + dz, true);
   const tankRing = toon('#76698A');
-  for (const y of [2.1,2.8]) {
-    const band = new T.Mesh(new T.CylinderGeometry(.93,.93,.065,12),tankRing);
-    band.position.set(-4.9,y,-4.5); add(band,true);
+  for (const y of [1.71,2.31]) {
+    const band = new T.Mesh(new T.CylinderGeometry(.77,.77,.054,12),tankRing);
+    band.position.set(-3.93,y,-5.2); add(band,true);
   }
-  const acM = toon('#6A6288');
-  for (const [x, z] of [[4.1, -4.35], [5.45, -3.8]]) { box(1.1, 0.8, 0.8, acM, x, 0.4, z, true); const fan = new T.Mesh(new T.CircleGeometry(0.26, 12), flat('#241F3E')); fan.position.set(x, 0.42, z + 0.41); add(fan, true); }
+  const brace = box(.085,1.55,.08,rail,-3.94,.80,-4.78);
+  brace.rotation.z=.62;
+  const pipe = toon('#8B7D98');
+  box(.095,1.2,.10,pipe,-3.14,1.49,-5.07);
+  box(.59,.095,.10,pipe,-3.36,2.09,-5.07);
+  const acM = toon('#746981','#000000','panel');
+  for (const [x, z] of [[3.74, -4.85], [5.1, -4.25]]) { box(1.1, 0.8, 0.8, acM, x, 0.4, z, true); const fan = new T.Mesh(new T.CircleGeometry(0.26, 12), flat('#241F3E')); fan.position.set(x, 0.42, z + 0.41); add(fan, true); }
   box(0.06, 3.6, 0.06, rail, 8.2, 1.8, -4.8, true);
   const blink = new T.Mesh(new T.SphereGeometry(0.07, 8, 6), flat('#FF3355')); blink.position.set(8.2, 3.65, -4.8); add(blink, true);
   // cometas: detrás de todo, de arriba-izquierda a abajo-derecha, naranja y carmesí, escalonados
@@ -260,9 +270,9 @@ function azotea(K) {
     g.rotation.z = -0.62; g.userData = { t0: i * 6 / N, life: 1.3, x0: -13 + (i * 7) % 22, y0: 9.5 }; g.position.z = -22; group.add(g); comets.push(g);
   }
   return { group, background: new T.Color('#100E22'), fog: null,
-    update(t) {
-      blink.visible = (t % 1.4) < 0.25;
-      for (const c of comets) { const u = c.userData, p = ((t - u.t0) % 6 + 6) % 6; c.visible = p < u.life;
+    update(t, dt, camera, still) {
+      blink.visible = still || (t % 1.4) < 0.25;
+      for (const c of comets) { const u = c.userData, p = ((t - u.t0) % 6 + 6) % 6; c.visible = !still && p < u.life;
         if (c.visible) { const k = p / u.life; c.position.x = u.x0 + k * 8; c.position.y = u.y0 - k * 6; c.children[0].material.opacity = 0.85 * Math.min(1, (1 - k) * 3); } }
     }, dispose: K.dispose };
 }
@@ -287,6 +297,7 @@ function mercado(K) {
     if (i % 3) {
       for (const dx of [-.68,0,.68]) {
         box(.36,.58,.03,R()<.32?amberGlass:glass,x+dx,h-.99,z+.51,false);
+        box(.29,.36,.032,(Math.round(dx*10)+i)%3===0?amberGlass:glass,x+dx,2.10+.18*(i%2),z+.52,false);
       }
     }
   }
@@ -297,7 +308,7 @@ function mercado(K) {
     box(.19,.9 + R()*.54,.05,flat(signColors[i%3]),x,2.52,-8.43,false);
   }
 
-  const wood = toon('#69402E'), post = toon('#46303A'), trim = toon('#AA6540');
+  const wood = toon('#815036','#000000','wood'), post = toon('#4E3437','#000000','wood'), trim = toon('#BA7345');
   const wedge = flat('#3D2F3B'), crateBoard = flat('#54352A');
   const fruitGeo = new T.IcosahedronGeometry(.10,0);
   K.geos.push(fruitGeo);
@@ -321,7 +332,7 @@ function mercado(K) {
     }
   }
   function stall(x,z,width,accent) {
-    const canopy = toon(accent), canvas = toon('#F0CC9F');
+    const canopy = toon(accent,'#000000','cloth'), canvas = toon('#F0CC9F','#000000','cloth');
     box(width,.72,.78,wood,x,.36,z,true);
     box(width+.10,.09,.86,trim,x,.747,z,true);
     graphic([[-width/2,-.30],[width*.14,-.30],[-width*.19,.27],[-width/2,.30]],wedge,x,.37,z+.397);
@@ -355,7 +366,7 @@ function mercado(K) {
   const lanterns = [toon('#FFC05C','#6B2B0C'),toon('#E4575C','#441423')];
   const wire = new T.LineBasicMaterial({color:'#241D2D'});
   K.keep(wire);
-  const cableY = x => 2.64 + .055 * x * x;
+  const cableY = x => 2.42 + .039 * x * x;
   for (const sign of [-1,1]) {
     const points = [];
     for (let i=0;i<=8;i++) {
@@ -375,7 +386,7 @@ function mercado(K) {
     }
   }
 
-  floorTiles(25, 15, .80, .58, ['#263C48','#293F4D','#2C4250','#243845'], 1.5, true);
+  floorTiles(25, 15, .80, .58, ['#29434F','#2C4656','#334B59','#263E4B'], 1.5, 'stone', true);
   const wet = flat('#283E50'), ripples = [];
   const highlights = ['#AB693A','#306E76'].map(c => flat(c,{transparent:true,opacity:.66,depthWrite:false}));
   for (const [i,[x,z]] of [[-5.15,-2.63],[-3.16,-1.58],[3.54,-1.83],[5.36,-2.53]].entries()) {
@@ -417,13 +428,16 @@ function mercado(K) {
     }));
     return {mesh,drops};
   });
+  let rippleCount=12;
   function setQuality(quality) {
     rain[0].mesh.count = [50,102,144][quality];
     rain[1].mesh.count = [25,66,104][quality];
-    circles.forEach((mesh,i) => {mesh.visible=i < [4,8,12][quality];});
+    rippleCount=[4,8,12][quality];
   }
-  function update(t,dt) {
+  function update(t,dt,camera,still) {
     for (const {mesh,drops} of rain) {
+      mesh.visible=!still;
+      if(still) continue;
       for (let i=0;i<mesh.count;i++) {
         const d=drops[i];
         d.y-=d.speed*dt;
@@ -435,13 +449,15 @@ function mercado(K) {
       }
       mesh.instanceMatrix.needsUpdate=true;
     }
-    circles.forEach(mesh => {
+    circles.forEach((mesh,i) => {
+      mesh.visible=!still && i<rippleCount;
+      if(still) return;
       const k=(t*1.15+mesh.userData.phase)%1;
       const r=.015+.19*k;
       mesh.scale.set(r,r*.66,1);
       mesh.position.y=.01+Math.sin(k*Math.PI)*.001;
     });
-    ripples.forEach((mesh,i) => {mesh.scale.x=mesh.userData.width*(.83+.17*Math.sin(t*5+i));});
+    ripples.forEach((mesh,i) => {mesh.scale.x=mesh.userData.width*(still ? 1 : .83+.17*Math.sin(t*5+i));});
   }
   setQuality(K.quality);
   update(0,0);

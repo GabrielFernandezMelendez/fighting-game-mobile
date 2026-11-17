@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { ModelFighter, ModelLibrary } from './models.js';
 import { createAuraLook } from './aura-look.js';
+import { attachAuraHead } from './aura-head.js';
 
 const current = document.getElementById('preview-current');
 const compare = document.getElementById('preview-compare');
 const stage = document.getElementById('preview-stage');
 const status = document.getElementById('preview-status');
+const framing = document.getElementById('preview-framing');
+const angle = document.getElementById('preview-angle');
 
 async function openViewer() {
   const canvas = document.getElementById('aura-canvas');
@@ -13,8 +16,6 @@ async function openViewer() {
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-2, 2, 2, -2, 0.1, 25);
-  camera.position.set(4.2, 2.19, 6.2);
-  camera.lookAt(0, 1.4, 0);
 
   const floor = new THREE.Mesh(new THREE.CircleGeometry(0.78, 48), new THREE.MeshBasicMaterial({ color: '#211e30' }));
   floor.rotation.x = -Math.PI / 2;
@@ -30,11 +31,17 @@ async function openViewer() {
   fighter.turn.rotation.y = 0;
   scene.add(fighter.root);
   const setLook = createAuraLook(fighter);
+  const setHead = attachAuraHead(fighter);
 
   function render() {
     const width = Math.max(stage.clientWidth, 1);
     const height = Math.max(stage.clientHeight, 1);
-    camera.top = Math.max(1.55, 0.82 * height / width);
+    const detail = framing.value === 'head';
+    const y = detail ? 2.50 : 1.4;
+    const radians = Number(angle.value);
+    camera.position.set(Math.sin(radians)*7.5, y + (detail ? 0.30 : 0.79), Math.cos(radians)*7.5);
+    camera.lookAt(0, y, 0);
+    camera.top = detail ? Math.max(.39,.30 * height/width) : Math.max(1.55, .82 * height / width);
     camera.bottom = -camera.top;
     camera.right = camera.top * width / height;
     camera.left = -camera.right;
@@ -44,12 +51,15 @@ async function openViewer() {
   }
   function select(review) {
     setLook(review);
+    setHead(review);
     current.setAttribute('aria-pressed', String(!review));
     compare.setAttribute('aria-pressed', String(review));
     render();
   }
   current.addEventListener('click', () => select(false));
   compare.addEventListener('click', () => select(true));
+  framing.addEventListener('change', render);
+  angle.addEventListener('change', render);
   select(false);
   if ('ResizeObserver' in window) new ResizeObserver(render).observe(stage);
   else window.addEventListener('resize', render);

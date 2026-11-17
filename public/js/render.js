@@ -8,12 +8,14 @@ import { ModelLibrary, ModelFighter } from './models.js';
 import { clipFor } from './anims.js';
 import { VFX } from './vfx.js';
 import { buildStage as makeStage, stageById } from './stages.js';
-import { buildStageArt } from './stage-art.js';
+import { attachAuraHead } from './aura-head.js';
+import { createAuraLook } from './aura-look.js';
 import { isInstalledApp } from './app-mode.js';
 
 // La app instalada y ?aura3d activan ambos modelos. ?sombra3d permite revisar solo a Sombra.
 const previewFlags = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
-const AURA3D = isInstalledApp() || previewFlags.has('aura3d');
+const AURA_STYLE = previewFlags.has('aurastyle');
+const AURA3D = isInstalledApp() || previewFlags.has('aura3d') || AURA_STYLE;
 const AURA3D_OVERRIDE = { model: 'aura', outline: 0.016, doubleSide: true, modelHeight: 1.78, cel: true };
 const SOMBRA3D = AURA3D || previewFlags.has('sombra3d');
 const ROSTER_3D = previewFlags.has('roster3d');
@@ -52,6 +54,7 @@ export class Renderer3D {
     const key = new THREE.DirectionalLight('#ffffff', 2.3); key.position.set(-2, 4, 6); scene.add(key);
     const rim = new THREE.DirectionalLight('#ffd2a8', 1.3); rim.position.set(3, 3, -5); scene.add(rim);
     this.gcache = new Map();
+    this.stageMotionPreference = matchMedia('(prefers-reduced-motion: reduce)');
     this.buildStage();
     this.rigs = []; this.particles = []; this.quality = 2; this.camX = 0; this.camZ = 6; this.camY = 0.9; this.shake = 0;
     this.vfx = new VFX(THREE, scene);
@@ -127,27 +130,12 @@ export class Renderer3D {
   setStage(id) {
     id = stageById(id).id;
     if (this.stage && this.stageId === id) return;
-    const mount = stage => {
-      if (this.stage) { this.scene.remove(this.stage.group); this.stage.dispose(); }
-      this.stage = stage;
-      this.scene.add(stage.group);
-      this.scene.background = stage.background;
-    };
-    this.stageId = id;
-    this.stageT = 0;
-    const quality = this.quality ?? 2;
-    if (new URLSearchParams(location.search).has('stage3d')) {
-      mount(makeStage(id, this.T, { quality }));
-      return;
-    }
-    const art = buildStageArt(id, this.T, {
-      quality,
-      reducedMotion: matchMedia('(prefers-reduced-motion: reduce)'),
-      onUnavailable: () => {
-        if (this.stage === art) mount(makeStage(id, this.T, {quality:this.quality ?? quality}));
-      },
-    });
-    mount(art);
+    if (this.stage) { this.scene.remove(this.stage.group); this.stage.dispose(); }
+    this.stageId=id;
+    this.stageT=0;
+    this.stage=makeStage(id, this.T, { quality:this.quality ?? 2 });
+    this.scene.add(this.stage.group);
+    this.scene.background=this.stage.background;
   }
 
   // ---------- Personajes ----------
@@ -173,6 +161,10 @@ export class Renderer3D {
     const mf = new ModelFighter(this.lib, this.gltf[C.model], { height: C.modelHeight || 1.75, outline: C.outline || 0.02, model: C.model, doubleSide: !!C.doubleSide, cel: !!C.cel, rimColor: C.accent });
     if (C.tint) for (const m of mf.mats) m.color.set(C.tint);
     this.scene.add(mf.root);
+    if (C.model==='aura' && AURA_STYLE) {
+      createAuraLook(mf)(true);
+      attachAuraHead(mf)(true);
+    }
     // arma en el hueso Weapon.R, orientada como el arma original del pack (hoja hacia arriba en reposo)
     const hand = mf.hand(); mf.model.updateMatrixWorld(true);
     const wq = hand.getWorldQuaternion(new T.Quaternion()), ws = hand.getWorldScale(new T.Vector3()).x;
@@ -368,10 +360,14 @@ export class Renderer3D {
     }
   }
 
+  get reducedStageMotion() {
+    return this.stageMotionPreference?.matches || document.body.classList.contains('reduce-motion');
+  }
+
   applyQuality(q) {
     this.quality = q; const dpr = devicePixelRatio || 1;
     this.renderer.setPixelRatio(q === 2 ? Math.min(2, dpr) : q === 1 ? Math.min(1.25, dpr) : 0.85);
-    this.scene.traverse(o => { if (o.userData.outline) o.visible = q > 0; });
+    this.scene.traverse(o => { if (o.userData.outline) o.visible = q > 0 && !o.userData.hiddenByLook; });
     this.stage?.setQuality?.(q);
     this.sizeKey = '';
   }
@@ -431,7 +427,7 @@ export class Renderer3D {
     const { renderer, scene, camera, host } = this;
     const W = host.clientWidth, H = host.clientHeight, key = `${W}x${H}x${renderer.getPixelRatio()}`;
     if (this.sizeKey !== key) { renderer.setSize(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); this.sizeKey = key; }
-    this.stageT = (this.stageT || 0) + dt; this.stage?.update(this.stageT, dt, camera);
+    this.stageT = (this.stageT || 0) + dt; this.stage?.update(this.stageT, dt, camera, this.reducedStageMotion);
     M.fighters.forEach((F, i) => this.poseRig(this.rigs[i], F));
     scene.updateMatrixWorld();
     M.fighters.forEach((F, i) => this.vfx.updateTrail(i, this.rigs[i], F, getMove(F), this.rigs[i].C.accent || '#ffffff'));

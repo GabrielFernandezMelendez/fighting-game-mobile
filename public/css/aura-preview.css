@@ -6,7 +6,7 @@
   padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
     max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   display: grid;
-  grid-template-rows: auto minmax(208px, 1fr) auto;
+  grid-template-rows: auto auto minmax(208px, 1fr) auto;
   gap: 12px;
 }
 .aura-preview-header {
@@ -53,3 +53,7 @@
 .aura-preview-controls button[aria-pressed="true"] { background: #ff7a1a; border-color: #ff7a1a; color: #15111a }
 .aura-preview-controls button:disabled { opacity: .52; cursor: wait }
 .aura-preview-controls button:focus-visible { outline: 2px solid #fff; outline-offset: 2px }
+
+.aura-preview-view { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.aura-preview-view label { display:flex; align-items:center; gap:6px; font-size:13px; }
+.aura-preview-view select { min-height:36px; background:#242131; color:#fff; font:inherit; border:1px solid #625872; padding:0 7px; }
