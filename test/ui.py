@@ -15,7 +15,7 @@ async def main():
         await pg.tap('[data-go=practice]'); await pg.wait_for_timeout(500)
         await pg.tap('.card[data-id=kai]'); await pg.wait_for_timeout(300)
         await pg.screenshot(path=OUT+'u_select.png')
-        await pg.tap('#bConfirm'); await pg.wait_for_timeout(2500)
+        await pg.tap('#bConfirm'); await pg.tap('#stageConfirm'); await pg.wait_for_timeout(2500)
         await pg.screenshot(path=OUT+'u_game_kai.png')
         await pg.tap('#bMoves'); await pg.wait_for_timeout(400)
         await pg.tap('.tab[data-tab=combos]'); await pg.wait_for_timeout(300)

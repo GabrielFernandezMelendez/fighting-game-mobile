@@ -13,7 +13,7 @@ async def main():
         await pg.tap('.card[data-id=kai]'); await pg.wait_for_timeout(200)
         await pg.tap('.wchip[data-w=dagger]'); await pg.wait_for_timeout(300)
         await pg.screenshot(path=OUT+'sel_kai_dagger.png')
-        await pg.tap('#bConfirm'); await pg.wait_for_timeout(2500)
+        await pg.tap('#bConfirm'); await pg.tap('#stageConfirm'); await pg.wait_for_timeout(2500)
         await pg.tap('#bMoves'); await pg.wait_for_timeout(400)
         await pg.screenshot(path=OUT+'game_kai_dagger.png')
         print(logs); await b.close()
