@@ -207,3 +207,8 @@
 - Más sombra en la chaqueta, con formas grandes y limpias: el lado que se aparta de la luz se calcula con una normal «grande» (radial desde el eje del torso o del brazo, sigue al esqueleto) en vez de la del escaneo; más una franja en V bajo la bufanda y el bajo de las mangas.
 - Bufanda delimitada por forma (alrededor del cuello, por encima de un borde en V) en vez de por el color del escaneo: sin islas marfil dentro ni manchas naranja fuera. El top bajo la chaqueta queda en negro.
 - Partes corregibles a mano: `art/aura/aura_partes.blend` (las 12 partes como objetos, cada una con su color de vista) y guía [AURA_PARTES_A_MANO.md](AURA_PARTES_A_MANO.md). Si el archivo existe, `tools/bl_aura_review.py` usa esas partes tal cual en vez de calcularlas.
+
+## 2026-11-17 — Salto en diagonal en móvil
+- Swipe en diagonal hacia arriba (arriba-derecha / arriba-izquierda) en la mitad de movimiento = salto hacia ese lado, como W+D en el teclado. Permite saltar por encima del rival.
+- Caminando con el dedo mantenido, subirlo = salto hacia donde caminas (una vez por subida; bajar el dedo rearma).
+- El swipe vertical sigue siendo salto recto; los swipes horizontales con poca inclinación siguen siendo paso, dash o caminar.
