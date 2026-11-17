@@ -36,6 +36,11 @@ for i in mv:
     v=me.vertices[i]; v.co.x*=0.90
     if v.co.z<ZC: v.co.z=ZC-(ZC-v.co.z)*1.04
 for i in hv|mv: me.vertices[i].co.z+=LIFT
+# barbilla más suave: en el último cuarto de la máscara se ensancha un poco y la punta sube
+zs=[me.vertices[i].co.z for i in mv]; zmin=min(zs); zb=zmin+0.09
+for i in mv:
+    v=me.vertices[i]; t=ss(zb,zmin,v.co.z)
+    v.co.x*=1+0.32*t; v.co.z+=0.012*t*t
 # --- cuello corto en sombra (etiqueta grafito), pesado Neck→Head
 bm=bmesh.new(); r=0.066; z0=2.20; z1=2.36+LIFT
 bmesh.ops.create_cone(bm, cap_ends=False, segments=16, radius1=r*1.05, radius2=r, depth=z1-z0)
