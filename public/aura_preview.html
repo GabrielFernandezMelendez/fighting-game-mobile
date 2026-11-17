@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0c0d14">
-<title>NEÓN · Aura — Vista 3D</title>
+<title>NEÓN · Aura 3D</title>
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/aura-preview.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
@@ -12,80 +12,19 @@
 <body class="aura-preview-body">
 <main class="aura-preview-layout">
   <header class="aura-preview-header">
-    <a class="aura-preview-back" href="index.html#settings" aria-label="Volver a ajustes">‹ Volver a ajustes</a>
-    <div>
-      <div class="aura-preview-kicker">NEÓN / Taller de personajes</div>
-      <h1>Aura <span>· Concept + rig 3D</span></h1>
-    </div>
-    <span class="aura-preview-phase">Fase C · Pipeline de producción</span>
+    <a href="index.html#settings" aria-label="Volver a ajustes">‹ Ajustes</a>
+    <h1>Aura 3D</h1>
+    <a class="aura-preview-reference" href="assets/previews/aura_concept_v3.png" target="_blank" rel="noopener">Concept de Aura ↗</a>
   </header>
-  <div class="aura-preview-content">
-    <div class="aura-preview-stage" id="preview-stage">
-      <canvas id="aura-canvas" aria-label="Vista lateral fija del personaje Aura, sin rotación"></canvas>
-      <div class="aura-preview-legend">Cámara lateral fija · 2.5D · sin rotación</div>
-      <div class="aura-preview-controls">
-        <button id="preview-game-model" type="button" aria-pressed="false">Aura del juego</button>
-        <button id="preview-game-palette" type="button" hidden>Ver colores del juego</button>
-        <button id="preview-rig" type="button" aria-pressed="false">Probar 3D con esqueleto</button>
-        <button id="preview-slash" type="button" disabled>Animar ataque</button>
-        <button id="preview-fallback" type="button" disabled>Mostrar modelo GLB</button>
-        <button id="preview-pose" type="button">Pose de combate</button>
-        <button id="preview-motion" type="button">Pausar movimiento</button>
-        <button id="preview-weapon" type="button" aria-pressed="false">Mostrar daga</button>
-        <button id="preview-reset" type="button">Zoom inicial</button>
-        <button id="preview-zoom-in" type="button" aria-label="Acercar">+</button>
-        <button id="preview-zoom-out" type="button" aria-label="Alejar">−</button>
-      </div>
-    </div>
-    <aside class="aura-preview-panel">
-      <h2>La Centella</h2>
-      <p>Compara el concept aprobado con un <strong>primer modelo volumétrico 3D con esqueleto y deformación real</strong>. La cámara lateral permanece fija. El rig V1 es una prueba técnica, todavía lejos del nivel final de modelado artístico.</p>
-      <p class="aura-preview-rig-note"><strong>Revisión de Aura:</strong> abre «Aura del juego» para comparar su malla actual con una paleta ajustada al concept. Puedes alternar los colores, cambiar la pose y reproducir un ataque de prueba.</p>
-      <div class="aura-preview-import">
-        <h3>Probar modelo GLB</h3>
-        <label for="preview-upload" class="aura-preview-upload">Probar GLB local</label>
-        <input type="file" id="preview-upload" accept=".glb,model/gltf-binary">
-        <p>Elige un GLB exportado desde Blender (máx. 35 MB). Se previsualiza solo en tu navegador: no se sube a GitHub ni Firebase.</p>
-        <p id="preview-asset-status" class="aura-preview-asset-status">Comprobando si hay un modelo 3D publicado…</p>
-      </div>
-      <div class="aura-preview-reference">
-        <h3>Concept aprobado</h3>
-        <a id="aura-concept-open" href="assets/previews/aura_concept_v3.png" target="_blank" rel="noopener" aria-label="Abrir concepto visual a tamaño original">
-          <img id="aura-concept-image" src="assets/previews/aura_concept_v3.png" alt="Concept art de Aura V3. Referencia aprobada en alta resolución.">
-        </a>
-        <div class="aura-preview-reference-actions">
-          <label for="preview-concept-upload" class="aura-preview-upload">Ver PNG original</label>
-          <input id="preview-concept-upload" type="file" accept="image/png">
-          <button id="preview-concept-zoom" type="button">Ampliar imagen</button>
-        </div>
-        <p id="preview-concept-status" class="aura-preview-status">Comprobando PNG de alta resolución…</p>
-        <p class="aura-preview-hint">Si no está publicado, selecciona el PNG original para verlo nítido. El archivo se muestra solo en tu navegador, sin subirlo a ningún servidor.</p>
-      </div>
-      <h3>Paleta de revisión</h3>
-      <div class="aura-preview-swatches">
-        <span style="--swatch:#E7C6B3">Marfil</span>
-        <span style="--swatch:#E5D5F3">Pelo</span>
-        <span style="--swatch:#957389">Pantalón</span>
-        <span style="--swatch:#3B3141">Grafito</span>
-        <span style="--swatch:#FF810F">Naranja</span>
-        <span style="--swatch:#E5DDE5">Máscara</span>
-      </div>
-      <p class="aura-preview-warning"><strong>Visor de revisión.</strong> El relieve 2.5D permite cotejar la silueta con el concept. «Probar 3D con esqueleto» conserva el prototipo del taller. Los ajustes de color de «Aura del juego» se aplican solo a este visor.</p>
-      <p id="preview-status" class="aura-preview-status" role="status">Preparando la vista 3D…</p>
-      <a href="https://github.com/GabrielFernandezMelendez/fighting-game-mobile/blob/main/character-documentation/AURA.md" target="_blank" rel="noopener" class="aura-preview-doc">Consultar ficha de personaje ↗</a>
-    </aside>
+  <div id="preview-stage" class="aura-preview-stage">
+    <canvas id="aura-canvas" aria-label="Modelo tridimensional de Aura en vista de tres cuartos"></canvas>
+    <p id="preview-status" role="status">Cargando Aura 3D…</p>
+  </div>
+  <div class="aura-preview-controls" role="group" aria-label="Aspecto de Aura">
+    <button type="button" id="preview-current" aria-pressed="true" disabled>Modelo actual</button>
+    <button type="button" id="preview-compare" aria-pressed="false" disabled>Comparar cambios</button>
   </div>
 </main>
-<script>
-window.addEventListener('error', event => {
-  const status = document.getElementById('preview-status');
-  if (status) status.textContent = 'Error de visor: ' + (event.message || 'revisa la consola del navegador');
-});
-window.addEventListener('unhandledrejection', event => {
-  const status = document.getElementById('preview-status');
-  if (status) status.textContent = 'Error de visor: ' + (event.reason?.message || 'no se pudo inicializar');
-});
-</script>
 <script type="module" src="js/aura-preview.js"></script>
 </body>
 </html>

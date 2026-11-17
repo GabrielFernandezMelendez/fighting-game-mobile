@@ -152,3 +152,8 @@
 
 - [Bases 3D de Vega y Kai](VEGA_KAI_BASES.md) con archivos editables, materiales planos y el rig de Aura. Prueba con `?roster3d`.
 - El taller carga la malla de combate de Aura y permite alternar los colores originales con una paleta ajustada al concept. La revisión vive en el visor.
+
+## 2026-11-17 — Comparativa de Aura en Ajustes y revisión de escenarios
+
+- El visor de Ajustes abre el GLB de combate de Aura. **Modelo actual** y **Comparar cambios** comparten malla, rig, pose y cámara. El segundo aspecto usa sombras propias por zona, ranuras de tinta en la máscara y un acabado metálico localizado en la hebilla. Los detalles se proyectan en la malla en reposo y siguen al skinned mesh. Los prototipos del taller dejan de aparecer en Ajustes.
+- Sala de pruebas: paneles biselados dibujados en capas, marcas de pista y blancos cian. Azotea: ciudad por planos, luna, nubes angulares y cometas con cola afilada. Mercado: puestos de fruta, faroles facetados, lluvia en dos planos y charcos con reflejos gráficos y ondas. Los suelos repetidos y la fruta usan instancias. La calidad regula la densidad de lluvia y el número de ondas.

@@ -57,6 +57,38 @@ function kit(T, quality) {
     return mesh;
   };
   const box = (w, h, d, mat, x, y, z, outline = true, parent) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); return add(m, outline, parent); };
+  const graphic = (points, mat, x, y, z) => {
+    const shape = new T.Shape(points.map(([px, py]) => new T.Vector2(px, py)));
+    const mesh = new T.Mesh(new T.ShapeGeometry(shape), mat);
+    mesh.position.set(x, y, z);
+    return add(mesh);
+  };
+  const floorGraphic = (points, mat, x, y, z) => {
+    const mesh = graphic(points, mat, x, y, z);
+    mesh.rotation.x = -Math.PI / 2;
+    return mesh;
+  };
+  const octPanel = (w, h, bevel, mat, x, y, z) => {
+    const x0 = w * 0.5, y0 = h * 0.5;
+    const mesh = graphic([
+      [-x0 + bevel,-y0], [x0 - bevel,-y0], [x0,-y0+bevel], [x0,y0-bevel],
+      [x0-bevel,y0], [-x0+bevel,y0], [-x0,y0-bevel], [-x0,-y0+bevel],
+    ], mat, x, y, z);
+    return mesh;
+  };
+  const floorTiles = (nx, nz, dx, dz, colors, z, stagger = false) => {
+    const g = new T.BoxGeometry(dx - 0.024, 0.05, dz - 0.023);
+    geos.push(g);
+    const tiles = new T.InstancedMesh(g, toon('#ffffff'), nx * nz);
+    const paint = colors.map(c => new T.Color(c)), m = new T.Matrix4();
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+      m.makeTranslation((i - nx/2 + 0.5 + (stagger ? 0.5 * (j % 2) : 0)) * dx, -0.025, z - j * dz);
+      const index = i * nz + j;
+      tiles.setMatrixAt(index, m);
+      tiles.setColorAt(index, paint[(i + j) % paint.length]);
+    }
+    group.add(tiles);
+  };
   // cielo pintado en bandas (4-6 escalones de color, sin degradado suave)
   const sky = (stops, bands = 6, extra = '') => {
     const cols = stops.map(c => new T.Color(c));
@@ -71,16 +103,14 @@ function kit(T, quality) {
         }` }));
     const p = new T.Mesh(new T.PlaneGeometry(90, 34), m); p.position.set(0, 9, -26); return add(p);
   };
-  // nube plana de dos tonos (forma de bolas fusionadas, como las del polvo)
+  // Nubes de dos planos, con perfiles afilados como las sombras dibujadas de la azotea.
   const cloud = (x, y, z, w, light, shade) => {
-    const g = new T.Group();
-    for (let i = 0; i < 5; i++) {
-      const r = w * (0.16 + 0.1 * Math.sin(i * 2.3 + x)), cx = (i - 2) * w * 0.18;
-      const a = new T.Mesh(new T.CircleGeometry(r, 18), flat(light)); a.position.set(cx, r * 0.4, 0); g.add(a); geos.push(a.geometry);
-      const b = new T.Mesh(new T.CircleGeometry(r * 0.92, 18), flat(shade)); b.position.set(cx + r * 0.1, r * 0.25, -0.01); g.add(b); geos.push(b.geometry);
-    }
-    const base = new T.Mesh(new T.PlaneGeometry(w * 0.95, w * 0.12), flat(shade)); base.position.set(0, w * 0.02, -0.005); g.add(base); geos.push(base.geometry);
-    g.position.set(x, y, z); group.add(g); return g;
+    const silhouette = [[-.52,-.07],[-.34,.00],[-.40,.027],[-.14,.10],[-.19,.11],
+      [.06,.155],[.25,.122],[.47,.153],[.30,.064],[.52,.089],[.31,.012],[.03,-.028],[-.15,-.022]];
+    const shadow = [[-.52,-.07],[-.25,.00],[-.10,-.017],[.12,.04],[.38,.075],
+      [.31,.012],[.03,-.028],[-.15,-.022]];
+    graphic(silhouette.map(p => p.map(v => w*v)), flat(light), x,y,z);
+    graphic(shadow.map(p => p.map(v => w*v)), flat(shade), x,y,z + 0.02);
   };
   // textura de texto (rótulos, números del suelo) con las fuentes de la interfaz
   const textTex = (txt, { font = '600 64px "Zalando Sans Expanded", sans-serif', color = '#ECEEF4', w = 512, h = 128, bg = null, align = 'center' } = {}) => {
@@ -89,8 +119,13 @@ function kit(T, quality) {
     g.font = font; g.fillStyle = color; g.textAlign = align; g.textBaseline = 'middle'; g.fillText(txt, align === 'center' ? w / 2 : 8, h / 2);
     const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return t;
   };
-  const dispose = () => { for (const g of geos) g.dispose(); for (const m of mats) { m.map?.dispose(); m.dispose(); } for (const r of ramps.values()) r.dispose(); };
-  return { T, quality, group, toon, flat, inkHull, inkW, add, box, sky, cloud, textTex, keep, geos, dispose, ramp };
+  const dispose = () => {
+    group.traverse(mesh => { if (mesh.isInstancedMesh) mesh.dispose(); });
+    for (const g of new Set(geos)) g.dispose();
+    for (const m of mats) { m.map?.dispose(); m.dispose(); }
+    for (const r of ramps.values()) r.dispose();
+  };
+  return { T, quality, group, toon, flat, inkHull, inkW, add, box, graphic, floorGraphic, octPanel, floorTiles, sky, cloud, textTex, keep, geos, dispose, ramp };
 }
 const rnd = s => () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
 
@@ -99,64 +134,54 @@ const rnd = s => () => { s = (s * 16807) % 2147483647; return (s - 1) / 21474836
 //     emblema octogonal, focos de techo y blancos holográficos.
 // =====================================================================
 function sala(K) {
-  const { T, group, toon, flat, box, add, textTex } = K;
-  const bg = new T.Color('#16132A');
-  // suelo de paneles (dos tonos alternos) + juntas + marcas de distancia cada metro
-  const floorA = toon('#25223F'), floorB = toon('#1E1B36');
-  for (let i = -9; i < 9; i++) for (let j = 0; j < 6; j++) {
-    const m = new T.Mesh(new T.BoxGeometry(0.98, 0.04, 1.48), (i + j) % 2 ? floorA : floorB); m.position.set(i + 0.5, -0.02, 1.5 - j * 1.5); add(m);
+  const { T, group, toon, flat, box, add, textTex, graphic, octPanel, floorTiles, floorGraphic } = K;
+  floorTiles(18, 7, 1.15, 1.18, ['#302B48', '#2B2741'], 1.8);
+  const orange = flat('#FF7A1A'), cyan = flat('#20E3E3'), ink = flat('#140F1C');
+  const floorLight = flat('#403A5B');
+  for (const side of [-1, 1]) {
+    const lit = [[0,0],[side*3.1,0],[side*3.1,1.5],[side*1.55,1.5]];
+    floorGraphic(lit, floorLight, side*1.85, .003, -3.3);
   }
-  const lines = []; for (let x = -9; x <= 9; x += 1) lines.push(new T.Vector3(x, 0.002, 2.25), new T.Vector3(x, 0.002, -6));
-  for (let z = 2.25; z >= -6; z -= 1.5) lines.push(new T.Vector3(-9, 0.002, z), new T.Vector3(9, 0.002, z));
-  const lg = new T.BufferGeometry().setFromPoints(lines); K.geos.push(lg);
-  group.add(new T.LineSegments(lg, K.keep(new T.LineBasicMaterial({ color: '#140f1c' }))));
-  // carril central de combate con marcas naranjas y números
-  const lane = new T.Mesh(new T.PlaneGeometry(8.4, 0.05), flat('#FF7A1A')); lane.rotation.x = -Math.PI / 2; lane.position.set(0, 0.004, 0.75); add(lane);
-  for (let x = -4; x <= 4; x++) {
-    const tick = new T.Mesh(new T.PlaneGeometry(0.04, x % 2 ? 0.18 : 0.34), flat(x ? '#FF7A1A' : '#20E3E3')); tick.rotation.x = -Math.PI / 2; tick.position.set(x, 0.005, 0.75); add(tick);
-    if (x % 2 === 0) { const n = new T.Mesh(new T.PlaneGeometry(0.42, 0.11), K.keep(new T.MeshBasicMaterial({ map: textTex(String(Math.abs(x)), { color: '#A9ACC2' }), transparent: true })));
-      n.rotation.x = -Math.PI / 2; n.position.set(x, 0.006, 1.02); add(n); }
+  box(16.7,.004,.028,orange,0,.004,.76,false);
+  for (let x = -8; x <= 8; x++) {
+    const depth = x % 2 ? .10 : .23;
+    box(.027,.004,depth,x ? orange : cyan,x,.005,.76,false);
   }
-  // emblema octogonal en el suelo (la Ó del logo)
-  const oct = new T.Mesh(new T.RingGeometry(0.62, 0.7, 8, 1, Math.PI / 8), flat('#FF7A1A', { transparent: true, opacity: 0.55 })); oct.rotation.x = -Math.PI / 2; oct.position.set(0, 0.006, -1.4); add(oct);
-  // pared del fondo: paneles altos con chaflán + franjas de luz
-  const wallM = toon('#221E3F'), wallD = toon('#1A1732'), trim = toon('#34305A');
-  for (let i = -11; i <= 11; i++) {
-    const h = 5.2, w = 1.9;
-    const p = new T.Mesh(new T.BoxGeometry(w - 0.06, h, 0.3), i % 2 ? wallM : wallD); p.position.set(i * w, h / 2, -6.2); add(p, true);
-    const strip = new T.Mesh(new T.BoxGeometry(0.05, 1.5, 0.05), flat(i % 3 === 0 ? '#20E3E3' : '#FF7A1A')); strip.position.set(i * w - w * 0.32, 1.25, -6.02); add(strip, true);
-    const vent = new T.Mesh(new T.BoxGeometry(w * 0.5, 0.36, 0.04), toon('#2E2954')); vent.position.set(i * w + 0.25, 0.75, -6.02); add(vent, true);
+  const deckRing = new T.Mesh(new T.RingGeometry(.63,.67,8,1,Math.PI/8),orange);
+  deckRing.rotation.x = -Math.PI/2; deckRing.scale.y = .73; deckRing.position.set(0,.007,-1.05); add(deckRing);
+
+  box(46,6,.28,toon('#2E284B'),0,3,-6.25,false);
+  box(46,.46,.4,toon('#1B1931'),0,.25,-5.98,true);
+  box(46,.055,.16,orange,0,.81,-5.61);
+  const frame = flat('#3B3657'), face = flat('#25223E'), dark = flat('#1B192E'), edge = flat('#494365');
+  for (const x of [-11.5,-6.9,-3.4,3.4,6.9,11.5]) {
+    octPanel(3.16,2.15,.47,ink,x,1.98,-5.99);
+    octPanel(3.08,2.08,.45,frame,x,1.98,-5.96);
+    octPanel(2.74,1.75,.40,dark,x,1.98,-5.92);
+    graphic([[-1.28,.36],[-.91,.86],[.78,.86],[-.47,-.88],[-1.28,-.51]],face,x,1.98,-5.90);
+    graphic([[-1.55,.59],[-1.1,1.03],[-.21,1.03],[-1.42,.19]],edge,x,1.98,-5.89);
+    octPanel(1.42,.29,.09,frame,x,.45,-5.74);
+    box(1.7,.07,.22,toon('#5E5878'),x,3.4,-5.61);
+    box(1.42,.032,.041,flat('#C9EDF6'),x,3.36,-5.48,false);
+    const beam = flat('#657BA5', { transparent: true, opacity: .17, depthWrite: false });
+    graphic([[-.69,0],[.69,0],[1.20,-1.49],[-1.35,-1.49]],beam,x,3.35,-5.82);
   }
-  box(44, 0.18, 0.5, trim, 0, 0.09, -5.95, true);                 // zócalo
-  box(44, 0.16, 0.5, trim, 0, 1.55, -5.95, true);                   // franja media
-  // emblema de la pared: NEÓN en Megrim sobre placa octogonal
-  const plate = new T.Mesh(new T.CircleGeometry(1.15, 8, Math.PI / 8), toon('#2A2650')); plate.position.set(0, 2.75, -6.02); add(plate, true);
-  const ring = new T.Mesh(new T.RingGeometry(1.15, 1.24, 8, 1, Math.PI / 8), flat('#FF7A1A')); ring.position.set(0, 2.75, -6.01); add(ring);
-  const logo = new T.Mesh(new T.PlaneGeometry(2.0, 0.5), K.keep(new T.MeshBasicMaterial({ transparent: true, map: textTex('NEÓN', { font: '400 92px Megrim, sans-serif', w: 512, h: 128 }) })));
-  logo.position.set(0, 2.75, -6.0); add(logo);
-  // ventanal superior con cielo nocturno
-  const glass = new T.Mesh(new T.PlaneGeometry(44, 1.4), flat('#2E2560')); glass.position.set(0, 4.6, -6.1); add(glass, true);
-  for (let i = -11; i <= 11; i++) box(0.12, 1.4, 0.12, trim, i * 1.9, 4.6, -6.0, true);
-  // focos de techo
-  for (let x = -6; x <= 6; x += 3) {
-    box(1.4, 0.08, 0.3, toon('#34305A'), x, 5.6, -3.5, true);
-    const l = new T.Mesh(new T.PlaneGeometry(1.2, 0.05), flat('#FFF1DC')); l.position.set(x, 5.55, -3.34); add(l);
+  octPanel(2.4,1.65,.44,ink,0,2.25,-5.94);
+  octPanel(2.21,1.49,.41,face,0,2.25,-5.92);
+  const emblem = new T.Mesh(new T.RingGeometry(.81,.86,8,1,Math.PI/8),flat('#A3512D'));
+  emblem.scale.x=1.47; emblem.position.set(0,2.25,-5.89); add(emblem);
+  const logo = new T.Mesh(new T.PlaneGeometry(1.12,.29), K.keep(new T.MeshBasicMaterial({
+    transparent: true, map: textTex('NEÓN', { font: '400 92px Megrim, sans-serif', color:'#80758D' }),
+  })));
+  logo.position.set(0,2.25,-5.87); add(logo);
+  const targets = [];
+  for (const x of [-6.9,-3.4,3.4,6.9]) {
+    const target = new T.Mesh(new T.RingGeometry(.28,.31,8,1,Math.PI/8),cyan);
+    target.position.set(x,1.99,-5.87); add(target); targets.push(target);
   }
-  // pilares laterales que marcan el límite del escenario, con franjas de peligro
-  const stripeTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d');
-    g.fillStyle = '#1A1732'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#FFC21A'; for (let k = -64; k < 128; k += 24) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k + 12, 0); g.lineTo(k + 12 - 64, 64); g.lineTo(k - 64, 64); g.fill(); }
-    const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(1, 6); t.colorSpace = T.SRGBColorSpace; return t; })();
-  for (const s of [-1, 1]) {
-    const col = new T.Mesh(new T.BoxGeometry(0.42, 4.6, 0.42), K.keep(new T.MeshToonMaterial({ map: stripeTex, gradientMap: K.ramp('#5c5c6e', '#a7a7b4', '#ffffff') })));
-    col.position.set(s * 6.4, 2.3, -3.6); add(col, true);
-    const cap = new T.Mesh(new T.BoxGeometry(0.5, 0.12, 0.5), flat('#FF7A1A')); cap.position.set(s * 6.4, 4.66, -3.6); add(cap, true);
-  }
-  // blancos holográficos (anillos cian que rotan despacio)
-  const holo = [];
-  for (const [x, y] of [[-4.6, 1.6], [4.8, 1.9], [-2.4, 2.8], [2.8, 2.6]]) {
-    const r = new T.Mesh(new T.RingGeometry(0.22, 0.27, 8, 1, Math.PI / 8), flat('#20E3E3', { transparent: true, opacity: 0.7, side: T.DoubleSide })); r.position.set(x, y, -5.6); add(r); holo.push(r);
-  }
-  return { group, background: bg, fog: null, update(t) { holo.forEach((h, i) => { h.rotation.z = t * 0.3 * (i % 2 ? 1 : -1); h.material.opacity = 0.5 + 0.25 * Math.sin(t * 2 + i); }); }, dispose: K.dispose };
+  return { group, background: new T.Color('#16132A'), fog: null, update(t) {
+    targets.forEach((target,i) => { target.rotation.z = Math.sin(t*.63+i)*.12; });
+  }, dispose: K.dispose };
 }
 
 // =====================================================================
@@ -166,11 +191,11 @@ function sala(K) {
 function azotea(K) {
   const { T, group, toon, flat, box, add, sky, cloud } = K;
   sky(['#5A3A78', '#2E2558', '#120F26'], 7);
-  const sun = new T.Mesh(new T.PlaneGeometry(90, 2.2), flat('#7A3E78')); sun.position.set(0, 0.6, -25.5); add(sun);
+  const horizon = new T.Mesh(new T.PlaneGeometry(90, 1.1), flat('#58375D')); horizon.position.set(0, 0.6, -25.5); add(horizon);
   // luna con halo en anillos (sin degradado: dos círculos planos)
-  const moon = new T.Mesh(new T.CircleGeometry(1.5, 32), flat('#F2E6D8')); moon.position.set(-3.5, 4.2, -25); add(moon);
-  const halo = new T.Mesh(new T.CircleGeometry(2.3, 32), flat('#4A3E86')); halo.position.set(-3.5, 4.2, -25.1); add(halo);
-  cloud(-1, 4.6, -24, 9, '#4A3A80', '#3A2F6A'); cloud(11, 6.2, -24, 11, '#4A3A80', '#3A2F6A'); cloud(-13, 3.4, -23, 8, '#3D3272', '#30285E');
+  const moon = new T.Mesh(new T.CircleGeometry(1.5, 32), flat('#F2E6D8')); moon.position.set(-4.9, 3.7, -25); add(moon);
+  const halo = new T.Mesh(new T.CircleGeometry(1.66, 32), flat('#5C4795')); halo.position.set(-4.9, 3.7, -25.1); add(halo);
+  cloud(-3.3, 3.14, -24, 13, '#604B8B', '#4A3A75'); cloud(7.4, 4.4, -24, 15, '#54417D', '#46356F'); cloud(-14, 2.75, -23, 12, '#4A397B', '#3D3066');
   // ciudad en tres capas (lejana más fría y clara, cercana más oscura), ventanas encendidas
   const R = rnd(7);
   const layer = (z, n, hMin, hMax, col, winCol, neon) => {
@@ -186,39 +211,51 @@ function azotea(K) {
     }
     group.add(bld);
     // contorno de los edificios: segundo InstancedMesh negro, cada caja un poco mayor (visto por dentro)
-    const t = K.inkW(z), bo = new T.InstancedMesh(geo, K.inkHull, n), mm = new T.Matrix4(), pp = new T.Vector3(), qq = new T.Quaternion(), ss = new T.Vector3();
+    const t = K.inkW(z) * .55, bo = new T.InstancedMesh(geo, K.inkHull, n), mm = new T.Matrix4(), pp = new T.Vector3(), qq = new T.Quaternion(), ss = new T.Vector3();
     for (let i = 0; i < n; i++) { bld.getMatrixAt(i, mm); mm.decompose(pp, qq, ss); ss.x += 2 * t; ss.y += 2 * t; ss.z += 2 * t; bo.setMatrixAt(i, mm.compose(pp, qq, ss)); }
-    bo.userData.outline = true; bo.visible = K.quality > 0; group.add(bo);
+    if (z > -19) { bo.userData.outline = true; bo.visible = K.quality > 0; group.add(bo); } else bo.dispose();
     const wg = new T.PlaneGeometry(0.16, 0.12); K.geos.push(wg);
     const wi = new T.InstancedMesh(wg, flat(winCol), wins.length);
     wins.forEach((p, i) => { m.makeTranslation(...p); wi.setMatrixAt(i, m); }); group.add(wi);
   };
-  layer(-21, 34, 1.5, 5, '#3A2F66', '#8070C0', false);
-  layer(-16, 30, 0.8, 3.2, '#251F4A', '#C27A4E', true);
-  layer(-11, 26, 0.3, 1.8, '#17132F', '#FF9A4A', true);
-  // suelo de la azotea: losas en dos tonos + bordillo
-  const slabA = toon('#3A3352'), slabB = toon('#332D4A');
-  for (let i = -10; i < 10; i++) for (let j = 0; j < 5; j++) box(1.46, 0.06, 1.46, (i + j) % 2 ? slabA : slabB, i * 1.5 + 0.75, -0.03, 1.4 - j * 1.5, true);
-  box(32, 0.5, 0.35, toon('#2A2442'), 0, 0.25, -5.4, true);
+  layer(-21, 34, 1.5, 6.3, '#514274', '#77689C', false);
+  layer(-16, 30, 0.8, 4.3, '#352954', '#B27564', true);
+  layer(-11, 26, 0.5, 2.75, '#221C3B', '#E6A267', true);
+  K.floorTiles(20, 6, 1.5, 1.46, ['#454057', '#3B3652'], 1.4);
+  const roofLight = flat('#4C455F');
+  for (const x of [-5.6,-2.8,.3,3.55,6.9]) {
+    K.floorGraphic([[0,0],[2,0],[1.72,.22],[.28,.22]], roofLight, x,.004,-1.4);
+  }
+  box(32, 0.5, 0.35, toon('#312B48'), 0, 0.25, -5.4, true);
+  box(32, .055, .36, toon('#655B7A'), 0, .53, -5.4, true);
   // barandilla: postes y dos travesaños
   const rail = toon('#4A4168');
   box(32, 0.08, 0.08, rail, 0, 1.25, -5.3, true); box(32, 0.06, 0.06, rail, 0, 0.85, -5.3, true);
-  for (let x = -15; x <= 15; x += 1.25) box(0.07, 0.8, 0.07, rail, x, 0.9, -5.3, true);
+  for (let x = -14; x <= 14; x += 1.75) {
+    box(.075,.8,.08,rail,x,.9,-5.3,true);
+    box(.19,.20,.1,rail,x,.57,-5.27,true);
+  }
   // depósito de agua sobre patas, máquinas de aire y antena
   const tankM = toon('#5B4E7E');
-  const tank = new T.Mesh(new T.CylinderGeometry(0.9, 0.9, 1.5, 12), tankM); tank.position.set(-6.4, 2.9, -4.2); add(tank, true);
-  const roof = new T.Mesh(new T.ConeGeometry(1, 0.5, 12), toon('#433A63')); roof.position.set(-6.4, 3.9, -4.2); add(roof, true);
-  for (const [dx, dz] of [[-0.6, -0.4], [0.6, -0.4], [-0.6, 0.4], [0.6, 0.4]]) box(0.08, 2.1, 0.08, rail, -6.4 + dx, 1.05, -4.2 + dz, true);
+  const tank = new T.Mesh(new T.CylinderGeometry(0.9, 0.9, 1.5, 12), tankM); tank.position.set(-4.9, 2.55, -4.5); add(tank, true);
+  const roof = new T.Mesh(new T.ConeGeometry(1, 0.5, 12), toon('#433A63')); roof.position.set(-4.9, 3.55, -4.5); add(roof, true);
+  for (const [dx, dz] of [[-0.6, -0.4], [0.6, -0.4], [-0.6, 0.4], [0.6, 0.4]]) box(0.08, 2.1, 0.08, rail, -4.9 + dx, .93, -4.5 + dz, true);
+  const tankRing = toon('#76698A');
+  for (const y of [2.1,2.8]) {
+    const band = new T.Mesh(new T.CylinderGeometry(.93,.93,.065,12),tankRing);
+    band.position.set(-4.9,y,-4.5); add(band,true);
+  }
   const acM = toon('#6A6288');
-  for (const [x, z] of [[5.2, -4.2], [6.6, -3.8]]) { box(1.1, 0.8, 0.8, acM, x, 0.4, z, true); const fan = new T.Mesh(new T.CircleGeometry(0.26, 12), flat('#241F3E')); fan.position.set(x, 0.42, z + 0.41); add(fan, true); }
+  for (const [x, z] of [[4.1, -4.35], [5.45, -3.8]]) { box(1.1, 0.8, 0.8, acM, x, 0.4, z, true); const fan = new T.Mesh(new T.CircleGeometry(0.26, 12), flat('#241F3E')); fan.position.set(x, 0.42, z + 0.41); add(fan, true); }
   box(0.06, 3.6, 0.06, rail, 8.2, 1.8, -4.8, true);
   const blink = new T.Mesh(new T.SphereGeometry(0.07, 8, 6), flat('#FF3355')); blink.position.set(8.2, 3.65, -4.8); add(blink, true);
   // cometas: detrás de todo, de arriba-izquierda a abajo-derecha, naranja y carmesí, escalonados
   const N = K.quality > 0 ? 7 : 4, comets = [];
   for (let i = 0; i < N; i++) {
     const g = new T.Group(), col = i % 2 ? '#FF3355' : '#FF7A1A';
-    const tail = new T.Mesh(new T.PlaneGeometry(3.2, 0.06), K.keep(new T.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85 })));
-    tail.position.x = -1.6; g.add(tail); K.geos.push(tail.geometry);
+    const m = K.keep(new T.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85 }));
+    const tail = K.graphic([[-3.7,0],[-.24,-.064],[.06,0],[-.26,.061]],m,0,0,0);
+    g.add(tail);
     const head = new T.Mesh(new T.CircleGeometry(0.09, 10), flat('#FFF1DC')); g.add(head); K.geos.push(head.geometry);
     g.rotation.z = -0.62; g.userData = { t0: i * 6 / N, life: 1.3, x0: -13 + (i * 7) % 22, y0: 9.5 }; g.position.z = -22; group.add(g); comets.push(g);
   }
@@ -235,60 +272,178 @@ function azotea(K) {
 //     carteles de colores, lluvia en trazos, charcos que reflejan las luces.
 // =====================================================================
 function mercado(K) {
-  const { T, group, toon, flat, box, add, sky, cloud } = K;
-  sky(['#1E3A4A', '#142838', '#0A141E'], 6);
-  cloud(-6, 6.4, -24, 14, '#24485A', '#1A3646'); cloud(9, 7.4, -24, 16, '#24485A', '#1A3646');
+  const { T, group, toon, flat, box, add, sky, cloud, graphic, floorGraphic, floorTiles } = K;
+  sky(['#2B596A', '#213C50', '#112333'], 6);
+  cloud(-6, 4.6, -24, 14, '#315266', '#294659');
+  cloud(9, 5.7, -24, 16, '#2D4D61', '#253E52');
   const R = rnd(21);
-  // fachadas del fondo con carteles verticales de luz
-  const facade = ['#20303E', '#1A2834', '#25343F'];
+  const building = [flat('#204050'), flat('#27495A'), flat('#1D3848')];
+  const roof = flat('#172F3F'), glass = flat('#3F6171'), amberGlass = flat('#A3704D');
   for (let i = -8; i <= 8; i++) {
-    const w = 2.2 + R() * 0.8, h = 6 + R() * 4, x = i * 2.6;
-    box(w, h, 1, toon(facade[(i + 9) % 3]), x, h / 2, -10, true);
-    for (let k = 0; k < 3; k++) if (R() < 0.7) { const win = new T.Mesh(new T.PlaneGeometry(0.5, 0.7), flat(R() < 0.5 ? '#FFC98A' : '#2E4E62')); win.position.set(x - 0.6 + k * 0.6, 2.4 + R() * 2.6, -9.49); add(win, true); }
-    if (R() < 0.55) { const sign = new T.Mesh(new T.PlaneGeometry(0.42, 1.8), flat(['#FF3355', '#20E3E3', '#FF7A1A', '#FFC21A'][i & 3])); sign.position.set(x + w * 0.42, 2.0 + R() * 1.6, -9.2); add(sign, true); }
+    const w = 2.75 + R() * .7, h = 3.6 + R() * 2.3, x = i * 3.32;
+    const z = i % 2 ? -11.3 : -13.6;
+    box(w,h,1,building[(i+9)%3],x,h/2,z,false);
+    graphic([[-w*.58,0],[w*.58,0],[w*.34,.47],[-w*.18,.47]],roof,x,h-.09,z+.52);
+    if (i % 3) {
+      for (const dx of [-.68,0,.68]) {
+        box(.36,.58,.03,R()<.32?amberGlass:glass,x+dx,h-.99,z+.51,false);
+      }
+    }
   }
-  // puestos con toldo a rayas (rojo/crema y cian/crema), mostrador y cajas
-  const stripes = (a, b) => { const c = document.createElement('canvas'); c.width = 64; c.height = 8; const g = c.getContext('2d');
-    for (let k = 0; k < 8; k++) { g.fillStyle = k % 2 ? a : b; g.fillRect(k * 8, 0, 8, 8); }
-    const t = new T.CanvasTexture(c); t.wrapS = T.RepeatWrapping; t.repeat.set(3, 1); t.magFilter = T.NearestFilter; t.colorSpace = T.SRGBColorSpace; return t; };
-  const stall = (x, z, a) => {
-    const counter = toon('#4A3A34'), post = toon('#2C2430');
-    box(2.4, 0.9, 0.7, counter, x, 0.45, z, true);
-    for (const dx of [-1.15, 1.15]) box(0.08, 2.3, 0.08, post, x + dx, 1.15, z - 0.3, true);
-    const aw = new T.Mesh(new T.BoxGeometry(2.7, 0.06, 1.1), K.keep(new T.MeshToonMaterial({ map: stripes(a, '#F2E6D8'), gradientMap: K.ramp('#5c5c6e', '#a7a7b4', '#ffffff') })));
-    aw.position.set(x, 2.35, z + 0.15); aw.rotation.x = 0.28; add(aw, true);
-    for (let k = 0; k < 3; k++) box(0.42, 0.32, 0.36, toon('#7A5A44'), x - 0.7 + k * 0.7, 1.06, z, true);
-  };
-  stall(-6.0, -6.0, '#FF3355'); stall(-2.2, -6.6, '#20E3E3'); stall(2.0, -6.2, '#FF7A1A'); stall(6.0, -5.9, '#FF3355');
-  // cables con farolillos (resplandor como disco plano detrás)
-  const lanterns = [];
-  for (let i = -7; i <= 7; i++) {
-    const x = i * 0.95, y = 3.3 - Math.cos(i / 7 * 1.2) * 0.35;
-    const l = new T.Mesh(new T.SphereGeometry(0.13, 10, 8), flat(i % 2 ? '#FF7A1A' : '#FF3355')); l.position.set(x, y, -4.4); add(l, true);
-    const gl = new T.Mesh(new T.CircleGeometry(0.32, 16), K.keep(new T.MeshBasicMaterial({ color: i % 2 ? '#FF7A1A' : '#FF3355', transparent: true, opacity: 0.22 }))); gl.position.set(x, y, -4.55); add(gl); lanterns.push(gl);
+  box(48,1.27,.35,toon('#173241'),0,.64,-9.18,false);
+  box(48,.095,.44,toon('#2F4C5B'),0,1.28,-9.11,false);
+  const signColors = ['#89524E','#4B8083','#A26937'];
+  for (const [i,x] of [-11,-6.9,-4.1,4.85,8.4,11.5].entries()) {
+    box(.19,.9 + R()*.54,.05,flat(signColors[i%3]),x,2.52,-8.43,false);
   }
-  const cable = new T.Mesh(new T.BoxGeometry(14, 0.03, 0.03), flat('#140f1c')); cable.position.set(0, 3.45, -4.4); add(cable);
-  // suelo de adoquines en dos tonos + charcos (franjas de luz reflejada que tiemblan)
-  const cobA = toon('#2A3440'), cobB = toon('#232C37');
-  for (let i = -12; i < 12; i++) for (let j = 0; j < 12; j++) box(0.78, 0.05, 0.6, (i + j * 3) % 2 ? cobA : cobB, i * 0.8 + 0.4 + (j % 2) * 0.4, -0.025, 1.5 - j * 0.62, false);
-  const puddles = [];
-  for (const [x, z, c] of [[-3.6, 0.6, '#FF3355'], [1.2, 1.3, '#20E3E3'], [4.6, 0.4, '#FF7A1A'], [-0.8, -0.8, '#FFC21A']]) {
-    const p = new T.Mesh(new T.CircleGeometry(0.7, 20), flat('#3C4C5C')); p.scale.y = 0.35; p.rotation.x = -Math.PI / 2; p.position.set(x, 0.004, z); add(p, true);
-    const r = new T.Mesh(new T.PlaneGeometry(0.1, 0.9), K.keep(new T.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.55 }))); r.rotation.x = -Math.PI / 2; r.position.set(x + 0.1, 0.006, z); add(r); puddles.push(r);
+
+  const wood = toon('#69402E'), post = toon('#46303A'), trim = toon('#AA6540');
+  const wedge = flat('#3D2F3B'), crateBoard = flat('#54352A');
+  const fruitGeo = new T.IcosahedronGeometry(.10,0);
+  K.geos.push(fruitGeo);
+  const fruit = new T.InstancedMesh(fruitGeo,toon('#FFFFFF'),126);
+  fruit.count = 0;
+  group.add(fruit);
+  const fm = new T.Matrix4(), fq = new T.Quaternion(), fp = new T.Vector3(), fs = new T.Vector3();
+  const up = new T.Vector3(0, 1, 0);
+  const paint = ['#FF9338','#A8BD54','#E35458'].map(c => new T.Color(c));
+  function crate(x,y,z,fill) {
+    box(.60,.22,.48,wood,x,y,z,true);
+    box(.62,.065,.51,trim,x,y+.094,z,true);
+    box(.50,.035,.015,crateBoard,x,y-.034,z+.248,false);
+    if (fill === undefined) return;
+    for (let i=0;i<7;i++) {
+      fp.set(x+(i%3-1)*.155+(R()-.5)*.04,y+.17+(i===6?.09:0),z+(Math.floor(i/3)-1)*.12);
+      fq.setFromAxisAngle(up,R()*6);
+      fs.set(.85+R()*.45,.78+R()*.23,.82+R()*.34);
+      fruit.setColorAt(fruit.count,paint[fill]);
+      fruit.setMatrixAt(fruit.count++,fm.compose(fp,fq,fs));
+    }
   }
-  // lluvia: trazos instanciados que caen en diagonal
-  const N = K.quality === 0 ? 120 : K.quality === 1 ? 220 : 360;
-  const rg = new T.PlaneGeometry(0.012, 0.42); K.geos.push(rg);
-  const rain = new T.InstancedMesh(rg, K.keep(new T.MeshBasicMaterial({ color: '#9FC3D8', transparent: true, opacity: 0.45 })), N);
-  const drops = Array.from({ length: N }, () => ({ x: (R() - 0.5) * 22, y: R() * 7, z: -8 + R() * 9, v: 9 + R() * 4 }));
-  const m = new T.Matrix4(), q = new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 0, 1), 0.18), s = new T.Vector3(1, 1, 1), pv = new T.Vector3();
-  group.add(rain);
-  return { group, background: new T.Color('#0A141E'), fog: null,
-    update(t, dt) {
-      for (let i = 0; i < N; i++) { const d = drops[i]; d.y -= d.v * dt; d.x -= d.v * dt * 0.18; if (d.y < 0) { d.y += 7; d.x = (R() - 0.5) * 22; }
-        rain.setMatrixAt(i, m.compose(pv.set(d.x, d.y, d.z), q, s)); }
-      rain.instanceMatrix.needsUpdate = true;
-      puddles.forEach((p, i) => { p.scale.x = 1 + 0.4 * Math.sin(t * 7 + i * 2); });
-      lanterns.forEach((l, i) => { l.material.opacity = 0.18 + 0.06 * Math.sin(t * 3 + i); });
-    }, dispose: K.dispose };
+  function stall(x,z,width,accent) {
+    const canopy = toon(accent), canvas = toon('#F0CC9F');
+    box(width,.72,.78,wood,x,.36,z,true);
+    box(width+.10,.09,.86,trim,x,.747,z,true);
+    graphic([[-width/2,-.30],[width*.14,-.30],[-width*.19,.27],[-width/2,.30]],wedge,x,.37,z+.397);
+    for (const side of [-1,1]) {
+      box(.09,2.25,.14,post,x+side*(width/2-.10),1.125,z+.15,true);
+      box(.16,.16,.17,trim,x+side*(width/2-.10),2.15,z+.18,true);
+    }
+    const stripes = 7, size = (width+.22)/stripes;
+    for (let i=0;i<stripes;i++) {
+      const xx = x - (width+.22-size)/2 + i*size;
+      const cloth = box(size,.052,1.28,i%2?canvas:canopy,xx,2.37,z-.02,false);
+      cloth.rotation.x = .38;
+      box(size,.125,.04,i%2?canvas:canopy,xx,2.087,z+.57,false);
+    }
+    for (const side of [-1,1]) {
+      const edge = box(.025,.058,1.29,post,x+side*(width+.22)/2,2.37,z-.02);
+      edge.rotation.x=.38;
+    }
+    for (let i=0;i<3;i++) crate(x+(i-1)*width*.29,.895,z+.05,i);
+  }
+  stall(-9,-6.8,2.62,'#AE4848');
+  stall(-3.47,-5.8,2.87,'#138485');
+  stall(3.76,-5.75,2.92,'#B74051');
+  stall(9.5,-6.9,2.66,'#158787');
+  crate(-5.38,.11,-5.38,1);
+  crate(-5.43,.34,-5.41);
+  crate(5.64,.11,-5.32,0);
+
+  const lanternShape = new T.CylinderGeometry(.18,.15,.31,6);
+  const caps = toon('#472D3A');
+  const lanterns = [toon('#FFC05C','#6B2B0C'),toon('#E4575C','#441423')];
+  const wire = new T.LineBasicMaterial({color:'#241D2D'});
+  K.keep(wire);
+  const cableY = x => 2.64 + .055 * x * x;
+  for (const sign of [-1,1]) {
+    const points = [];
+    for (let i=0;i<=8;i++) {
+      const x = sign*(.3+i*.95);
+      points.push(new T.Vector3(x,cableY(Math.min(Math.abs(x),5)), -5.12));
+    }
+    const wireGeo = new T.BufferGeometry().setFromPoints(points);
+    K.geos.push(wireGeo);
+    group.add(new T.Line(wireGeo,wire));
+    for (let i=1;i<=5;i++) {
+      const x = sign*(.6+i*1.33), y = cableY(Math.min(Math.abs(x),5))-.19;
+      const lamp = new T.Mesh(lanternShape, lanterns[(i + (sign>0?1:0))%2]);
+      lamp.position.set(x,y,-5.08);
+      add(lamp,true);
+      box(.18,.042,.17,caps,x,y+.155,-5.08,true);
+      box(.15,.037,.15,caps,x,y-.155,-5.08,true);
+    }
+  }
+
+  floorTiles(25, 15, .80, .58, ['#263C48','#293F4D','#2C4250','#243845'], 1.5, true);
+  const wet = flat('#283E50'), ripples = [];
+  const highlights = ['#AB693A','#306E76'].map(c => flat(c,{transparent:true,opacity:.66,depthWrite:false}));
+  for (const [i,[x,z]] of [[-5.15,-2.63],[-3.16,-1.58],[3.54,-1.83],[5.36,-2.53]].entries()) {
+    floorGraphic([[-.89,0],[-.58,.22],[.55,.33],[.91,.10],[.73,-.16],[-.62,-.20]],wet,x,.004,z);
+    const copy = highlights[i%2];
+    for (let j=0;j<3;j++) {
+      const dash = floorGraphic([[-.57,0],[.56,0],[.39,.052],[-.52,.07]],copy,x+(R()-.5)*.5,.008,z+j*.10-.12);
+      dash.userData.width=.45+R()*.8;
+      ripples.push(dash);
+    }
+  }
+  const circles = [];
+  const circleGeo = new T.RingGeometry(.83,1,12);
+  const ripMat = flat('#AAD0D8',{transparent:true,opacity:.48,depthWrite:false});
+  for (let i=0;i<12;i++) {
+    const mesh = new T.Mesh(circleGeo, ripMat);
+    mesh.rotation.x=-Math.PI/2;
+    mesh.position.set((i%2?1:-1)*(2.28+R()*3.5),.011,-1.12-R()*2.08);
+    mesh.userData.phase=R();
+    circles.push(add(mesh));
+  }
+
+  // Dos capas de trazos y salpicaduras sin simulación ni mapas de reflejo.
+  const m = new T.Matrix4(), p = new T.Vector3(), size = new T.Vector3();
+  const tilt = new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),.19);
+  const stroke = new T.PlaneGeometry(.018,.37);
+  K.geos.push(stroke);
+  const rain = [false,true].map(near => {
+    const max = near?104:144;
+    const mesh = new T.InstancedMesh(stroke,flat('#A6CCD9',{
+      transparent:true,opacity:near?.42:.30,depthWrite:false,
+    }),max);
+    mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
+    mesh.frustumCulled=false;
+    group.add(mesh);
+    const drops = Array.from({length:max},() => ({
+      x:(R()-.5)*19, y:R()*6.8, z:near ? -.55+R()*2.1 : -8.3+R()*4.8,
+      speed:6.6+R()*3.2, length:.66+R()*.70,
+    }));
+    return {mesh,drops};
+  });
+  function setQuality(quality) {
+    rain[0].mesh.count = [50,102,144][quality];
+    rain[1].mesh.count = [25,66,104][quality];
+    circles.forEach((mesh,i) => {mesh.visible=i < [4,8,12][quality];});
+  }
+  function update(t,dt) {
+    for (const {mesh,drops} of rain) {
+      for (let i=0;i<mesh.count;i++) {
+        const d=drops[i];
+        d.y-=d.speed*dt;
+        d.x+=d.speed*.19*dt;
+        if (d.y<0) {d.y+=6.8; d.x=(R()-.55)*19;}
+        const shorter = Math.abs(d.x)<1.85?.67:1;
+        m.compose(p.set(d.x,d.y,d.z),tilt,size.set(shorter,shorter*d.length,1));
+        mesh.setMatrixAt(i,m);
+      }
+      mesh.instanceMatrix.needsUpdate=true;
+    }
+    circles.forEach(mesh => {
+      const k=(t*1.15+mesh.userData.phase)%1;
+      const r=.015+.19*k;
+      mesh.scale.set(r,r*.66,1);
+      mesh.position.y=.01+Math.sin(k*Math.PI)*.001;
+    });
+    ripples.forEach((mesh,i) => {mesh.scale.x=mesh.userData.width*(.83+.17*Math.sin(t*5+i));});
+  }
+  setQuality(K.quality);
+  update(0,0);
+  return { group, background: new T.Color('#112333'), fog: null, update, setQuality, dispose: K.dispose };
 }

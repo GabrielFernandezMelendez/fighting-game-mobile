@@ -352,6 +352,7 @@ export class Renderer3D {
     this.quality = q; const dpr = devicePixelRatio || 1;
     this.renderer.setPixelRatio(q === 2 ? Math.min(2, dpr) : q === 1 ? Math.min(1.25, dpr) : 0.85);
     this.scene.traverse(o => { if (o.userData.outline) o.visible = q > 0; });
+    this.stage?.setQuality?.(q);
     this.sizeKey = '';
   }
 
