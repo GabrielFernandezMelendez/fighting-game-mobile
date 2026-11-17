@@ -147,7 +147,9 @@ export class Renderer3D {
   setFighters(sels, { practice = false } = {}) {
     for (const r of this.rigs) this.disposeRig(r);
     this.vfx.setPracticeDust(practice);
-    this.rigs = sels.map(x => typeof x === 'string' ? { c: x, w: CHARS[x].weapon } : x).map(x => {
+    const selections = sels.map(x => typeof x === 'string' ? { c: x, w: CHARS[x].weapon } : x);
+    this.practiceSprites = practice && selections.some(x => x.c === 'aura' && x.w !== 'none');
+    this.rigs = selections.map(x => {
       const rig = this.buildFighter(CHARS[x.c], x.w);
       if (practice && x.c === 'aura' && x.w !== 'none') this.addPracticeSprite(rig, x.w);
       return rig;
@@ -394,17 +396,19 @@ export class Renderer3D {
 
   applyQuality(q) {
     this.quality = q; const dpr = devicePixelRatio || 1;
-    this.renderer.setPixelRatio(q === 2 ? Math.min(2, dpr) : q === 1 ? Math.min(1.25, dpr) : 0.85);
+    const normal = this.practiceSprites ? 1.65 : 1.25;
+    this.renderer.setPixelRatio(q === 2 ? Math.min(2, dpr) : q === 1 ? Math.min(normal, dpr) : 0.85);
     this.scene.traverse(o => { if (o.userData.outline) o.visible = q > 0 && !o.userData.hiddenByLook; });
     this.stage?.setQuality?.(q);
     this.sizeKey = '';
   }
 
   // ---------- Fotograma ----------
-  poseRig(rig, F, move) {
+  capturePracticePose(F) { this.rigs[0]?.practiceArt?.capture(F); }
+  poseRig(rig, F, move, fraction) {
     if (rig.practiceArt) {
-      rig.practiceArt.update(F, move);
-      rig.shadow.position.x = F.x;
+      rig.practiceArt.update(F, move, fraction);
+      rig.shadow.position.x = rig.practiceArt.body.position.x - F.face * F.scale * .12;
       rig.shadow.scale.setScalar(F.scale * Math.max(.4, 1 - F.y * .35));
       return;
     }
@@ -457,12 +461,12 @@ export class Renderer3D {
       else if (e.type === 'ko') this.shake = 0.25;
     }
   }
-  render(M, dt, { boxes = false } = {}) {
+  render(M, dt, { boxes = false, fraction = 1 } = {}) {
     const { renderer, scene, camera, host } = this;
     const W = host.clientWidth, H = host.clientHeight, key = `${W}x${H}x${renderer.getPixelRatio()}`;
     if (this.sizeKey !== key) { renderer.setSize(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); this.sizeKey = key; }
     this.stageT = (this.stageT || 0) + dt; this.stage?.update(this.stageT, dt, camera, this.reducedStageMotion);
-    M.fighters.forEach((F, i) => this.poseRig(this.rigs[i], F, getMove(F)));
+    M.fighters.forEach((F, i) => this.poseRig(this.rigs[i], F, getMove(F), fraction));
     scene.updateMatrixWorld();
     M.fighters.forEach((F, i) => {
       const rig = this.rigs[i];
