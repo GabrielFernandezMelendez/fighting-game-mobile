@@ -6,6 +6,7 @@ import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { createAuraDetail } from './aura-detail.js';
 import { installAuraPersonality } from './aura-personality.js';
 import { createAuraSkinned3D } from './aura-skinned3d.js';
+import { ModelFighter, ModelLibrary } from './models.js';
 
 const get = (id) => document.getElementById(id);
 const stage = get('preview-stage');
@@ -21,6 +22,8 @@ const zoomOut = get('preview-zoom-out');
 const fileInput = get('preview-upload');
 const rigButton = get('preview-rig');
 const slashButton = get('preview-slash');
+const gameButton = get('preview-game-model');
+const paletteButton = get('preview-game-palette');
 
 function notice(message, error = false) {
   status.textContent = message;
@@ -111,6 +114,15 @@ scene.add(rigged.root);
 rigged.root.visible = false;
 let dagger = false;
 let showingRig = false;
+let showingGame = false;
+let gameModel = null;
+let useReviewPalette = true;
+let gameTime = 0;
+let attackTime = null;
+const reviewColors = {
+  chaqueta: '#E7C6B3', pantalon: '#957389', grafito: '#3B3141', negro: '#211A28',
+  naranja: '#FF810F', pelo: '#E5D5F3', mascara: '#E5DDE5', piel: '#EDAE97',
+};
 
 // GLB cargado desde public/assets/previews/ o arrastrado por el usuario.
 let imported = null;
@@ -161,19 +173,24 @@ function applyClip() {
   activeAction.paused = !motion;
 }
 function syncControls() {
-  fallback.root.visible = !showingRig && showingFallback;
-  rigged.root.visible = showingRig;
-  if (imported) imported.visible = !showingRig && !showingFallback;
+  if (gameModel) gameModel.root.visible = showingGame;
+  gameButton.textContent = showingGame ? 'Volver a la referencia' : 'Aura del juego';
+  gameButton.setAttribute('aria-pressed', String(showingGame));
+  paletteButton.hidden = !showingGame;
+  paletteButton.textContent = useReviewPalette ? 'Ver colores del juego' : 'Ver paleta de revisión';
+  fallback.root.visible = !showingGame && !showingRig && showingFallback;
+  rigged.root.visible = !showingGame && showingRig;
+  if (imported) imported.visible = !showingGame && !showingRig && !showingFallback;
   fallbackButton.disabled = !imported;
   fallbackButton.textContent = showingFallback || showingRig
     ? (referenceOnly ? 'Ver relieve aprobado' : 'Mostrar modelo GLB')
     : 'Comparar con V3';
   rigButton.textContent = showingRig ? 'Volver al concept 2.5D' : 'Probar 3D con esqueleto';
   rigButton.setAttribute('aria-pressed', String(showingRig));
-  slashButton.disabled = !showingRig;
-  weaponButton.disabled = !(showingFallback || showingRig);
-  poseButton.disabled = !showingRig && !showingFallback && referenceOnly;
-  motionButton.disabled = !showingRig && !showingFallback && referenceOnly;
+  slashButton.disabled = !(showingRig || showingGame);
+  weaponButton.disabled = showingGame || !(showingFallback || showingRig);
+  poseButton.disabled = !showingGame && !showingRig && !showingFallback && referenceOnly;
+  motionButton.disabled = !showingGame && !showingRig && !showingFallback && referenceOnly;
   fallback.weapon.visible = !showingRig && showingFallback && dagger;
   rigged.setDagger(showingRig && dagger);
   rigged.setAction(currentPose);
@@ -185,7 +202,8 @@ function syncControls() {
 function setPose(next) {
   currentPose = next;
   personality.setPose(next);
-  if (!showingFallback) applyClip();
+  if (!showingGame && !showingFallback) applyClip();
+  gameTime = 0;
   syncControls();
 }
 poseButton.addEventListener('click', () => setPose(currentPose === 'guard' ? 'idle' : 'guard'));
@@ -198,6 +216,7 @@ motionButton.addEventListener('click', () => {
 weaponButton.addEventListener('click', () => { dagger = !dagger; syncControls(); });
 fallbackButton.addEventListener('click', () => {
   if (!imported) return;
+  showingGame = false;
   showingRig = false;
   showingFallback = !showingFallback;
   if (!showingFallback) applyClip();
@@ -254,6 +273,7 @@ function preserveReferenceColors(root) {
   });
 }
 rigButton.addEventListener('click', () => {
+  showingGame = false;
   showingRig = !showingRig;
   if(showingRig) showingFallback = false;
   else showingFallback = false; // Return to concept / imported GLB.
@@ -266,11 +286,12 @@ rigButton.addEventListener('click', () => {
     : 'Volviendo al concepto de referencia.');
 });
 slashButton.addEventListener('click', () => {
-  if (!showingRig) return;
-  rigged.triggerSlash();
+  if (showingGame) attackTime = 0;
+  else if (showingRig) rigged.triggerSlash();
 });
 
 function acceptGLTF(gltf, label, {conceptRelief = false} = {}) {
+  if (!conceptRelief) showingGame = false;
   referenceOnly = conceptRelief;
   if (conceptRelief) {
     // The source texture is projected toward +X; flip Z so it reads correctly
@@ -299,6 +320,62 @@ function acceptGLTF(gltf, label, {conceptRelief = false} = {}) {
     ? 'Referencia 2.5D cargada: imagen del concept sobre un relieve superficial. No es el personaje 3D definitivo.'
     : 'GLB 3D cargado. Revisa silueta, rigging y fidelidad al concept desde el lateral.');
 }
+function updateGamePalette() {
+  gameModel.model.traverse(object => {
+    const {neonPalette, neonZones} = object.geometry?.userData || {};
+    const uniform = object.material?.userData.cel?.uPal;
+    if (!neonPalette || !uniform) return;
+    neonPalette.forEach((color, i) => {
+      const replacement = useReviewPalette && reviewColors[neonZones[i]];
+      if (replacement) uniform.value[i].set(replacement);
+      else uniform.value[i].copy(color);
+    });
+  });
+  assetStatus.textContent = useReviewPalette
+    ? 'Aura del juego · paleta de revisión por zonas'
+    : 'Aura del juego · paleta original';
+}
+
+paletteButton.addEventListener('click', () => {
+  useReviewPalette = !useReviewPalette;
+  updateGamePalette();
+  syncControls();
+});
+
+gameButton.addEventListener('click', async () => {
+  if (showingGame) {
+    showingGame = false;
+    assetStatus.textContent = imported ? 'Referencia del taller' : 'Prototipo V3';
+    syncControls();
+    return;
+  }
+  gameButton.disabled = true;
+  try {
+    if (!gameModel) {
+      notice('Cargando la malla y las animaciones de Aura…');
+      const library = new ModelLibrary();
+      await library.preload(['aura']);
+      gameModel = new ModelFighter(library, await library.loadChar('aura'), {
+        model: 'aura', height: 2.76, outline: 0.012, doubleSide: true, cel: true, rimColor: '#FF8A45',
+      });
+      // Este visor mira desde +X. Gira el modelo un poco hacia cámara para leer la máscara.
+      gameModel.turn.rotation.y = 0.24;
+      scene.add(gameModel.root);
+    }
+    showingRig = false;
+    showingGame = true;
+    gameTime = 0;
+    attackTime = null;
+    updateGamePalette();
+    syncControls();
+    notice('Malla de combate de Aura · compara la máscara, la chaqueta y el pantalón.');
+  } catch (error) {
+    notice('No se pudo cargar Aura del juego: ' + error.message, true);
+  } finally {
+    gameButton.disabled = false;
+  }
+});
+
 // File input requires a self-contained GLB (embedded textures).
 fileInput.addEventListener('change', async (event) => {
   const file = event.target.files?.[0];
@@ -393,7 +470,18 @@ loadConfiguredGLB();
 const clock = new THREE.Clock();
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
-  if (showingRig) rigged.update(dt);
+  if (showingGame) {
+    if (motion) gameTime += dt;
+    if (attackTime !== null) {
+      const clip = 'Sword_Regular_A', duration = gameModel.meta[clip].dur;
+      if (motion) attackTime += dt;
+      gameModel.pose(clip, attackTime);
+      if (attackTime >= duration) attackTime = null;
+    } else {
+      const clip = currentPose === 'guard' ? 'Sword_Idle' : 'Idle_Loop';
+      gameModel.pose(clip, gameTime % gameModel.meta[clip].dur);
+    }
+  } else if (showingRig) rigged.update(dt);
   else if (showingFallback) personality.update(dt);
   else if (importedMixer && motion) importedMixer.update(dt);
   renderer.render(scene, camera);

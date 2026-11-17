@@ -147,3 +147,8 @@
 - **Mercado bajo la lluvia**: fachadas con carteles, puestos con toldos a rayas, farolillos, adoquines, charcos que reflejan luz y lluvia instanciada.
 - **Contorno de tinta** (`#140f1c`, el de los personajes) en todos los objetos del escenario, con grosor que crece con la distancia para medir ≈2 px en pantalla; se oculta en calidad baja como el de los personajes.
 - Pantalla **Escenarios** funcional (miniaturas renderizadas del juego); Práctica, CPU y online usan el elegido. En online lo decide quien envía `start` y viaja en ese mensaje. `?stage=<id>` lo fuerza para pruebas.
+
+## 2026-11-17 — Bases de Vega y Kai y paleta de revisión de Aura
+
+- [Bases 3D de Vega y Kai](VEGA_KAI_BASES.md) con archivos editables, materiales planos y el rig de Aura. Prueba con `?roster3d`.
+- El taller carga la malla de combate de Aura y permite alternar los colores originales con una paleta ajustada al concept. La revisión vive en el visor.
