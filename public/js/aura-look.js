@@ -83,17 +83,33 @@ const mask = `
   float d = abs(y) - taper;
   float aa = max(fwidth(d), 0.00035);
   float slit = (1.0 - smoothstep(-aa, aa, d)) * step(0.031, x) * step(x, 0.144) * step(0.045, p.z);
-  cel = mix(cel, uInk, slit * uAuraReview);
+  float bevel = step(0.13, x + 0.24 * (p.y - 2.47));
+  vec3 porcelain = mix(uPal[7], uPal[7] * uShd[7], bevel);
+  cel = mix(cel, mix(porcelain, uInk, slit), uAuraReview);
 `;
 const hair = `
   vec3 p = vAuraRest;
+  float rootShade = step(p.y, 2.51 + 0.10 * p.x - 0.25 * p.z);
+  vec3 lilac = mix(uPal[6], uPal[6] * uShd[6], rootShade);
+  cel = mix(cel, lilac, uAuraReview);
   float fringe = p.y - (2.632 - p.x * 0.36 + abs(p.x) * 0.23);
   float shine = (1.0 - smoothstep(0.009, 0.019, abs(fringe))) * step(0.026, p.z);
   vec3 pearl = mix(uPal[6], vec3(0.92, 0.81, 0.98), 0.64);
-  cel = mix(cel, pearl, shine * lit * uAuraReview);
+  cel = mix(cel, pearl, shine * uAuraReview);
 `;
 const clothing = `
   vec3 p = vAuraRest;
+  // Pliegues grandes dibujados en reposo. El sombreado del escaneo ya no
+  // decide esta frontera en cada triángulo del pantalón.
+  if (uAuraReview > 0.5 && lb == 1.0) {
+    float leg = abs(p.x);
+    float pleat = abs(p.y - (1.23 - 1.36 * leg));
+    float knee = 0.123 + abs(p.y - 0.73) * 0.42;
+    float fold = max(1.0 - step(0.042, pleat), step(leg, knee) * step(0.56, p.y));
+    fold = max(fold, step(p.y, 0.40 + leg * 0.31));
+    float back = step(p.z, -0.03 - 0.21 * leg);
+    cel = mix(uPal[1], uPal[1] * uShd[1], max(fold, back));
+  }
   vec2 q = abs(vec2(p.x + 0.014, p.y - 1.696));
   float inner = step(q.x, 0.038) * step(q.y, 0.016);
   float outer = step(q.x + q.y * 0.38, 0.055) * step(q.y, 0.027);
