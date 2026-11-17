@@ -29,7 +29,7 @@ async function openViewer() {
   });
   fighter.turn.rotation.y = 0;
   scene.add(fighter.root);
-  const setLook = createAuraLook(fighter.model);
+  const setLook = createAuraLook(fighter);
 
   function render() {
     const width = Math.max(stage.clientWidth, 1);

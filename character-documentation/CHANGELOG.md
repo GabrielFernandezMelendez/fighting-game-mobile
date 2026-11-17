@@ -157,3 +157,8 @@
 
 - El visor de Ajustes abre el GLB de combate de Aura. **Modelo actual** y **Comparar cambios** comparten malla, rig, pose y cámara. El segundo aspecto usa sombras propias por zona, ranuras de tinta en la máscara y un acabado metálico localizado en la hebilla. Los detalles se proyectan en la malla en reposo y siguen al skinned mesh. Los prototipos del taller dejan de aparecer en Ajustes.
 - Sala de pruebas: paneles biselados dibujados en capas, marcas de pista y blancos cian. Azotea: ciudad por planos, luna, nubes angulares y cometas con cola afilada. Mercado: puestos de fruta, faroles facetados, lluvia en dos planos y charcos con reflejos gráficos y ondas. Los suelos repetidos y la fruta usan instancias. La calidad regula la densidad de lluvia y el número de ondas.
+
+## 2026-11-17 — Fondos ilustrados y acabado limpio de Aura
+
+- Sala, Azotea y Mercado usan las ilustraciones aprobadas como fondo 2.5D en Three.js. El encuadre evita deformar la imagen, el combate conserva su cámara 3D y la lluvia, los cometas y las ondas se dibujan en capas animadas. `?stage3d` permite comparar la versión de escenarios geométricos.
+- La revisión visual de Aura limpia etiquetas de color aisladas en ropa, limita el color de pelo, máscara y piel a sus propios materiales, y aplica tinta más fina, ojos y brillo del pelo. El ajuste es reversible en el visor de Ajustes.
