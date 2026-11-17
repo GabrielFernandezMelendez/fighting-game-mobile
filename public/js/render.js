@@ -15,6 +15,11 @@ const previewFlags = new URLSearchParams(typeof location !== 'undefined' ? locat
 const AURA3D = isInstalledApp() || previewFlags.has('aura3d');
 const AURA3D_OVERRIDE = { model: 'aura', outline: 0.016, doubleSide: true, modelHeight: 1.78, cel: true };
 const SOMBRA3D = AURA3D || previewFlags.has('sombra3d');
+const ROSTER_3D = previewFlags.has('roster3d');
+const ROSTER_3D_OVERRIDES = {
+  vega: { model: 'vega', outline: 0.013, modelHeight: 1.76, cel: true },
+  kai: { model: 'kai', outline: 0.014, modelHeight: 1.78, cel: true },
+};
 const SOMBRA3D_OVERRIDE = { model: 'sombra', outline: 0.016, doubleSide: true, modelHeight: 1.78, cel: true };
 
 const PALETTES = {
@@ -61,6 +66,7 @@ export class Renderer3D {
     const previews = [];
     if (AURA3D) previews.push('aura');
     if (SOMBRA3D) previews.push('sombra');
+    if (ROSTER_3D) previews.push(...Object.keys(ROSTER_3D_OVERRIDES));
     for (const model of previews) {
       try {
         await this.lib.preload([...Object.keys(this.gltf), model]);
@@ -136,6 +142,7 @@ export class Renderer3D {
   buildFighter(C, wk = C.weapon) {
     if (AURA3D && C.id === 'aura' && this.gltf.aura) C = { ...C, ...AURA3D_OVERRIDE };
     if (SOMBRA3D && C.id === 'sombra' && this.gltf.sombra) C = { ...C, ...SOMBRA3D_OVERRIDE };
+    if (ROSTER_3D && ROSTER_3D_OVERRIDES[C.id] && this.gltf[C.id]) C = { ...C, ...ROSTER_3D_OVERRIDES[C.id] };
     if (this.useModels && C.model && this.gltf[C.model]) return this.buildModelFighter(C, wk);
     return this.buildProcFighter(C, wk);
   }

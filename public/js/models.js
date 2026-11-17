@@ -185,7 +185,7 @@ function addOutlineNormals(geo) {
 
 // Juego de clips por modelo: los modelos RPG comparten 'anims'; los esqueletos propios llevan el suyo
 // (mismos nombres de hueso, distinta pose de reposo → el retarget se hace por esqueleto).
-export const MODEL_ANIMS = { aura: 'aura_anims', sombra: 'sombra_anims' };
+export const MODEL_ANIMS = { aura: 'aura_anims', sombra: 'sombra_anims', vega: 'aura_anims', kai: 'aura_anims' };
 export const animSetFor = model => MODEL_ANIMS[model] || 'anims';
 
 export class ModelLibrary {
