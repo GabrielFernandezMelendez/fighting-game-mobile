@@ -5,6 +5,8 @@
 //  - Estrella de impacto plana (estilo anime/2XKO) en cada golpe.
 //  - Polvo al hacer dash, backdash, saltar y aterrizar.
 // =====================================================================
+import { practiceDustFrames } from './practice-sprites.js';
+
 const TRAIL_N = 12;            // muestras de la estela
 const DUST_POOL = 24, STAR_POOL = 6;
 // Polvo como en la lámina V3 (AVANCE / SALTO): nube beige con volumen cel de tres tonos, volutas onduladas,
@@ -131,11 +133,42 @@ export class VFX {
     tr.mesh.visible = n > 1;
   }
 
+  clearTrail(index) {
+    const trail = this.trails[index];
+    if (!trail) return;
+    trail.pts.length = 0;
+    trail.fade = 0;
+    trail.mesh.visible = false;
+  }
+
+  setPracticeDust(enabled) {
+    this.practiceDust = enabled;
+    for (const dust of this.dust) { dust.life = 0; dust.g.visible = false; }
+    this.trails.forEach((_, i) => this.clearTrail(i));
+    if (enabled && !this.drawnDust) this.drawnDust = practiceDustFrames(this.T);
+  }
+
   // ---------- polvo e impactos ----------
   // dir: dirección del movimiento (-1/1); 0 = nube a ambos lados (salto, aterrizaje)
   puff(x, y, dir = 0, big = false, age = 0) {
+    if (this.practiceDust && dir === 0) {
+      this.puff(x, y, -1, big, age);
+      this.puff(x, y, 1, big, age);
+      return;
+    }
     const d = this.dust.find(p => p.life <= 0) || this.dust[0];
     d.life = 1; d.age = age; d.dur = big ? 0.5 : 0.38; d.x = x; d.y = y;
+    if (this.practiceDust) {
+      const T = this.T;
+      d.drawn ??= new T.MeshBasicMaterial({transparent:true,alphaTest:.04,depthWrite:false,side:T.DoubleSide});
+      d.g.material = d.drawn;
+      d.g.scale.set(-dir * (big ? 1.5 : 1.02), big ? .58 : .43, 1);
+      d.x -= dir * (big ? .44 : .30);
+      d.g.visible = true;
+      this.stepDust(d);
+      return;
+    }
+    d.g.material = d.mat;
     const u = d.mat.uniforms; u.uDir.value = dir; u.uSeed.value = Math.floor(Math.random() * 97);
     u.uH.value = big ? 0.58 : 0.4; u.uW.value = big ? 1.1 : 0.7;
     d.g.scale.set(2 * u.uW.value, u.uH.value * 1.5, 1); d.g.visible = true;
@@ -143,7 +176,12 @@ export class VFX {
   }
   stepDust(d) {
     const t = Math.floor(d.age * DUST_FPS) / DUST_FPS / d.dur;   // escalonado
-    d.mat.uniforms.uT.value = Math.min(1, t); d.life = t >= 1 ? 0 : 1;
+    d.life = t >= 1 ? 0 : 1;
+    if (this.practiceDust) {
+      const map = this.drawnDust[Math.min(5, Math.floor(Math.max(0, t) * 6))];
+      if (d.drawn.map !== map) { d.drawn.map = map; d.drawn.needsUpdate = true; }
+      d.g.visible = d.life > 0;
+    } else d.mat.uniforms.uT.value = Math.min(1, t);
   }
   star(x, y, color) {
     const s = this.stars.find(p => p.life <= 0) || this.stars[0];

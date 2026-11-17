@@ -282,7 +282,7 @@ async function startPractice(sel, openMovesPanel = false, stage = myStage()) {
   R.setStage(stage);
   const chars = [sel, { c: 'dummy', w: 'none' }];
   app.M = createMatch({ mode: 'training', chars });
-  R.setFighters(chars);
+  R.setFighters(chars, { practice: !openMovesPanel });
   await enterGame();
   if (openMovesPanel) openMoves('moves');
 }

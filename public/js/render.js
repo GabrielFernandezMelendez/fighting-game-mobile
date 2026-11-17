@@ -7,6 +7,7 @@ import { toWorld, hurtbox, getMove } from './sim.js';
 import { ModelLibrary, ModelFighter } from './models.js';
 import { clipFor } from './anims.js';
 import { VFX } from './vfx.js';
+import { loadPracticeAtlas, PracticeArt } from './practice-sprites.js';
 import { buildStage as makeStage, stageById } from './stages.js';
 import { createAuraVariant } from './aura-look.js';
 
@@ -143,12 +144,38 @@ export class Renderer3D {
 
   // ---------- Personajes ----------
   // sels = [{ c: personaje, w: arma }, ...]
-  setFighters(sels) {
+  setFighters(sels, { practice = false } = {}) {
     for (const r of this.rigs) this.disposeRig(r);
-    this.rigs = sels.map(x => typeof x === 'string' ? { c: x, w: CHARS[x].weapon } : x).map(x => this.buildFighter(CHARS[x.c], x.w));
+    this.vfx.setPracticeDust(practice);
+    this.rigs = sels.map(x => typeof x === 'string' ? { c: x, w: CHARS[x].weapon } : x).map(x => {
+      const rig = this.buildFighter(CHARS[x.c], x.w);
+      if (practice && x.c === 'aura' && x.w !== 'none') this.addPracticeSprite(rig, x.w);
+      return rig;
+    });
     this.applyQuality(this.quality);
   }
-  disposeRig(r) { this.scene.remove(r.root); for (const s of r.hairSegs) this.scene.remove(s); this.scene.remove(r.shadow); }
+  addPracticeSprite(rig, weapon) {
+    this.practiceAtlases ??= new Map();
+    this.practiceTextures ??= new Map();
+    if (!this.practiceAtlases.has(weapon)) {
+      const atlas = loadPracticeAtlas(this.T, weapon, this.practiceTextures).catch(error => {
+        this.practiceAtlases.delete(weapon);
+        console.warn('Sprites de Aura: se conserva el modelo 3D.', error);
+        return null;
+      });
+      this.practiceAtlases.set(weapon, atlas);
+    }
+    this.practiceAtlases.get(weapon).then(atlas => {
+      if (!atlas || !this.rigs.includes(rig)) return;
+      rig.practiceArt = new PracticeArt(this.T, this.scene, atlas);
+      rig.root.visible = false;
+      for (const segment of rig.hairSegs) segment.visible = false;
+    });
+  }
+  disposeRig(r) {
+    r.practiceArt?.dispose();
+    this.scene.remove(r.root, r.shadow, ...r.hairSegs);
+  }
 
   buildFighter(C, wk = C.weapon) {
     if (AURA3D && C.id === 'aura' && this.gltf.aura) C = { ...C, ...AURA3D_OVERRIDE };
@@ -374,7 +401,13 @@ export class Renderer3D {
   }
 
   // ---------- Fotograma ----------
-  poseRig(rig, F) {
+  poseRig(rig, F, move) {
+    if (rig.practiceArt) {
+      rig.practiceArt.update(F, move);
+      rig.shadow.position.x = F.x;
+      rig.shadow.scale.setScalar(F.scale * Math.max(.4, 1 - F.y * .35));
+      return;
+    }
     if (rig.model) return this.poseModel(rig, F);
     const p = F.pose, s = F.scale;
     rig.root.position.set(F.x + F.face * p.rx * s, F.hipY, 0); rig.root.scale.set(F.face * s, s, s);
@@ -420,7 +453,7 @@ export class Renderer3D {
         if (e.type === 'hit') this.vfx.star(e.x, e.y, (e.attacker != null && this.rigs[e.attacker] && this.rigs[e.attacker].C.accent) || '#ff7a1a');
       } else if (e.type === 'dust') { this.vfx.puff(e.x, 0, e.dir, e.big); continue; }
       if (e.type === 'land') this.vfx.puff(e.x, 0, 0, false);
-      if (e.type === 'land' || e.type === 'djump') this.particles.push({ x: e.x, y: e.type === 'land' ? 0.05 : (e.y || 0) + 0.9, life: 1, ring: true, flat: e.type === 'land', color: '#bfc3cf' });
+      if ((e.type === 'land' && !this.vfx.practiceDust) || e.type === 'djump') this.particles.push({ x: e.x, y: e.type === 'land' ? 0.05 : (e.y || 0) + 0.9, life: 1, ring: true, flat: e.type === 'land', color: '#bfc3cf' });
       else if (e.type === 'ko') this.shake = 0.25;
     }
   }
@@ -429,10 +462,16 @@ export class Renderer3D {
     const W = host.clientWidth, H = host.clientHeight, key = `${W}x${H}x${renderer.getPixelRatio()}`;
     if (this.sizeKey !== key) { renderer.setSize(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); this.sizeKey = key; }
     this.stageT = (this.stageT || 0) + dt; this.stage?.update(this.stageT, dt, camera, this.reducedStageMotion);
-    M.fighters.forEach((F, i) => this.poseRig(this.rigs[i], F));
+    M.fighters.forEach((F, i) => this.poseRig(this.rigs[i], F, getMove(F)));
     scene.updateMatrixWorld();
-    M.fighters.forEach((F, i) => this.vfx.updateTrail(i, this.rigs[i], F, getMove(F), this.rigs[i].C.accent || '#ffffff'));
-    M.fighters.forEach((F, i) => this.updateHair(this.rigs[i], F));
+    M.fighters.forEach((F, i) => {
+      const rig = this.rigs[i];
+      if (rig.practiceArt) this.vfx.clearTrail(i);
+      else {
+        this.vfx.updateTrail(i, rig, F, getMove(F), rig.C.accent || '#ffffff');
+        this.updateHair(rig, F);
+      }
+    });
     // partículas
     let si = 0, ri = 0;
     for (let i = this.particles.length - 1; i >= 0; i--) {
