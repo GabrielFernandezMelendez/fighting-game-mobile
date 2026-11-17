@@ -22,14 +22,16 @@ async function openViewer() {
   floor.position.y = -0.018;
   scene.add(floor);
 
+  // Dos mallas sobre el mismo rig y la misma pose: la de combate (aura.glb) y la de revisión
+  // (aura_review.glb, cabeza mejorada en Blender + repintado y piezas de aura-look).
   const library = new ModelLibrary();
-  await library.preload(['aura']);
-  const fighter = new ModelFighter(library, await library.loadChar('aura'), {
-    model: 'aura', height: 2.76, outline: 0.016, doubleSide: true, cel: true, rimColor: '#FF7A1A',
-  });
-  fighter.turn.rotation.y = 0;
-  scene.add(fighter.root);
-  const setLook = createAuraVariant(fighter);
+  await library.preload(['aura', 'aura_review']);
+  const opts = { model: 'aura', height: 2.76, outline: 0.016, doubleSide: true, cel: true, rimColor: '#FF7A1A' };
+  const fighter = new ModelFighter(library, await library.loadChar('aura'), opts);
+  const reviewFighter = new ModelFighter(library, await library.loadChar('aura_review'), opts);
+  for (const f of [fighter, reviewFighter]) { f.turn.rotation.y = 0; scene.add(f.root); }
+  createAuraVariant(reviewFighter)(true);
+  const setLook = review => { fighter.root.visible = !review; reviewFighter.root.visible = review; };
 
   function render() {
     const width = Math.max(stage.clientWidth, 1);

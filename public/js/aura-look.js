@@ -2,7 +2,6 @@
 // Las marcas usan la malla en reposo y siguen la animación del esqueleto.
 import { BufferAttribute, Color } from 'three';
 import { outlineMaterial } from './models.js';
-import { attachAuraHead } from './aura-head.js';
 import { attachAuraArmor } from './aura-armor.js';
 
 const PALETTE = {
@@ -89,15 +88,15 @@ const mask = `
   vec3 porcelain = mix(uPal[7], uPal[7] * uShd[7], bevel);
   cel = mix(cel, mix(porcelain, uInk, slit), uAuraReview);
 `;
+// Pelo en revisión: tres tonos (luz, medio y sombra profunda bajo los mechones, junto a la raíz)
+// y se vuelve a pintar la tinta de los pliegues encima, para que cada mechón quede delineado.
 const hair = `
   vec3 p = vAuraRest;
-  float rootShade = step(p.y, 2.51 + 0.10 * p.x - 0.25 * p.z);
-  vec3 lilac = mix(uPal[6], uPal[6] * uShd[6], rootShade);
-  cel = mix(cel, lilac, uAuraReview);
-  float fringe = p.y - (2.632 - p.x * 0.36 + abs(p.x) * 0.23);
-  float shine = (1.0 - smoothstep(0.009, 0.019, abs(fringe))) * step(0.026, p.z);
-  vec3 pearl = mix(uPal[6], vec3(0.92, 0.81, 0.98), 0.64);
-  cel = mix(cel, pearl, shine * uAuraReview);
+  float root = step(p.y, 2.585 + 0.10 * p.x - 0.32 * (p.z + 0.035));
+  vec3 light = uPal[6], mid = uPal[6] * uShd[6], deep = mid * vec3(0.74, 0.70, 0.86);
+  vec3 tone = lit > 0.5 ? mix(light, mid, root) : mix(mid, deep, root);
+  cel = mix(cel, tone, uAuraReview);
+  cel = mix(cel, uInk, ink * uAuraReview);
 `;
 const clothing = `
   vec3 p = vAuraRest;
@@ -136,7 +135,7 @@ function installPaint(material, type) {
       '#include <begin_vertex>\n vAuraRest = position;' + (cleanAttribute ? '\n vAuraLabs = aAuraLabs;' : '')
     );
     shader.fragmentShader = 'varying vec3 vAuraRest; uniform float uAuraReview;\n' + shader.fragmentShader
-      .replace('max(ink, inkL)', 'max(ink, inkL) * (1.0 - 0.86 * uAuraReview)')
+      .replace('max(ink, inkL)', type==='hair' ? 'max(ink, inkL)' : 'max(ink, inkL) * (1.0 - 0.86 * uAuraReview)')
       .replace('cel += uRim', 'cel += uRim * (1.0 - 0.70 * uAuraReview)')
       .replace('outgoingLight = cel +', '{' + (details[type] || '') + '}\n outgoingLight = cel +');
     if (cleanAttribute) {
@@ -158,7 +157,9 @@ function installPaint(material, type) {
 
 export function createAuraLook(fighter) {
   const materials = [];
-  const outlines = fighter.outlines.map(mesh=>({ mesh, original:mesh.material }));
+  const hairGeo = new Set();
+  fighter.model.traverse(o => { if (o.userData?.srcMat==='Aura_pelo' && o.geometry) hairGeo.add(o.geometry); });
+  const outlines = fighter.outlines.map(mesh=>({ mesh, original:mesh.material, hair:hairGeo.has(mesh.geometry) }));
   const fineInk = outlineMaterial(0.008);
   fighter.model.traverse(object => {
     const cel = object.material?.userData.cel;
@@ -184,17 +185,17 @@ export function createAuraLook(fighter) {
       cel.uBand.value = review && originalBand===0.28 ? 0.16 : originalBand;
       if (active) active.value=Number(review);
     }
-    for (const { mesh, original } of outlines) mesh.material=review ? fineInk : original;
+    for (const { mesh, original, hair } of outlines) mesh.material=review && !hair ? fineInk : original;
   };
 }
 
+// La variante en revisión usa la cabeza del propio GLB (public/assets/chars/aura_review.glb) en vez de
+// una cabeza nueva por piezas; aura-head.js queda en el repo pero sin usar.
 export function createAuraVariant(fighter) {
   const paint=createAuraLook(fighter);
-  const head=attachAuraHead(fighter);
   const armor=attachAuraArmor(fighter);
   return show=>{
     paint(show);
-    head(show);
     armor(show);
   };
 }
