@@ -507,6 +507,7 @@ function loop(now) {
       if (app.paused) continue;
       const F = app.M.fighters[0];
       const inp = app.cp ? app.cp.input(F) : input.sample();
+      R.capturePracticePose(F);
       step(app.M, [inp, NO_INPUT]);
       if (app.cp && app.cp.done && ++app.cpEnd > 70) { app.cp = null; input.enabled = true; delete $('#moveName').dataset.demo; }
     } else if (app.mode === 'online' && app.ls) {
@@ -517,7 +518,7 @@ function loop(now) {
   R.consumeEvents(M.events);
   if (M.events.some(e => e.type === 'hit')) input.haptic(18);
   M.events.length = 0;
-  R.render(M, dt, { boxes: app.boxes });
+  R.render(M, dt, { boxes: app.boxes, fraction: app.paused ? 1 : Math.min(1, acc / DT) });
   updateHUD(M);
   input.drawTrails && input.drawTrails();
   fpsN++; fpsT += dt;

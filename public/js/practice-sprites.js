@@ -1,10 +1,6 @@
+import { ATTACK_KEYS, isWalking, pairId, practicePose } from './practice-motion.js';
+
 const ATLAS = new URL('../assets/practice/', import.meta.url);
-const KEYS = ['g_tap', 'g_fwd', 'g_back', 'g_up', 'g_down', 'a_tap', 'a_fwd', 'a_back', 'a_up', 'a_down'];
-const DAGGER = [
-  ['dagger', [4,5,6,7,8,9,10,11]], ['dagA', [0,1,2,3]], ['dagA', [4,5,6,7]], ['dagA', [8,9,10,11]],
-  ['dagB', [0,1,2,3]], ['dagB', [4,5,6,7]], ['dagB', [8,9,10,11]],
-  ['dagC', [0,1,2,3]], ['dagC', [4,5,6,7]], ['dagC', [8,9,10,11]],
-];
 const MOVE_EFFECT = [
   ['jab', .78, 1.04, 0], ['arc', .79, 1.03, -.24], ['arc', .75, 1.11, .24],
   ['arc', .56, 1.26, 1.04], ['arc', .79, .37, -.21], ['jab', .71, 1.05, 0],
@@ -16,68 +12,98 @@ const WEAPON_EFFECTS = {
   spear: { g_fwd: 'jab', a_fwd: 'jab' },
 };
 
-export function attackSprite(F, move) {
-  const guard = [F.wk, 0];
-  if (F.move === 'grab') return F.f < move.active[0] - 2 || F.f > 22 ? guard : ['common', 8];
-  if (F.move === 'throw') {
-    if (F.f >= 37) return guard;
-    return ['common', F.f < 9 ? 8 : F.f < move.release ? 9 : 10];
-  }
-  const i = KEYS.indexOf(F.move);
-  if (i < 0) return guard;
-  const [start, end] = move.active;
-  if (F.wk !== 'dagger') {
-    // Las otras armas tienen una pose principal propia por ataque.
-    // Sus poses de preparación y recuperación comparten la guardia de esa arma.
-    const ready = [F.wk, move.air ? 11 : 0];
-    const last = move.dive ? end : Math.min(end + 2, move.total - 2);
-    return F.f >= start - 1 && F.f <= last ? [F.wk, i + 1] : ready;
-  }
-  const [atlas, drawings] = DAGGER[i];
-  if (drawings.length === 8) {
-    const f = F.f;
-    const slot = f < start ? Math.min(2, Math.floor(3 * f / start))
-      : f <= end ? (f === start ? 3 : 4)
-      : Math.min(7, 5 + Math.floor(3 * (f - end - 1) / Math.max(1, move.total - end - 1)));
-    return [atlas, drawings[slot]];
-  }
-  const slot = F.f < start ? Number(F.f >= start * .5)
-    : F.f <= end ? 2 : 3;
-  return [atlas, drawings[slot]];
-}
+const TILE = 384;
+const FLOW_TILE = 48;
 
-export function practicePose(F, move) {
-  if (F.state === 'attack' && move) return attackSprite(F, move);
-  const dagger = F.wk === 'dagger';
-  const guard = [F.wk, dagger ? [0,1,2,3,0][Math.floor((F.t % 60) / 12)] : 0];
-  switch (F.state) {
-    case 'down': case 'lose': return ['common', 11];
-    case 'hit': case 'launched': case 'thrown': return ['common', 6];
-    case 'air': return dagger ? ['common', 5] : [F.wk, 11];
-    case 'prejump': case 'crouch': case 'cblock': return dagger ? ['common', 4] : guard;
-    case 'dashF': return dagger ? ['common', 2] : guard;
-    case 'dashB': return dagger ? ['common', 3] : guard;
-    case 'walkF': case 'walkB': return dagger ? ['common', Math.floor(F.t / 6) % 2] : guard;
-    case 'land': case 'getup': return dagger ? ['common', 7] : guard;
-    default: return guard;
-  }
-}
-
-export function loadPracticeAtlas(T, weapon, cache = new Map()) {
-  const names = weapon === 'dagger' ? ['dagger','dagA','dagB','dagC','common'] : [weapon,'common'];
+export async function loadPracticeAtlas(T, weapon, cache = new Map()) {
+  const names = weapon === 'dagger' ? ['dagger','dagA','dagB','dagC','common'] : [weapon, weapon + '-mid','common'];
+  names.push(weapon + '-walk');
   const loader = new T.TextureLoader();
-  return Promise.all(names.map(async name => {
+  const load = (name, color) => {
     if (!cache.has(name)) {
-      const pending = loader.loadAsync(new URL(name + '.webp', ATLAS).href).then(texture => {
-        texture.colorSpace = T.SRGBColorSpace;
+      const pending = loader.loadAsync(new URL(name, ATLAS).href).then(texture => {
+        if (color) texture.colorSpace = T.SRGBColorSpace;
         texture.generateMipmaps = false;
         texture.minFilter = texture.magFilter = T.LinearFilter;
         return texture;
       }).catch(error => { cache.delete(name); throw error; });
       cache.set(name, pending);
     }
-    return [name, await cache.get(name)];
-  })).then(entries => new Map(entries));
+    return cache.get(name);
+  };
+  const flowName = 'motion-' + weapon;
+  const [art, flow, index] = await Promise.all([
+    Promise.all(names.map(async name => [name, await load('hd-' + name + '.webp', true)])),
+    load(flowName + '.png', false),
+    fetch(new URL(flowName + '.json', ATLAS)).then(response => {
+      if (!response.ok) throw new Error('No se pudo cargar ' + flowName);
+      return response.json();
+    }),
+  ]);
+  return { art: new Map(art), flow, index };
+}
+
+function spriteMaterial(T, flow) {
+  return new T.ShaderMaterial({
+    transparent: true, depthWrite: false, toneMapped: false, side: T.DoubleSide,
+    uniforms: {
+      from: { value: null }, to: { value: null }, flow: { value: flow },
+      fromRect: { value: new T.Vector4() }, toRect: { value: new T.Vector4() },
+      flowRect: { value: new T.Vector4() }, flowBackRect: { value: new T.Vector4() },
+      fraction: { value: 0 }, hasFlow: { value: 0 },
+      tint: { value: new T.Color('#ffffff') },
+    },
+    vertexShader: `
+      varying vec2 spriteUV;
+      void main() {
+        spriteUV = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.);
+      }`,
+    fragmentShader: `
+      uniform sampler2D from, to, flow;
+      uniform vec4 fromRect, toRect, flowRect, flowBackRect;
+      uniform float fraction, hasFlow;
+      uniform vec3 tint;
+      varying vec2 spriteUV;
+
+      vec2 velocity(vec2 uv, vec4 rect) {
+        vec2 sampleUV = rect.xy + clamp(uv, 0., 1.) * rect.zw;
+        return (texture2D(flow, sampleUV).rg * 255. - 128.) * (0.36 / 127.);
+      }
+      vec4 cel(sampler2D sheet, vec4 rect, vec2 uv) {
+        return texture2D(sheet, rect.xy + clamp(uv, 0., 1.) * rect.zw);
+      }
+      void main() {
+        vec2 aUV = spriteUV;
+        vec2 bUV = spriteUV;
+        if (hasFlow > .5) {
+          vec2 f = velocity(spriteUV, flowRect);
+          vec2 b = velocity(spriteUV, flowBackRect);
+          aUV -= fraction * velocity(spriteUV - fraction * f, flowRect);
+          bUV -= (1. - fraction) * velocity(spriteUV - (1. - fraction) * b, flowBackRect);
+        }
+        vec4 a = cel(from, fromRect, aUV);
+        vec4 result = a;
+        if (fraction > 0.) {
+          vec4 b = cel(to, toRect, bUV);
+          float wa = (1. - fraction) * a.a;
+          float wb = fraction * b.a;
+          float alpha = wa + wb;
+          vec3 rgb = (a.rgb * wa + b.rgb * wb) / max(.0001, alpha);
+          result = vec4(rgb, smoothstep(.17, .81, alpha));
+        }
+        if (result.a < .04) discard;
+        gl_FragColor = vec4(result.rgb * tint, result.a);
+        #include <colorspace_fragment>
+      }`,
+  });
+}
+
+function rectFor(rect, texture, tile, index, cols) {
+  const { width, height } = texture.image;
+  const col = index % cols, row = Math.floor(index / cols);
+  rect.set((col * tile + .5) / width, (height - (row + 1) * tile + .5) / height,
+    (tile - 1) / width, (tile - 1) / height);
 }
 
 function textureFrom(T, width, height, draw) {
@@ -112,7 +138,7 @@ export class PracticeArt {
     this.bodyGeometry = new T.PlaneGeometry(1, 1);
     this.streakGeometry = new T.PlaneGeometry(1, 1);
     this.trails = { jab: paintedTrail(T,'jab'), arc: paintedTrail(T,'arc') };
-    this.body = new T.Mesh(this.bodyGeometry, new T.MeshBasicMaterial({ transparent:true, alphaTest:.045, depthWrite:false, toneMapped:false, side:T.DoubleSide }));
+    this.body = new T.Mesh(this.bodyGeometry, spriteMaterial(T, atlas.flow));
     this.streak = new T.Mesh(this.streakGeometry, new T.MeshBasicMaterial({ transparent:true, depthWrite:false, toneMapped:false, side:T.DoubleSide }));
     this.body.renderOrder = 2;
     this.streak.renderOrder = 5;
@@ -120,40 +146,57 @@ export class PracticeArt {
     scene.add(this.body, this.streak);
   }
 
-  update(F, move) {
-    const [name, index] = practicePose(F, move);
-    this.body.material.color.set(F.state === 'hit' && F.f < 4 ? '#ffc9a5' : '#ffffff');
-    const map = this.atlas.get(name);
-    if (this.body.material.map !== map) {
-      this.body.material.map = map;
-      this.body.material.needsUpdate = true;
+  capture(F) {
+    this.previous = { x: F.x, y: F.y, state: F.state, move: F.move, face: F.face, f: F.f, t: F.t };
+  }
+
+  update(F, move, fraction = 1) {
+    const tickBefore = this.previous;
+    const advances = tickBefore?.t === F.t - 1;
+    const sameMotion = advances && tickBefore.state === F.state && tickBefore.move === F.move
+      && tickBefore.f + 1 === F.f && tickBefore.face === F.face;
+    const tick = sameMotion ? tickBefore.f + fraction : F.f;
+    const x = advances ? tickBefore.x + (F.x - tickBefore.x) * fraction : F.x;
+    const y = advances ? tickBefore.y + (F.y - tickBefore.y) * fraction : F.y;
+    const phase = Math.max(0, tick - 4) / (F.state === 'walkB' ? -43 : 35);
+    const walking = isWalking(F.state);
+    if (walking) {
+      this.exitStep = ((Math.round(phase * 8) % 8) + 8) % 8;
+    } else if (F.state !== 'idle' || tick >= 4) {
+      this.exitStep = null;
     }
-    if (this.index !== index || this.name !== name) {
-      // UV con un texel de margen para que no sangren sprites vecinos.
-      const u = ((index % 4) * 256 + 1) / 1024, v = ((2 - Math.floor(index / 4)) * 256 + 1) / 768;
-      const right = u + 254 / 1024, top = v + 254 / 768;
-      const uv = this.bodyGeometry.attributes.uv;
-      uv.setXY(0, u, top); uv.setXY(1, right, top);
-      uv.setXY(2, u, v); uv.setXY(3, right, v);
-      uv.needsUpdate = true;
-      this.index = index; this.name = name;
+    const [a, b, blend] = practicePose(F, tick, F.t - (sameMotion ? 1 - fraction : 0), phase, this.exitStep ?? null);
+    const uniforms = this.body.material.uniforms;
+    uniforms.tint.value.set(F.state === 'hit' && F.f < 4 ? '#ffc9a5' : '#ffffff');
+    uniforms.from.value = this.atlas.art.get(a.atlas);
+    uniforms.to.value = this.atlas.art.get(b.atlas);
+    rectFor(uniforms.fromRect.value, uniforms.from.value, TILE, a.id, 4);
+    rectFor(uniforms.toRect.value, uniforms.to.value, TILE, b.id, 4);
+    const edge = this.atlas.index.pairs[pairId(a, b)];
+    uniforms.hasFlow.value = Number(edge !== undefined && blend > 0);
+    uniforms.fraction.value = edge === undefined ? 0 : blend;
+    if (edge !== undefined) {
+      const { flow, index } = this.atlas;
+      rectFor(uniforms.flowRect.value, flow, FLOW_TILE, edge[0], index.cols);
+      rectFor(uniforms.flowBackRect.value, flow, FLOW_TILE, edge[1], index.cols);
     }
     const face = F.face, scale = F.scale;
     const size = 2.44 * scale;
-    this.body.scale.set(face * size, size, 1);
-    this.body.position.set(F.x + face * scale * .12, F.y + (216 / 256 - .5) * size, .12);
-    const type = KEYS.indexOf(F.move);
+    const height = walking ? size * (1 - .011 * Math.sin(phase * 4 * Math.PI)) : size;
+    this.body.scale.set(face * size, height, 1);
+    this.body.position.set(x + face * scale * .12, y + (324 / TILE - .5) * height, .12);
+    const type = ATTACK_KEYS.indexOf(F.move);
     const isThrow = F.move === 'throw';
     const effect = MOVE_EFFECT[type] || (isThrow ? ['arc', .54, 1.06, -.25] : F.move === 'grab' ? ['jab', .53, 1.05, 0] : null);
     const start = move?.active?.[0] ?? move?.release;
     const end = move?.active?.[1] ?? (start + 2);
     this.streak.visible = !!(effect && F.state === 'attack' && F.f >= start && F.f <= end + 2);
     if (!this.streak.visible) return;
-    const [defaultStroke, x, y, angle] = effect;
+    const [defaultStroke, offsetX, offsetY, angle] = effect;
     const stroke = WEAPON_EFFECTS[F.wk]?.[F.move] ?? defaultStroke;
     const reach = { dagger:.80, sword:1.24, hammer:1.10, spear:1.38 }[F.wk] ?? .8;
-    const progress = Math.min(1, (F.f - start + 1) / Math.max(1, end - start + 3));
-    this.streak.position.set(F.x + x * face * scale, F.y + y * scale, .30);
+    const progress = Math.min(1, (tick - start + 1) / Math.max(1, end - start + 3));
+    this.streak.position.set(x + offsetX * face * scale, y + offsetY * scale, .30);
     this.streak.rotation.z = face * angle;
     this.streak.scale.set(face * reach * scale * (.82 + progress * .22), scale * reach * .60, 1);
     if (this.streak.material.map !== this.trails[stroke]) {
