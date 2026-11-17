@@ -1,40 +1,110 @@
-// Revisión de arte del visor. Se pinta en las coordenadas de la malla en reposo
-// para que los detalles viajen con la piel sin rebakear el GLB ni alterar su rig.
-import { Color } from 'three';
+// Repintado experimental del visor sobre el GLB riggeado de combate.
+// Las marcas usan la malla en reposo y siguen la animación del esqueleto.
+import { BufferAttribute, Color } from 'three';
+import { outlineMaterial } from './models.js';
 
 const PALETTE = {
-  chaqueta: '#E7C6B3', pantalon: '#8F6E89', gris: '#746878', grafito: '#342D3A',
-  negro: '#211A28', naranja: '#FF7A1A', pelo: '#E5D5F3', mascara: '#E8DAD5',
-  piel: '#EDB09B', metal: '#BDB3BA',
+  chaqueta:'#E7C6B3', pantalon:'#8F6E89', gris:'#756B7A', grafito:'#342D3A',
+  negro:'#211A28', naranja:'#FF7A1A', pelo:'#E5D5F3', mascara:'#E8DAD5', piel:'#EDB09B', metal:'#BDB3BA',
 };
 const SHADOW = {
-  chaqueta: '#BD988A', pantalon: '#624863', gris: '#504759', grafito: '#241E2D',
-  negro: '#16131D', naranja: '#B44512', pelo: '#9C86B1', mascara: '#A995A0',
-  piel: '#B97968', metal: '#81747F',
+  chaqueta:'#BD9587', pantalon:'#654B63', gris:'#504759', grafito:'#24202F',
+  negro:'#17131F', naranja:'#B34816', pelo:'#A892BE', mascara:'#B09CA5', piel:'#B97968', metal:'#81747F',
 };
+
+// Las zonas se guardan como índices en el GLB. Restringe las etiquetas del
+// escaneo por pieza antes de votar entre vértices vecinos de la misma superficie.
+function clothingZone(id, x, y) {
+  const lateral = Math.abs(x);
+  if (y < .056) return 0;                                    // suela
+  if (y < .33) return [3,4,5,9].includes(id) ? id : 3;        // bota
+  if (y < 1.52 && lateral < .395) {
+    if ((id===3 || id===4) && lateral>.22 && y>1.12) return id; // correa
+    return 1;
+  }
+  if (y < 1.71 && lateral < .32) return [3,4,5,9].includes(id) ? id : 3;
+  if (y < 1.32 && lateral > .39) return [3,4,5,8].includes(id) ? id : 3; // guante
+  if (y > 2.27) return id===5 ? 5 : 3;                        // cuello y forro
+  if (id===6 || id===7) return 3;
+  return id;
+}
+
+function prepareClothing(geometry) {
+  if (geometry.hasAttribute('aAuraLabs')) return;
+  const { position, labs } = geometry.attributes;
+  const lookup = new Map(), vertices = [], corner = new Uint32Array(position.count);
+  for (let i=0;i<corner.length;i++) {
+    const x=position.getX(i), y=position.getY(i), z=position.getZ(i);
+    const key = [x,y,z].map(v=>Math.round(v*10000)).join(',');
+    let index=lookup.get(key);
+    if (index===undefined) {
+      index=vertices.length;
+      lookup.set(key,index);
+      const id=labs.array[(Math.floor(i/3)*9)+(i%3)];
+      vertices.push({ id:clothingZone(id,x,y), near:new Set() });
+    }
+    corner[i]=index;
+  }
+  for (let i=0;i<corner.length;i+=3) {
+    const a=corner[i],b=corner[i+1],c=corner[i+2];
+    vertices[a].near.add(b).add(c);
+    vertices[b].near.add(a).add(c);
+    vertices[c].near.add(a).add(b);
+  }
+  const votes=new Uint8Array(10);
+  let labels=vertices.map(v=>v.id);
+  for (let pass=0;pass<2;pass++) {
+    labels=vertices.map(({ near },i)=>{
+      const original=labels[i];
+      votes.fill(0);
+      votes[original]=3;
+      for (const adjacent of near) votes[labels[adjacent]]++;
+      let winner=original;
+      for (const adjacent of near) {
+        const candidate=labels[adjacent];
+        if (votes[candidate]>votes[winner]) winner=candidate;
+      }
+      return winner;
+    });
+  }
+  const data=new Float32Array(corner.length*3);
+  for (let i=0;i<corner.length;i+=3) {
+    const a=labels[corner[i]],b=labels[corner[i+1]],c=labels[corner[i+2]];
+    for (let k=i;k<i+3;k++) data.set([a,b,c],k*3);
+  }
+  geometry.setAttribute('aAuraLabs',new BufferAttribute(data,3));
+}
+
 const mask = `
   vec3 p = vAuraRest;
   float x = abs(p.x - 0.002);
-  float y = p.y - (2.481 + 0.44 * (x - 0.064) + 1.8 * (x - 0.064) * (x - 0.064));
-  float taper = max(0.0, min((x - 0.029) * 0.66, (0.143 - x) * 0.46));
+  float y = p.y - (2.489 + 0.46 * (x - 0.067) + 1.2 * (x - 0.067) * (x - 0.067));
+  float taper = max(0.0, min((x - 0.031) * 0.61, (0.144 - x) * 0.44));
   float d = abs(y) - taper;
-  float aa = max(fwidth(d), 0.0005);
-  float slit = (1.0 - smoothstep(-aa, aa, d)) * step(0.027, x) * step(x, 0.143) * step(0.043, p.z);
+  float aa = max(fwidth(d), 0.00035);
+  float slit = (1.0 - smoothstep(-aa, aa, d)) * step(0.031, x) * step(x, 0.144) * step(0.045, p.z);
   cel = mix(cel, uInk, slit * uAuraReview);
+`;
+const hair = `
+  vec3 p = vAuraRest;
+  float fringe = p.y - (2.632 - p.x * 0.36 + abs(p.x) * 0.23);
+  float shine = (1.0 - smoothstep(0.009, 0.019, abs(fringe))) * step(0.026, p.z);
+  vec3 pearl = mix(uPal[6], vec3(0.92, 0.81, 0.98), 0.64);
+  cel = mix(cel, pearl, shine * lit * uAuraReview);
 `;
 const clothing = `
   vec3 p = vAuraRest;
-  // Hebilla frontal rectangular. Perfila el metal en dos planos y deja el centro grafito.
   vec2 q = abs(vec2(p.x + 0.014, p.y - 1.696));
-  float inner = step(q.x, 0.038) * step(q.y, 0.020);
-  float outer = step(q.x + q.y * 0.38, 0.055) * step(q.y, 0.032);
-  float buckle = outer * step(0.211, p.z) * uAuraReview;
+  float inner = step(q.x, 0.038) * step(q.y, 0.016);
+  float outer = step(q.x + q.y * 0.38, 0.055) * step(q.y, 0.027);
+  float buckle = outer * step(0.195, p.z) * uAuraReview;
   vec3 metal = mix(uPal[9] * uShd[9], uPal[9], lit);
   cel = mix(cel, mix(metal, uPal[3] * uShd[3], inner), buckle);
 `;
+const details={ mask, hair, clothing };
+const cleanZone={ mask:7, hair:6, skin:8 };
 
-function installDetail(material, type) {
-  const detail = type === 'mask' ? mask : clothing;
+function installPaint(material, type) {
   const compile = material.onBeforeCompile;
   const key = material.customProgramCacheKey();
   const active = { value: 0 };
@@ -42,43 +112,60 @@ function installDetail(material, type) {
   material.onBeforeCompile = shader => {
     compile(shader);
     shader.uniforms.uAuraReview = active;
-    shader.vertexShader = 'varying vec3 vAuraRest;\n' + shader.vertexShader.replace(
-      '#include <begin_vertex>', '#include <begin_vertex>\n vAuraRest = position;'
+    const cleanAttribute = type==='clothing' ? 'attribute vec3 aAuraLabs; varying vec3 vAuraLabs;\n' : '';
+    shader.vertexShader = cleanAttribute + 'varying vec3 vAuraRest;\n' + shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\n vAuraRest = position;' + (cleanAttribute ? '\n vAuraLabs = aAuraLabs;' : '')
     );
-    shader.fragmentShader = 'varying vec3 vAuraRest; uniform float uAuraReview;\n' + shader.fragmentShader.replace(
-      'outgoingLight = cel +', '{' + detail + '}\n outgoingLight = cel +'
-    );
+    shader.fragmentShader = 'varying vec3 vAuraRest; uniform float uAuraReview;\n' + shader.fragmentShader
+      .replace('max(ink, inkL)', 'max(ink, inkL) * (1.0 - 0.86 * uAuraReview)')
+      .replace('cel += uRim', 'cel += uRim * (1.0 - 0.70 * uAuraReview)')
+      .replace('outgoingLight = cel +', '{' + (details[type] || '') + '}\n outgoingLight = cel +');
+    if (cleanAttribute) {
+      shader.fragmentShader = 'varying vec3 vAuraLabs;\n' + shader.fragmentShader.replace(
+        'L = vLabs;', 'L = mix(vLabs, vAuraLabs, uAuraReview);'
+      );
+    } else {
+      const zone=cleanZone[type];
+      shader.fragmentShader = shader.fragmentShader.replace(
+        'float nl = dot', `alb = mix(alb, uPal[${zone}], uAuraReview);
+        shadeC = mix(shadeC, uShd[${zone}], uAuraReview);
+        inkL *= 1.0 - uAuraReview;
+        float nl = dot`
+      );
+    }
   };
   return active;
 }
 
-export function createAuraLook(model) {
+export function createAuraLook(fighter) {
   const materials = [];
-  model.traverse(object => {
+  const outlines = fighter.outlines.map(mesh=>({ mesh, original:mesh.material }));
+  const fineInk = outlineMaterial(0.008);
+  fighter.model.traverse(object => {
     const cel = object.material?.userData.cel;
     const zones = object.geometry?.userData.neonZones;
     if (!cel || !zones) return;
-    const source = object.userData.srcMat;
-    const active = source === 'Aura_mascara' ? installDetail(object.material, 'mask')
-      : source === 'Aura_ropa' ? installDetail(object.material, 'clothing') : null;
+    const type = { Aura_mascara:'mask', Aura_pelo:'hair', Aura_piel:'skin', Aura_ropa:'clothing' }[object.userData.srcMat];
+    if (type==='clothing') prepareClothing(object.geometry);
+    const active = type ? installPaint(object.material,type) : null;
     const original = { colors: cel.uPal.value.map(color => color.clone()), shades: cel.uShd.value.map(color => color.clone()) };
-    const revised = {
-      colors: original.colors.map((color, i) => PALETTE[zones[i]] ? new Color(PALETTE[zones[i]]) : color),
-      shades: original.shades.map((color, i) => {
-        if (!SHADOW[zones[i]]) return color;
-        const base = new Color(PALETTE[zones[i]]);
-        const shadow = new Color(SHADOW[zones[i]]);
-        return shadow.setRGB(shadow.r / base.r, shadow.g / base.g, shadow.b / base.b);
-      }),
-    };
-    materials.push({ cel, active, original, revised });
+    const colors = original.colors.map((color,i) => PALETTE[zones[i]] ? new Color(PALETTE[zones[i]]) : color);
+    const shades = original.shades.map((color,i) => {
+      if (!SHADOW[zones[i]]) return color;
+      const base=colors[i], shadow=new Color(SHADOW[zones[i]]);
+      return shadow.setRGB(shadow.r/base.r,shadow.g/base.g,shadow.b/base.b);
+    });
+    materials.push({ cel, active, original, revised:{ colors, shades }, originalBand:cel.uBand.value });
   });
   return review => {
-    for (const { cel, active, original, revised } of materials) {
+    for (const { cel, active, original, revised, originalBand } of materials) {
       const { colors, shades } = review ? revised : original;
-      cel.uPal.value.forEach((color, i) => color.copy(colors[i]));
-      cel.uShd.value.forEach((color, i) => color.copy(shades[i]));
-      if (active) active.value = Number(review);
+      cel.uPal.value.forEach((color,i) => color.copy(colors[i]));
+      cel.uShd.value.forEach((color,i) => color.copy(shades[i]));
+      cel.uBand.value = review && originalBand===0.28 ? 0.16 : originalBand;
+      if (active) active.value=Number(review);
     }
+    for (const { mesh, original } of outlines) mesh.material=review ? fineInk : original;
   };
 }

@@ -7,7 +7,8 @@ import { toWorld, hurtbox, getMove } from './sim.js';
 import { ModelLibrary, ModelFighter } from './models.js';
 import { clipFor } from './anims.js';
 import { VFX } from './vfx.js';
-import { buildStage as makeStage } from './stages.js';
+import { buildStage as makeStage, stageById } from './stages.js';
+import { buildStageArt } from './stage-art.js';
 import { isInstalledApp } from './app-mode.js';
 
 // La app instalada y ?aura3d activan ambos modelos. ?sombra3d permite revisar solo a Sombra.
@@ -124,10 +125,29 @@ export class Renderer3D {
 
   // Cambia el escenario (solo presentación: la simulación no sabe nada de él)
   setStage(id) {
+    id = stageById(id).id;
     if (this.stage && this.stageId === id) return;
-    if (this.stage) { this.scene.remove(this.stage.group); this.stage.dispose(); }
-    this.stage = makeStage(id, this.T, { quality: this.quality ?? 2 }); this.stageId = id;
-    this.scene.add(this.stage.group); this.scene.background = this.stage.background;
+    const mount = stage => {
+      if (this.stage) { this.scene.remove(this.stage.group); this.stage.dispose(); }
+      this.stage = stage;
+      this.scene.add(stage.group);
+      this.scene.background = stage.background;
+    };
+    this.stageId = id;
+    this.stageT = 0;
+    const quality = this.quality ?? 2;
+    if (new URLSearchParams(location.search).has('stage3d')) {
+      mount(makeStage(id, this.T, { quality }));
+      return;
+    }
+    const art = buildStageArt(id, this.T, {
+      quality,
+      reducedMotion: matchMedia('(prefers-reduced-motion: reduce)'),
+      onUnavailable: () => {
+        if (this.stage === art) mount(makeStage(id, this.T, {quality:this.quality ?? quality}));
+      },
+    });
+    mount(art);
   }
 
   // ---------- Personajes ----------

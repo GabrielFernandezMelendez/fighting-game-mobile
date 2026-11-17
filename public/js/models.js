@@ -30,6 +30,7 @@ export function outlineMaterial(thick = 0.022) {
       `vec3 transformed = vec3(position) + normalize(outlineNormal) * ${thick.toFixed(4)};`)
       .replace('#include <fog_vertex>', '#include <fog_vertex>\n  gl_Position.z += 0.0008 * gl_Position.w;');
   };
+  m.customProgramCacheKey = () => 'neon-outline-' + thick;
   m.userData.outline = true; outlineMats.set(thick, m); return m;
 }
 

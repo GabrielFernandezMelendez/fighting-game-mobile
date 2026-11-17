@@ -4,6 +4,7 @@
 import { CHARS, ROSTER, WEAPONS, COMBOS, GESTURES, DT, STAT_NAMES, damageMult } from './data.js';
 import { createMatch, step, NO_INPUT } from './sim.js';
 import { Renderer3D } from './render.js';
+import { stageArtwork } from './stage-art.js';
 import { LocalInput } from './input.js';
 import { Lockstep, PeerLink } from './net.js';
 import { ComboPlayer } from './combo.js';
@@ -191,7 +192,7 @@ function buildStages() {
   const box = $('#stageList'); box.innerHTML = '';
   for (const S of STAGES) {
     const b = document.createElement('button'); b.className = 'stage-c' + (S.id === myStage() ? ' on' : ''); b.dataset.id = S.id;
-    b.setAttribute('aria-pressed', S.id === myStage()); b.style.backgroundImage = `linear-gradient(transparent 40%, rgba(12,13,20,.92)), url(img/ui/stage_${S.id}.jpg)`;
+    b.setAttribute('aria-pressed', S.id === myStage()); b.style.backgroundImage = `linear-gradient(transparent 40%, rgba(12,13,20,.92)), url("${stageArtwork(S.id)}")`;
     b.innerHTML = `<b>${S.name}</b><span>${S.desc}</span>`;
     b.addEventListener('click', () => { settings.stage = S.id; saveSettings(); buildStages(); });
     box.appendChild(b);
