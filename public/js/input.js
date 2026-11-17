@@ -3,11 +3,16 @@
 //  Mitad izquierda: swipes de movimiento + Agarre | Mitad derecha: ataques + Bloqueo
 //  Movimiento: swipe y SOLTAR = paso corto; dos swipes seguidos = dash; swipe y MANTENER = caminar
 //  (como el antiguo joystick: mientras el dedo siga apartado del punto de inicio). Abajo mantenido = agacharse.
+//  Salto: swipe arriba = vertical; swipe en diagonal (arriba-derecha / arriba-izquierda) = salto hacia ese lado,
+//  como W+D en el teclado. Mientras caminas manteniendo, subir el dedo también salta hacia donde caminas.
 // =====================================================================
 const HOLD_DEAD = 18;   // px: zona muerta al mantener (volver el dedo al centro = parar)
+const HOLD_JUMP = 34;   // px: subir el dedo esto mientras caminas = saltar hacia ese lado
+const DIAG = 0.45;      // un swipe es diagonal si su lado menor es al menos el 45 % del mayor (≈ 24°–66°)
 const swipeMotion = {
   left: { dx: -1, frames: 6 }, right: { dx: 1, frames: 6 },
   up: { up: true, frames: 12 }, down: { down: true, frames: 12 },
+  upLeft: { up: true, dx: -1, frames: 12 }, upRight: { up: true, dx: 1, frames: 12 },
 };
 
 export class LocalInput {
@@ -83,9 +88,27 @@ export class LocalInput {
     const trackSwipe = (s, x, y) => {
       if (s.zone === 'grab') return;
       s.pts.push([x, y]); s.x = x; s.y = y;
-      if (s.swiped) return;
+      if (s.swiped) {
+        // caminando con el dedo apartado: subirlo = salto hacia el lado al que caminas (una vez por subida)
+        if (s.zone === 'move' && s.hold === 'h') {
+          const ox = x - s.x0, oy = y - s.y0;
+          if (!s.jumped && -oy >= HOLD_JUMP && Math.abs(ox) >= HOLD_DEAD) {
+            s.jumped = true;
+            if (this.swipes.length < 3) this.swipes.push(swipeMotion[ox < 0 ? 'upLeft' : 'upRight']);
+            this.haptic(6);
+          } else if (s.jumped && -oy < HOLD_JUMP / 2) s.jumped = false;
+        }
+        return;
+      }
       const dx = x - s.x0, dy = y - s.y0;
       const movement = s.zone === 'move';
+      // swipe en diagonal hacia arriba en la mitad de movimiento = salto lateral
+      if (movement && dy < 0 && Math.hypot(dx, dy) >= 30 && Math.abs(dx) >= Math.abs(dy) * DIAG && -dy >= Math.abs(dx) * DIAG) {
+        s.swiped = true; s.hold = 'h'; s.jumped = true;   // mantener después sigue caminando hacia ese lado
+        if (this.swipes.length < 3) this.swipes.push(swipeMotion[dx < 0 ? 'upLeft' : 'upRight']);
+        this.haptic(6);
+        return;
+      }
       const horizontal = Math.abs(dx) >= Math.abs(dy) * (movement ? 0.8 : 1);
       const distance = horizontal ? Math.abs(dx) : Math.abs(dy);
       const threshold = movement ? (horizontal ? 22 : 30) : 38;

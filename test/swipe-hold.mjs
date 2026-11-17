@@ -47,4 +47,28 @@ frames(40);
 ev('touchstart', 4, 100, 250); ev('touchmove', 4, 100, 300); frames(30);
 if (!input.sample().down) fail('mantener abajo no agacha');
 ev('touchend', 4, 100, 300);
+// 7) swipe en diagonal arriba-derecha = salto hacia delante (como W+D)
+frames(40);
+const jumpX = () => { const x = F.x; let air = false; for (let i = 0; i < 60; i++) { frames(1); if (F.state === 'air') air = true; } return { air, dx: F.x - x }; };
+ev('touchstart', 5, 100, 300); ev('touchmove', 5, 135, 262); ev('touchend', 5, 135, 262);
+let j = jumpX();
+if (!j.air) fail('el swipe en diagonal no salta');
+if (!(j.dx > 0.6)) fail('el swipe en diagonal no salta hacia el lado (avance ' + j.dx.toFixed(2) + ')');
+// 8) diagonal arriba-izquierda = salto hacia atrás
+frames(30);
+ev('touchstart', 6, 200, 300); ev('touchmove', 6, 165, 262); ev('touchend', 6, 165, 262);
+j = jumpX();
+if (!(j.air && j.dx < -0.6)) fail('el swipe arriba-izquierda no salta hacia la izquierda (avance ' + j.dx.toFixed(2) + ')');
+// 9) swipe arriba recto sigue siendo salto vertical
+frames(30);
+ev('touchstart', 7, 100, 300); ev('touchmove', 7, 103, 250); ev('touchend', 7, 103, 250);
+j = jumpX();
+if (!(j.air && Math.abs(j.dx) < 0.1)) fail('el swipe vertical debe saltar recto (avance ' + j.dx.toFixed(2) + ')');
+// 10) caminando con el dedo mantenido, subirlo = salto hacia donde caminas
+frames(30);
+ev('touchstart', 8, 100, 300); ev('touchmove', 8, 140, 300); frames(20);
+ev('touchmove', 8, 140, 255);
+j = jumpX();
+if (!(j.air && j.dx > 0.6)) fail('subir el dedo mientras caminas no salta hacia delante (avance ' + j.dx.toFixed(2) + ')');
+ev('touchend', 8, 140, 255);
 console.log('swipe-hold OK');
