@@ -2,6 +2,8 @@
 // Las marcas usan la malla en reposo y siguen la animación del esqueleto.
 import { BufferAttribute, Color } from 'three';
 import { outlineMaterial } from './models.js';
+import { attachAuraHead } from './aura-head.js';
+import { attachAuraArmor } from './aura-armor.js';
 
 const PALETTE = {
   chaqueta:'#E7C6B3', pantalon:'#8F6E89', gris:'#756B7A', grafito:'#342D3A',
@@ -183,5 +185,16 @@ export function createAuraLook(fighter) {
       if (active) active.value=Number(review);
     }
     for (const { mesh, original } of outlines) mesh.material=review ? fineInk : original;
+  };
+}
+
+export function createAuraVariant(fighter) {
+  const paint=createAuraLook(fighter);
+  const head=attachAuraHead(fighter);
+  const armor=attachAuraArmor(fighter);
+  return show=>{
+    paint(show);
+    head(show);
+    armor(show);
   };
 }
