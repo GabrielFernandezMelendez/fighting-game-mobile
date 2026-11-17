@@ -1,7 +1,7 @@
 name: Desplegar en Firebase (peleasdemo)
 # - Al hacer merge en main: tests + deploy a https://peleasdemo.web.app (canal "live").
-# - En cada PR: tests + vista previa en un canal temporal (7 días); el bot comenta la URL en el PR,
-#   así se pueden revisar los cambios desde el móvil ANTES de hacer el merge.
+# - En cada PR: solo tests. NO se crean canales de vista previa (el plan gratuito tiene un número
+#   limitado); si algo sale mal tras el merge, se vuelve atrás con un rollback en la consola de Hosting.
 # Requiere el secreto FIREBASE_SERVICE_ACCOUNT_PELEASDEMO (ver docs/DEPLOY.md). Sin él, el job se salta el deploy.
 on:
   push:
@@ -13,12 +13,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      checks: write
-      pull-requests: write
     env:
       HAS_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PELEASDEMO != '' }}
     steps:
@@ -28,14 +25,13 @@ jobs:
       - name: Tests
         run: node test/combos.mjs && node test/moves.mjs && node test/online.mjs && node test/ui-shell.mjs && node test/dash.mjs && node test/swipe-hold.mjs && node test/cpu.mjs
       - name: Aviso si falta el secreto
-        if: env.HAS_SA != 'true'
+        if: github.event_name != 'pull_request' && env.HAS_SA != 'true'
         run: echo "::warning::Falta el secreto FIREBASE_SERVICE_ACCOUNT_PELEASDEMO; no se despliega (ver docs/DEPLOY.md)."
-      - name: Deploy (live en main, vista previa en PR)
-        if: env.HAS_SA == 'true'
+      - name: Deploy a producción (solo main)
+        if: github.event_name != 'pull_request' && env.HAS_SA == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PELEASDEMO }}
           projectId: peleasdemo
-          # ojo: en expresiones de GitHub '' es falso, así que `cond && '' || 'live'` daba siempre 'live'
-          channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || 'live' }}
+          channelId: live

@@ -2,7 +2,8 @@
 
 Con `.github/workflows/firebase.yml`:
 - **Merge en `main`** → tests → deploy a https://peleasdemo.web.app. Ya no hace falta `firebase deploy` desde el PC.
-- **Cada PR** → tests → **vista previa** en una URL temporal (`peleasdemo--pr-NN-….web.app`, 7 días). El bot la comenta en el PR: se prueba en el móvil antes del merge.
+- **Cada PR** → solo tests (no se crea vista previa, para no agotar los canales de Hosting).
+- **Volver atrás**: Firebase Console → Hosting → historial de versiones → «Revertir» en la versión buena.
 - GitHub Pages (`pages.yml`) sigue funcionando igual.
 
 ## Configuración (una sola vez)

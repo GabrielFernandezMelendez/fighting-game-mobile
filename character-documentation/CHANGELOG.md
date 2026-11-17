@@ -172,3 +172,7 @@
 
 - El acabado experimental de Ajustes y `?aurastyle` incorpora una bufanda 3D con forro naranja y solapa en V, y dos hombreras con bisel y remaches. Cada pieza está anclada a su hueso de torso o clavícula y el GLB conserva las animaciones.
 - El acabado experimental oculta la parte de la bufanda anterior que ocupaba el mismo volumen, también en su contorno. El encuadre de cabeza y hombros facilita comparar las tres piezas.
+
+## 2026-11-17 — Bufanda y hombreras en main; deploy solo al fusionar
+- Llegan a `main` los cambios de la PR #33 (bufanda y hombreras de Aura), que se habían fusionado sobre `feat/neon-cel-3d` cuando esa rama ya estaba en `main`.
+- CI: las PR solo pasan los tests; ya no crean canales de vista previa en Firebase. El deploy a https://peleasdemo.web.app sigue siendo automático al fusionar en `main`. Para deshacer, rollback desde Hosting.
