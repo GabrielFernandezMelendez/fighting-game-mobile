@@ -108,6 +108,13 @@ const hair = `
 `;
 const clothing = `
   vec3 p = vAuraRest;
+  // Chaqueta (0) y bufanda (5): el escaneo trae triángulos con la cara del revés y, con material a doble
+  // cara, su luz se invierte y salen islas de sombra que parecen otro color colándose. En estas zonas la
+  // luz usa |nl| y un umbral más bajo: casi todo en luz, sombra solo en los bordes que se alejan de la luz.
+  if (uAuraReview > 0.5 && (lb == 0.0 || lb == 5.0)) {
+    float litJ = smoothstep(0.02, 0.05, abs(nl));
+    cel = mix(alb * shadeC, alb, litJ);
+  }
   // Pliegues grandes dibujados en reposo. El sombreado del escaneo ya no
   // decide esta frontera en cada triángulo del pantalón.
   if (uAuraReview > 0.5 && lb == 1.0) {

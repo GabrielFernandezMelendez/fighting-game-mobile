@@ -30,7 +30,9 @@ def part(p):
     if mat==3: return 'piel_brazos' if any(k in b for k in ('Arm','Fist','Shoulder')) else 'piel_torso'
     if c.z<0.36: return 'botas'
     if 'Fist' in b or ('LowerArm' in b and c.z<1.40 and L!=0): return 'guantes'
-    if L in (3,4,5) and c.z>2.0 and abs(c.x)<0.36: return 'bufanda'
+    rad=((c.x)**2+(c.y-0.03)**2)**0.5
+    if L in (3,4,5) and c.z>2.0 and (rad<0.21 or (abs(c.x)<0.13 and c.y<0)): return 'bufanda'
+    if L in (3,4,5) and c.z>1.98 and abs(c.x)<0.42: return 'chaqueta'   # manchas oscuras del escaneo sobre los hombros
     if 'Arm' in b: return 'mangas'
     if L==0: return 'chaqueta'
     if L==1: return 'pantalon'
@@ -61,12 +63,21 @@ for i,n in enumerate(names):
         bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.separate(type='SELECTED'); bpy.ops.object.mode_set(mode='OBJECT')
         o=[x for x in bpy.context.selected_objects if x!=m][0]
     o.name='Aura_'+n; objs.append(o)
+# Ajustes por parte (se trabajan por separado sin tocar a las vecinas):
+#  COLOR: la parte entera pasa a una sola zona de color (adiós a manchas de otras zonas del escaneo)
+#  ALISADO: pasadas extra para las partes con la superficie más irregular
+ZONAS=dict(chaqueta=0,pantalon=1,gris=2,grafito=3,negro=4,naranja=5,pelo=6,mascara=7,piel=8,metal=9)
+COLOR={'Aura_chaqueta':'chaqueta','Aura_mangas':'chaqueta','Aura_bufanda':'naranja'}
+ALISADO={'Aura_chaqueta':4.0,'Aura_mangas':3.0,'Aura_bufanda':3.0}
 # 2) alisado por parte con el borde fijo  3) normales suaves por parte
 for o in objs:
+    if o.name in COLOR:
+        z=ZONAS[COLOR[o.name]]; caP=o.data.color_attributes['Color']
+        for c in caP.data: c.color=((z+0.5)/16,0,0,1)
     for k,v in props.items(): o[k]=v
     bm=bmesh.new(); bm.from_mesh(o.data)
     inner=[v for v in bm.verts if not v.is_boundary]
-    for _ in range(ITER): bmesh.ops.smooth_vert(bm, verts=inner, factor=FACT, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+    for _ in range(int(ITER*ALISADO.get(o.name,1))): bmesh.ops.smooth_vert(bm, verts=inner, factor=FACT, use_axis_x=True, use_axis_y=True, use_axis_z=True)
     bm.to_mesh(o.data); bm.free()
     for p in o.data.polygons: p.use_smooth=True
     if 'parte' in o.data.attributes: o.data.attributes.remove(o.data.attributes['parte'])
