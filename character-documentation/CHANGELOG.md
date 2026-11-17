@@ -180,3 +180,11 @@
 ## 2026-11-17 — Aura y Sombra 3D también en el navegador del ordenador
 - Los modelos 3D de Aura y Sombra solo se activaban en la app instalada (o con `?aura3d`); en el navegador del ordenador y en Android (navegador) salían los muñecos antiguos, aunque el visor de Ajustes sí cargaba el GLB. Ahora se usan en todas partes. `?clasico` vuelve a los modelos antiguos para comparar.
 - El acabado en revisión de Aura (cabeza, bufanda, hombreras) sigue solo en Ajustes y con `?aurastyle` hasta que se apruebe.
+
+## 2026-11-17 — Cabeza de Aura mejorada sobre el GLB (en revisión)
+- La variante de Ajustes deja de sustituir la cabeza por piezas nuevas (`aura-head.js` queda sin usar): ahora se mejora la cabeza del propio GLB en Blender (`tools/bl_aura_head_review.py` → `public/assets/chars/aura_review.glb`). El GLB de combate no cambia.
+- Pelo: más volumen, puntas afiladas, copete con picos, patillas, flequillo hasta los ojos y nuca; menos masa atrás. Suavizado (subdivisión + normales suaves) para que el cel-shading dé bandas curvas.
+- Pelo con contorno de grosor normal, tinta entre mechones y tres tonos (luz, medio, sombra junto a la raíz).
+- Cabeza 5 cm más alta (solo malla, los huesos y clips no cambian) con un cuello corto en sombra. Máscara más estrecha, lisa y con la barbilla suavizada.
+- Ojos en forma de hoja con puntas redondeadas y línea vertical de la frente, dibujados en el shader.
+- Ajustes muestra `aura.glb` y `aura_review.glb` sobre el mismo rig; en combate, `?aurastyle` usa la malla en revisión.

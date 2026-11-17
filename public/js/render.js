@@ -69,6 +69,7 @@ export class Renderer3D {
     if (!this.useModels) return;
     const previews = [];
     if (AURA3D) previews.push('aura');
+    if (AURA_STYLE) previews.push('aura_review');   // malla en revisión (cabeza mejorada en Blender)
     if (SOMBRA3D) previews.push('sombra');
     if (ROSTER_3D) previews.push(...Object.keys(ROSTER_3D_OVERRIDES));
     for (const model of previews) {
@@ -158,7 +159,8 @@ export class Renderer3D {
   // Personaje con modelo + clips retargeteados
   buildModelFighter(C, wk) {
     const T = this.T, g = this.geo();
-    const mf = new ModelFighter(this.lib, this.gltf[C.model], { height: C.modelHeight || 1.75, outline: C.outline || 0.02, model: C.model, doubleSide: !!C.doubleSide, cel: !!C.cel, rimColor: C.accent });
+    const src = C.model === 'aura' && AURA_STYLE && this.gltf.aura_review ? 'aura_review' : C.model;
+    const mf = new ModelFighter(this.lib, this.gltf[src], { height: C.modelHeight || 1.75, outline: C.outline || 0.02, model: C.model, doubleSide: !!C.doubleSide, cel: !!C.cel, rimColor: C.accent });
     if (C.tint) for (const m of mf.mats) m.color.set(C.tint);
     this.scene.add(mf.root);
     if (C.model==='aura' && AURA_STYLE) createAuraVariant(mf)(true);
