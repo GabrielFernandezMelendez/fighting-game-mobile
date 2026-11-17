@@ -16,8 +16,16 @@
     <h1>Aura 3D</h1>
     <a class="aura-preview-reference" href="assets/previews/aura_concept_v3.png" target="_blank" rel="noopener">Concept de Aura ↗</a>
   </header>
+  <div class="aura-preview-view">
+    <label>Encuadre
+      <select id="preview-framing"><option value="head">Cabeza y hombros</option><option value="body">Cuerpo entero</option></select>
+    </label>
+    <label>Ángulo
+      <select id="preview-angle"><option value="0.60">Tres cuartos</option><option value="0">Frontal</option><option value="1.43">Perfil</option></select>
+    </label>
+  </div>
   <div id="preview-stage" class="aura-preview-stage">
-    <canvas id="aura-canvas" aria-label="Modelo tridimensional de Aura en vista de tres cuartos"></canvas>
+    <canvas id="aura-canvas" aria-label="Vista tridimensional ajustable de Aura"></canvas>
     <p id="preview-status" role="status">Cargando Aura 3D…</p>
   </div>
   <div class="aura-preview-controls" role="group" aria-label="Aspecto de Aura">

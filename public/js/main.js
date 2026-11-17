@@ -4,12 +4,11 @@
 import { CHARS, ROSTER, WEAPONS, COMBOS, GESTURES, DT, STAT_NAMES, damageMult } from './data.js';
 import { createMatch, step, NO_INPUT } from './sim.js';
 import { Renderer3D } from './render.js';
-import { stageArtwork } from './stage-art.js';
 import { LocalInput } from './input.js';
 import { Lockstep, PeerLink } from './net.js';
 import { ComboPlayer } from './combo.js';
 import { CpuPlayer, CPU_LEVELS } from './cpu.js';
-import { STAGES, stageById } from './stages.js';
+import { STAGES, stageById, stageArtwork } from './stages.js';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const coarse = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
