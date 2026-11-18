@@ -218,3 +218,11 @@
 - `docs/diseno/ARCHIVOS_BLENDER.md`: mapa de los archivos de Blender, qué archivo tocar según la tarea, reglas que necesita el juego y animaciones.
 - Plantilla de PR (`.github/pull_request_template.md`) y `.gitignore` para las copias de seguridad de Blender (`*.blend1`).
 - Esqueleto común: `art/comun/esqueleto_neon.blend` (generado con `tools/bl_esqueleto_comun.py`) con los 24 huesos de NEÓN y guías de suelo, altura (2,76 m) y caja de golpes en reposo (`REF_hurtbox`, medida en `sim.js`). Es el paso 0 de todo personaje: misma hitbox a igual escala; el tamaño se decide con `scale` en `data.js`. Aura, Vega y Kai coinciden; Sombra tiene alguna articulación hasta 12 cm más alta.
+
+## 2026-11-18 — Aura 2D en Práctica: animación a lo Skullgirls (fase 1)
+- Los dibujos ya no se funden ni se deforman entre sí (se quita el flujo óptico y su mezcla): cada dibujo se mantiene enteros sus fotogramas de simulación, el juego sigue a 60 fps y la fluidez la da el timing. Borde duro (alfa cortado al 50 %), sin halos.
+- Las hojas de caminar se igualan en tamaño a las de guardia y ataque (`SHEET_SCALE`, −3 a −6 %): el personaje ya no cambia de tamaño al empezar o dejar de caminar. Pies en la misma línea de suelo en todas las hojas (comprobado: 323–324 px).
+- Respiración en guardia: el torso y la cabeza suben y bajan con los pies quietos, en pasos de 6 fotogramas (como un dibujo "a seises").
+- Golpe: estirón de 2 fotogramas al empezar la ventana activa (el *smear* de los dibujos a mano); aplastado de 3 fotogramas al aterrizar; vibración al recibir un golpe durante la pausa de impacto. La pausa de impacto congela el dibujo.
+- Se retiran `motion-*.png/json` (flujo óptico, ya sin uso).
+- Pendiente (fase 2): más dibujos (guardia 8–12, 6–10 por ataque, salto con subida/caída, golpe recibido y bloqueo), generados desde las poses del modelo 3D para que sean coherentes.
