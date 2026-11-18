@@ -217,3 +217,4 @@
 - `CONTRIBUTING.md`: cómo colaborar con fork, rama y Pull Request, servidor local, reglas y solución de problemas.
 - `docs/diseno/ARCHIVOS_BLENDER.md`: mapa de los archivos de Blender, qué archivo tocar según la tarea, reglas que necesita el juego y animaciones.
 - Plantilla de PR (`.github/pull_request_template.md`) y `.gitignore` para las copias de seguridad de Blender (`*.blend1`).
+- Esqueleto común: `art/comun/esqueleto_neon.blend` (generado con `tools/bl_esqueleto_comun.py`) con los 24 huesos de NEÓN y guías de suelo, altura (2,76 m) y caja de golpes en reposo (`REF_hurtbox`, medida en `sim.js`). Es el paso 0 de todo personaje: misma hitbox a igual escala; el tamaño se decide con `scale` en `data.js`. Aura, Vega y Kai coinciden; Sombra tiene alguna articulación hasta 12 cm más alta.

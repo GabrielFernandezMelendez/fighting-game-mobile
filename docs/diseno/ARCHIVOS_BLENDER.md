@@ -4,10 +4,39 @@ Guía para el diseñador 3D de NEÓN. Para el flujo de Git (fork, ramas, Pull Re
 
 **Versión de Blender: 5.3 o superior.** Los archivos están guardados con la 5.3 y una versión anterior puede no abrirlos.
 
+## 0. Paso inicial: el esqueleto común (misma hitbox para todos)
+
+**Todo personaje empieza en `art/comun/esqueleto_neon.blend`**, sea nuevo o una revisión. Ese archivo contiene el esqueleto de NEÓN (24 huesos: `Root`, `Hips`, `Torso`, `Neck`, `Head`, `UpperArm.L`…) y tres guías que no se exportan:
+
+| Guía | Qué es |
+|---|---|
+| `REF_suelo` | El suelo: los pies apoyan en Z = 0 |
+| `REF_altura` | Altura de referencia: 2,76 m en Blender |
+| `REF_hurtbox` | La caja donde el juego recibe golpes con el personaje en reposo. **El cuerpo debe quedar dentro.** Pelo, capucha, bufanda o arma pueden salir, porque son solo visuales. El frente del personaje mira hacia −Y |
+
+![Aura con el esqueleto común y la caja de golpes de referencia](esqueleto_hurtbox.png)
+
+**Por qué:** el juego no calcula los golpes con la malla, sino con un esqueleto propio que tiene las mismas articulaciones (cadera, cintura, cuello, cabeza, rodillas y tobillos). Si todos los personajes usan este esqueleto:
+- **Todos tienen la misma hitbox** a igual escala, y lo que ves en pantalla coincide con lo que golpea y recibe golpes.
+- **Las animaciones sirven para todos**, porque se pasan de un personaje a otro por nombre de hueso.
+- **El tamaño de cada personaje se decide en el juego**, no en Blender: es el valor `scale` de `public/js/data.js` (Aura 0,97, Vega 1,00, Sombra 1,03, Kai 1,12). Un personaje grande como Kai se modela con este mismo esqueleto y altura, y el juego lo agranda. Así su hitbox crece en proporción y de forma controlada.
+
+**Cómo empezar un personaje:**
+1. Abre `art/comun/esqueleto_neon.blend` y guárdalo con otro nombre: **Archivo → Guardar como** → `art/<personaje>/<personaje>_base.blend`.
+2. Modela o importa el cuerpo encima del esqueleto. Respeta la altura (`REF_altura`), apoya los pies en `REF_suelo` y mantén el cuerpo dentro de `REF_hurtbox`.
+3. **No muevas, renombres, borres ni añadas huesos.** Las alturas de las articulaciones son fijas. Si los brazos o las piernas no encajan con el modelo, ajusta la malla o pide al responsable que adapte codos, muñecas y rodillas con el script del esqueleto (`fit_joints` en `tools/bl_fighter_armature.py`); ese ajuste solo cambia la posición lateral, nunca la altura.
+4. Une la malla al esqueleto: **Ctrl+P → Con pesos automáticos**, y después corrige los pesos en Weight Paint.
+5. Borra las guías `REF_*` antes de entregar, o déjalas: el script de exportación las ignora.
+
+Vega y Kai ya parten de este esqueleto, y Aura también. **Sombra tiene alguna articulación hasta 12 cm más alta** que el esqueleto común: conviene alinearla en su próxima revisión.
+
+Si el esqueleto común cambia algún día, se regenera con `python -c "import runpy; runpy.run_path('tools/bl_esqueleto_comun.py')"`. Ese cambio afecta a todos los personajes y animaciones, así que **solo lo hace el responsable**.
+
 ## 1. Mapa de carpetas
 
 ```
 art/
+├── comun/esqueleto_neon.blend  ← PASO 0: esqueleto común y guías de tamaño (punto de partida de TODO personaje)
 ├── conceptart/            ← REFERENCIA: hojas de modelo de los 4 personajes (no editar)
 ├── aura/                  ← fuentes 3D de Aura, una por fase del pipeline
 │   ├── aura_01_trellis2_raw.glb        salida de la IA (forma de referencia, no editar)
@@ -34,7 +63,8 @@ tools/                     ← scripts de Blender (Python) que generan los .glb
 | Repintar el color plano en alta | `art/<personaje>/<p>_03_flat_highpoly.blend` | Vertex Paint sobre el atributo `Col` (las zonas están en `LblCol`) |
 | Cambiar la forma (retopo, máscara, pelo, siluetas) | `art/<personaje>/<p>_04_lowpoly.blend` | Modelado normal; luego hay que repetir el rig (fase 05) |
 | Corregir pesos o deformaciones al animar | `art/<personaje>/<p>_05_rig.blend` | Weight Paint; no renombrar huesos |
-| Modelar Vega o Kai | `art/vega/vega_base.blend`, `art/kai/kai_base.blend` | Ya llevan el esqueleto del juego ([ficha](../../character-documentation/VEGA_KAI_BASES.md)) |
+| Empezar un personaje nuevo | `art/comun/esqueleto_neon.blend` | Ver el paso 0 |
+| Modelar Vega o Kai | `art/vega/vega_base.blend`, `art/kai/kai_base.blend` | Ya llevan el esqueleto común ([ficha](../../character-documentation/VEGA_KAI_BASES.md)) |
 | Crear animaciones | Un archivo nuevo en `art/<personaje>/anim/` | Sobre el rig de la fase 05; ver el apartado 6 |
 
 Si no sabes qué archivo tocar, pregunta antes de empezar. Así nadie trabaja sobre el mismo archivo a la vez (apartado 5).
@@ -43,7 +73,7 @@ Si no sabes qué archivo tocar, pregunta antes de empezar. Así nadie trabaja so
 
 El juego lee los archivos de forma automática. Si se rompe una de estas reglas, el personaje sale mal o no carga:
 
-1. **Nombres de huesos**: no se cambian ni se borran. Las animaciones van por nombre (`Torso`, `Neck`, `Head`, `UpperArm.L`…).
+1. **Esqueleto común** (paso 0): mismos huesos y alturas para todos. Los nombres no se cambian ni se borran. Las animaciones van por nombre (`Torso`, `Neck`, `Head`, `UpperArm.L`…).
 2. **Nombres de materiales**: `Aura_ropa`, `Aura_pelo`, `Aura_mascara`, `Aura_piel` en Aura, y `Sombra_ropa`, `Sombra_piel`, `Sombra_capucha` en Sombra. El nombre decide cómo se sombrea cada material en cel-shading.
 3. **Nombres de partes** en `aura_partes.blend`: siempre empiezan por `Aura_` (`Aura_bufanda`, `Aura_chaqueta`…).
 4. **Color de zona**: es el atributo de color `Color` (o `Col` en la fase 03), no una textura. Cada zona es un índice; la lista está en `tools/neon_chars.py`. Por ejemplo, en Aura: 0 chaqueta, 1 pantalón, 2 gris, 3 grafito, 4 negro, 5 naranja, 6 pelo, 7 máscara, 8 piel, 9 metal.
