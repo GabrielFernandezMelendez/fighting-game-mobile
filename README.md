@@ -96,7 +96,7 @@ node test/combos.mjs && node test/moves.mjs && node test/online.mjs && node test
   && node test/dash.mjs && node test/swipe-hold.mjs && node test/cpu.mjs
 ```
 
-- **Flujo de trabajo**: cada cambio va en una rama y llega a `main` mediante Pull Request. El responsable revisa y fusiona.
+- **Flujo de trabajo**: cada cambio va en una rama y llega a `main` mediante Pull Request. El responsable revisa y fusiona. Guía completa en [CONTRIBUTING.md](CONTRIBUTING.md).
 - **Probar el online sin dos móviles**: abre dos pestañas con `#mocknet` al final de la URL.
 - **Parámetros de prueba en la URL**:
   - `?stage=sala|azotea|mercado`: elegir escenario.
@@ -107,6 +107,8 @@ node test/combos.mjs && node test/moves.mjs && node test/online.mjs && node test
 
 | Documento | Contenido |
 |---|---|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | **Cómo colaborar**: fork, ramas, Pull Requests y reglas |
+| [docs/diseno/ARCHIVOS_BLENDER.md](docs/diseno/ARCHIVOS_BLENDER.md) | **Para diseño 3D**: dónde están los archivos de Blender y cómo trabajarlos |
 | [LEEME.md](LEEME.md) | Estructura del código y regeneración de modelos y animaciones |
 | [character-documentation/](character-documentation/README.md) | Fichas de personajes, roster y registro de cambios ([CHANGELOG](character-documentation/CHANGELOG.md)) |
 | [NEON_ART_STYLE.md](character-documentation/NEON_ART_STYLE.md) | Guía del estilo gráfico: cel-shading, tinta, paleta y escenarios |

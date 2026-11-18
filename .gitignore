@@ -3,3 +3,8 @@ node_modules/
 *.log
 test/*.png
 assets_raw
+
+# Copias de seguridad de Blender
+*.blend1
+*.blend2
+*.blend@
