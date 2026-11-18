@@ -212,3 +212,8 @@
 - Swipe en diagonal hacia arriba (arriba-derecha / arriba-izquierda) en la mitad de movimiento = salto hacia ese lado, como W+D en el teclado. Permite saltar por encima del rival.
 - Caminando con el dedo mantenido, subirlo = salto hacia donde caminas (una vez por subida; bajar el dedo rearma).
 - El swipe vertical sigue siendo salto recto; los swipes horizontales con poca inclinación siguen siendo paso, dash o caminar.
+
+## 2026-11-18 — Guías para colaboradores
+- `CONTRIBUTING.md`: cómo colaborar con fork, rama y Pull Request, servidor local, reglas y solución de problemas.
+- `docs/diseno/ARCHIVOS_BLENDER.md`: mapa de los archivos de Blender, qué archivo tocar según la tarea, reglas que necesita el juego y animaciones.
+- Plantilla de PR (`.github/pull_request_template.md`) y `.gitignore` para las copias de seguridad de Blender (`*.blend1`).
