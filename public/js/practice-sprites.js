@@ -1,4 +1,8 @@
-import { ATTACK_KEYS, isWalking, pairId, practicePose } from './practice-motion.js';
+import { ATTACK_KEYS, isWalking, practicePose } from './practice-motion.js';
+
+// Aura 2D al estilo de los juegos de lucha dibujados (Skullgirls): cada dibujo se MANTIENE varios fotogramas
+// (no se funde ni se deforma con el siguiente), el juego corre a 60 fps y la fluidez la dan el timing,
+// el pivote fijo en los pies, la pausa de impacto, el estirón del golpe y la respiración en guardia.
 
 const ATLAS = new URL('../assets/practice/', import.meta.url);
 const MOVE_EFFECT = [
@@ -31,69 +35,40 @@ export async function loadPracticeAtlas(T, weapon, cache = new Map()) {
     }
     return cache.get(name);
   };
-  const flowName = 'motion-' + weapon;
-  const [art, flow, index] = await Promise.all([
-    Promise.all(names.map(async name => [name, await load('hd-' + name + '.webp', true)])),
-    load(flowName + '.png', false),
-    fetch(new URL(flowName + '.json', ATLAS)).then(response => {
-      if (!response.ok) throw new Error('No se pudo cargar ' + flowName);
-      return response.json();
-    }),
-  ]);
-  return { art: new Map(art), flow, index };
+  const art = await Promise.all(names.map(async name => [name, await load('hd-' + name + '.webp', true)]));
+  return { art: new Map(art) };
 }
 
-function spriteMaterial(T, flow) {
+// Las hojas de caminar se dibujaron algo más grandes que las de guardia y ataque: se igualan aquí para
+// que el personaje no cambie de tamaño al pasar de una a otra (medido superponiendo cintura y cabeza).
+const SHEET_SCALE = { 'dagger-walk': .94, 'sword-walk': .94, 'hammer-walk': .95, 'spear-walk': .97 };
+
+function spriteMaterial(T) {
   return new T.ShaderMaterial({
     transparent: true, depthWrite: false, toneMapped: false, side: T.DoubleSide,
     uniforms: {
-      from: { value: null }, to: { value: null }, flow: { value: flow },
-      fromRect: { value: new T.Vector4() }, toRect: { value: new T.Vector4() },
-      flowRect: { value: new T.Vector4() }, flowBackRect: { value: new T.Vector4() },
-      fraction: { value: 0 }, hasFlow: { value: 0 },
-      tint: { value: new T.Color('#ffffff') },
+      sheet: { value: null }, rect: { value: new T.Vector4() },
+      breathe: { value: 0 }, tint: { value: new T.Color('#ffffff') },
     },
     vertexShader: `
+      uniform float breathe;
       varying vec2 spriteUV;
       void main() {
         spriteUV = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.);
+        vec3 p = position;
+        // respiración: los pies quietos, el torso y la cabeza suben un poco (uv.y 0 = suelo del dibujo)
+        p.y += breathe * smoothstep(.30, .80, uv.y);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.);
       }`,
     fragmentShader: `
-      uniform sampler2D from, to, flow;
-      uniform vec4 fromRect, toRect, flowRect, flowBackRect;
-      uniform float fraction, hasFlow;
+      uniform sampler2D sheet;
+      uniform vec4 rect;
       uniform vec3 tint;
       varying vec2 spriteUV;
-
-      vec2 velocity(vec2 uv, vec4 rect) {
-        vec2 sampleUV = rect.xy + clamp(uv, 0., 1.) * rect.zw;
-        return (texture2D(flow, sampleUV).rg * 255. - 128.) * (0.36 / 127.);
-      }
-      vec4 cel(sampler2D sheet, vec4 rect, vec2 uv) {
-        return texture2D(sheet, rect.xy + clamp(uv, 0., 1.) * rect.zw);
-      }
       void main() {
-        vec2 aUV = spriteUV;
-        vec2 bUV = spriteUV;
-        if (hasFlow > .5) {
-          vec2 f = velocity(spriteUV, flowRect);
-          vec2 b = velocity(spriteUV, flowBackRect);
-          aUV -= fraction * velocity(spriteUV - fraction * f, flowRect);
-          bUV -= (1. - fraction) * velocity(spriteUV - (1. - fraction) * b, flowBackRect);
-        }
-        vec4 a = cel(from, fromRect, aUV);
-        vec4 result = a;
-        if (fraction > 0.) {
-          vec4 b = cel(to, toRect, bUV);
-          float wa = (1. - fraction) * a.a;
-          float wb = fraction * b.a;
-          float alpha = wa + wb;
-          vec3 rgb = (a.rgb * wa + b.rgb * wb) / max(.0001, alpha);
-          result = vec4(rgb, smoothstep(.17, .81, alpha));
-        }
-        if (result.a < .04) discard;
-        gl_FragColor = vec4(result.rgb * tint, result.a);
+        vec4 c = texture2D(sheet, rect.xy + clamp(spriteUV, 0., 1.) * rect.zw);
+        if (c.a < .5) discard;              // borde duro, como un dibujo (sin halos semitransparentes)
+        gl_FragColor = vec4(c.rgb * tint, 1.);
         #include <colorspace_fragment>
       }`,
   });
@@ -138,7 +113,7 @@ export class PracticeArt {
     this.bodyGeometry = new T.PlaneGeometry(1, 1);
     this.streakGeometry = new T.PlaneGeometry(1, 1);
     this.trails = { jab: paintedTrail(T,'jab'), arc: paintedTrail(T,'arc') };
-    this.body = new T.Mesh(this.bodyGeometry, spriteMaterial(T, atlas.flow));
+    this.body = new T.Mesh(this.bodyGeometry, spriteMaterial(T));
     this.streak = new T.Mesh(this.streakGeometry, new T.MeshBasicMaterial({ transparent:true, depthWrite:false, toneMapped:false, side:T.DoubleSide }));
     this.body.renderOrder = 2;
     this.streak.renderOrder = 5;
@@ -148,43 +123,47 @@ export class PracticeArt {
 
   capture(F) {
     this.previous = { x: F.x, y: F.y, state: F.state, move: F.move, face: F.face, f: F.f, t: F.t };
+    this.shake ??= 0;
   }
 
   update(F, move, fraction = 1) {
     const tickBefore = this.previous;
     const advances = tickBefore?.t === F.t - 1;
-    const sameMotion = advances && tickBefore.state === F.state && tickBefore.move === F.move
-      && tickBefore.f + 1 === F.f && tickBefore.face === F.face;
-    const tick = sameMotion ? tickBefore.f + fraction : F.f;
+    const frozen = tickBefore?.t === F.t;          // pausa de impacto: la simulación no avanza
+    // El dibujo cambia solo en fotogramas enteros de la simulación: nada de medios dibujos.
+    const tick = F.f;
     const x = advances ? tickBefore.x + (F.x - tickBefore.x) * fraction : F.x;
     const y = advances ? tickBefore.y + (F.y - tickBefore.y) * fraction : F.y;
     const phase = Math.max(0, tick - 4) / (F.state === 'walkB' ? -43 : 35);
     const walking = isWalking(F.state);
     if (walking) {
-      this.exitStep = ((Math.round(phase * 8) % 8) + 8) % 8;
+      this.exitStep = ((Math.floor(phase * 8) % 8) + 8) % 8;
     } else if (F.state !== 'idle' || tick >= 4) {
       this.exitStep = null;
     }
-    const [a, b, blend] = practicePose(F, tick, F.t - (sameMotion ? 1 - fraction : 0), phase, this.exitStep ?? null);
+    const [a, b, blend] = practicePose(F, tick, F.t, walking ? Math.floor(phase * 8) / 8 + .001 : phase, this.exitStep ?? null);
+    const pose = blend >= 1 ? b : a;                 // siempre un dibujo entero
     const uniforms = this.body.material.uniforms;
     uniforms.tint.value.set(F.state === 'hit' && F.f < 4 ? '#ffc9a5' : '#ffffff');
-    uniforms.from.value = this.atlas.art.get(a.atlas);
-    uniforms.to.value = this.atlas.art.get(b.atlas);
-    rectFor(uniforms.fromRect.value, uniforms.from.value, TILE, a.id, 4);
-    rectFor(uniforms.toRect.value, uniforms.to.value, TILE, b.id, 4);
-    const edge = this.atlas.index.pairs[pairId(a, b)];
-    uniforms.hasFlow.value = Number(edge !== undefined && blend > 0);
-    uniforms.fraction.value = edge === undefined ? 0 : blend;
-    if (edge !== undefined) {
-      const { flow, index } = this.atlas;
-      rectFor(uniforms.flowRect.value, flow, FLOW_TILE, edge[0], index.cols);
-      rectFor(uniforms.flowBackRect.value, flow, FLOW_TILE, edge[1], index.cols);
-    }
+    uniforms.sheet.value = this.atlas.art.get(pose.atlas);
+    rectFor(uniforms.rect.value, uniforms.sheet.value, TILE, pose.id, 4);
+
     const face = F.face, scale = F.scale;
-    const size = 2.44 * scale;
-    const height = walking ? size * (1 - .011 * Math.sin(phase * 4 * Math.PI)) : size;
-    this.body.scale.set(face * size, height, 1);
-    this.body.position.set(x + face * scale * .12, y + (324 / TILE - .5) * height, .12);
+    const size = 2.44 * scale * (SHEET_SCALE[pose.atlas] ?? 1);
+    let sx = 1, sy = 1, dx = 0;
+    // respiración en guardia: 4 pasos por ciclo de ~1,5 s, cambia cada 6 fotogramas (dibujado "a seises")
+    const idle = F.state === 'idle' && !walking;
+    const step = Math.floor(F.t / 6) % 16;
+    uniforms.breathe.value = idle ? [0, .004, .008, .011, .012, .011, .008, .004, 0, -.002, -.003, -.002, 0, 0, 0, 0][step] * size : 0;
+    // estirón en los dos primeros fotogramas activos del golpe (el "smear" de los dibujos a mano)
+    const active = move?.active;
+    if (F.state === 'attack' && active && tick >= active[0] && tick <= active[0] + 1) { sx = 1.07; sy = .97; dx = .05; }
+    // aplastado al aterrizar
+    if (F.state === 'land' && tick < 3) { sx = 1.05; sy = .94; }
+    // vibración al recibir un golpe durante la pausa de impacto
+    if (F.state === 'hit' && frozen) dx = (F.t + this.shake++) % 2 ? .025 : -.025; else this.shake = 0;
+    this.body.scale.set(face * size * sx, size * sy, 1);
+    this.body.position.set(x + face * (scale * .12 + dx), y + (324 / TILE - .5) * size * sy, .12);
     const type = ATTACK_KEYS.indexOf(F.move);
     const isThrow = F.move === 'throw';
     const effect = MOVE_EFFECT[type] || (isThrow ? ['arc', .54, 1.06, -.25] : F.move === 'grab' ? ['jab', .53, 1.05, 0] : null);
