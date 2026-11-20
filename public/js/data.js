@@ -175,6 +175,14 @@ export const CHARS = {
   sombra: { id: 'sombra', model: 'rogue', name: 'SOMBRA', title: 'La Lanza Roja', weapon: 'spear', palette: 'black', airJumps: 0, scale: 1.03, chainMax: 5, lowKnock: true,
     stats: { fuerza: 5, destreza: 7, defensa: 4, velocidad: 6 }, passive: 'Barridos letales', passiveDesc: 'Todos sus golpes bajos derriban al rival.',
     desc: 'Ninja de largo alcance que castiga cada error.', portrait: 'img/sombra.jpg', hair: { color: '#c8173a', segs: 9, scarf: true }, accent: '#ff2d55' },
+  // Dummies de pruebas (opciones de desarrollador): maniquíes CC0 de Quaternius sobre el esqueleto común,
+  // para probar animaciones. Solo aparecen en Práctica con las opciones de desarrollador activadas.
+  dummy_m: { id: 'dummy_m', model: 'wizard', dev: true, name: 'DUMMY', title: 'Masculino · pruebas', weapon: 'sword', palette: 'dummy', airJumps: 1, scale: 1, chainMax: 6, hair: null,
+    stats: { fuerza: 5, destreza: 6, defensa: 5, velocidad: 6 }, passive: 'Maniquí de pruebas', passiveDesc: 'Para revisar animaciones y golpes sobre el esqueleto común.',
+    desc: 'Maniquí neutro para probar animaciones.', accent: '#46c8ff' },
+  dummy_f: { id: 'dummy_f', model: 'wizard', dev: true, name: 'DUMMY', title: 'Femenino · pruebas', weapon: 'sword', palette: 'dummy', airJumps: 1, scale: 1, chainMax: 6, hair: null,
+    stats: { fuerza: 5, destreza: 6, defensa: 5, velocidad: 6 }, passive: 'Maniquí de pruebas', passiveDesc: 'Para revisar animaciones y golpes sobre el esqueleto común.',
+    desc: 'Maniquí neutro para probar animaciones.', accent: '#46c8ff' },
   dummy: { id: 'dummy', model: 'wizard', tint: '#9aa0b0', name: 'MUÑECO', weapon: 'none', palette: 'dummy', airJumps: 0, scale: 1, chainMax: 3, hair: null,
     stats: { fuerza: 5, destreza: 5, defensa: 6, velocidad: 4 } },
 };
@@ -194,6 +202,7 @@ export function damageMult(charId, wk, moveKey) {
 }
 export const STAT_NAMES = { fuerza: 'Fuerza', destreza: 'Destreza', defensa: 'Defensa', velocidad: 'Velocidad' };
 export const ROSTER = ['aura', 'vega', 'kai', 'sombra'];
+export const DEV_ROSTER = ['dummy_m', 'dummy_f'];
 
 // =====================================================================
 //  COMBOS DE DEMOSTRACIÓN (se pueden ver en el Campo de práctica)

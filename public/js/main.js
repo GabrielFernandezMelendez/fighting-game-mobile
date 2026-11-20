@@ -1,7 +1,8 @@
 // =====================================================================
 //  ORQUESTADOR: pantallas, bucle de juego, práctica, online y HUD
 // =====================================================================
-import { CHARS, ROSTER, WEAPONS, COMBOS, GESTURES, DT, STAT_NAMES, damageMult } from './data.js';
+import { VERSION, BUILD } from './version.js';
+import { CHARS, ROSTER, DEV_ROSTER, WEAPONS, COMBOS, GESTURES, DT, STAT_NAMES, damageMult } from './data.js';
 import { createMatch, step, NO_INPUT } from './sim.js';
 import { Renderer3D } from './render.js';
 import { LocalInput } from './input.js';
@@ -103,7 +104,10 @@ const scaleDots = v => '●'.repeat(v <= 0.35 ? 1 : v <= 0.75 ? 2 : 3).padEnd(3,
 function buildSelect() {
   app.myReady = false;
   const box = $('#selCards'); box.innerHTML = '';
-  for (const id of ROSTER) {
+  // Con las opciones de desarrollador, Práctica muestra también los dummies de pruebas
+  const list = app.mode === 'practice' && settings.dev ? [...ROSTER, ...DEV_ROSTER] : ROSTER;
+  if (!list.includes(app.myChar)) app.myChar = 'aura';
+  for (const id of list) {
     const C = CHARS[id];
     box.appendChild(cardEl(id, () => { if (!app.myReady) pickChar(id); }));
   }
@@ -594,6 +598,19 @@ function exitGameKeep() { app.returnToGame = true; }
 $('#bBoxes').addEventListener('click', e => { app.boxes = !app.boxes; e.currentTarget.classList.toggle('on', app.boxes); });
 
 // ---------- Ajustes ----------
+// Versión y opciones de desarrollador (7 toques sobre la versión, como en RapidDash)
+$('#bVersion').textContent = `NEÓN v${VERSION} · ${BUILD}`;
+const syncDev = () => { $('#devPanel').hidden = !settings.dev; $('#setDev').checked = !!settings.dev; };
+let devTaps = 0, devTimer = 0;
+$('#bVersion').addEventListener('click', () => {
+  if (settings.dev) { toast('Las opciones de desarrollador ya están activadas'); return; }
+  clearTimeout(devTimer); devTimer = setTimeout(() => devTaps = 0, 2500);
+  devTaps++;
+  if (devTaps >= 7) { settings.dev = true; saveSettings(); syncDev(); devTaps = 0; toast('Opciones de desarrollador activadas. Recarga para ver los dummies en Práctica.', 3500); }
+  else if (devTaps >= 3) toast(`Te faltan ${7 - devTaps} toques para activar las opciones de desarrollador`, 1200);
+});
+$('#setDev').addEventListener('change', e => { settings.dev = e.target.checked; saveSettings(); syncDev(); toast(settings.dev ? 'Opciones de desarrollador activadas' : 'Opciones de desarrollador desactivadas'); });
+syncDev();
 $('#setQuality').value = settings.quality; $('#setMotion').checked = !!settings.motion; $('#setFps').checked = settings.fps; $('#setVib').checked = settings.vibration;
 $('#setOpacity').value = settings.opacity; $('#setBtn').value = settings.btn; $('#setDelay').value = settings.delay;
 for (const [id, key, conv] of [['#setQuality', 'quality', Number], ['#setMotion', 'motion', null], ['#setFps', 'fps', null], ['#setVib', 'vibration', null], ['#setOpacity', 'opacity', Number], ['#setBtn', 'btn', Number], ['#setDelay', 'delay', Number]]) {

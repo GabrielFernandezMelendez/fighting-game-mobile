@@ -7,6 +7,7 @@ import { toWorld, hurtbox, getMove } from './sim.js';
 import { ModelLibrary, ModelFighter } from './models.js';
 import { clipFor } from './anims.js';
 import { VFX } from './vfx.js';
+import { devMode } from './version.js';
 import { loadPracticeAtlas, PracticeArt } from './practice-sprites.js';
 import { buildStage as makeStage, stageById } from './stages.js';
 import { createAuraVariant } from './aura-look.js';
@@ -21,10 +22,16 @@ const AURA3D = !previewFlags.has('clasico');
 const AURA_STYLE = AURA3D && !previewFlags.has('auraoriginal');
 const AURA3D_OVERRIDE = { model: 'aura', outline: 0.016, doubleSide: true, modelHeight: 1.78, cel: true };
 const SOMBRA3D = AURA3D || previewFlags.has('sombra3d');
-const ROSTER_3D = previewFlags.has('roster3d');
+// Vega y Kai usan sus modelos 3D (Tripo + esqueleto común) en todas partes; ?clasico vuelve a los muñecos antiguos.
+const ROSTER_3D = AURA3D;
 const ROSTER_3D_OVERRIDES = {
   vega: { model: 'vega', outline: 0.013, modelHeight: 1.76, cel: true },
   kai: { model: 'kai', outline: 0.014, modelHeight: 1.78, cel: true },
+};
+// Dummies de pruebas: solo se cargan con las opciones de desarrollador activadas
+const DEV_OVERRIDES = {
+  dummy_m: { model: 'maniqui_m', outline: 0.014, modelHeight: 1.78, cel: true },
+  dummy_f: { model: 'maniqui_f', outline: 0.014, modelHeight: 1.78, cel: true },
 };
 const SOMBRA3D_OVERRIDE = { model: 'sombra', outline: 0.016, doubleSide: true, modelHeight: 1.78, cel: true };
 
@@ -75,6 +82,7 @@ export class Renderer3D {
     if (AURA_STYLE) previews.push('aura_review');   // malla alisada por partes (tools/bl_aura_review.py)
     if (SOMBRA3D) previews.push('sombra');
     if (ROSTER_3D) previews.push(...Object.keys(ROSTER_3D_OVERRIDES));
+    if (devMode()) previews.push(...Object.values(DEV_OVERRIDES).map(o => o.model));
     for (const model of previews) {
       try {
         await this.lib.preload([...Object.keys(this.gltf), model]);
@@ -183,6 +191,7 @@ export class Renderer3D {
     if (AURA3D && C.id === 'aura' && this.gltf.aura) C = { ...C, ...AURA3D_OVERRIDE };
     if (SOMBRA3D && C.id === 'sombra' && this.gltf.sombra) C = { ...C, ...SOMBRA3D_OVERRIDE };
     if (ROSTER_3D && ROSTER_3D_OVERRIDES[C.id] && this.gltf[C.id]) C = { ...C, ...ROSTER_3D_OVERRIDES[C.id] };
+    if (DEV_OVERRIDES[C.id] && this.gltf[DEV_OVERRIDES[C.id].model]) C = { ...C, ...DEV_OVERRIDES[C.id] };
     if (this.useModels && C.model && this.gltf[C.model]) return this.buildModelFighter(C, wk);
     return this.buildProcFighter(C, wk);
   }
