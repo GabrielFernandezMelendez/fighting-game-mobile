@@ -231,3 +231,4 @@
 - **Vega y Kai**: modelos nuevos generados con Tripo, reducidos de 262 000 y 437 000 a 30 000 triángulos (UV y textura conservadas, texturas a 1024 px en WebP) y montados sobre el esqueleto común con `tools/bl_tripo_prep.py` + `tools/bl_aura_rig.py`. Se usan por defecto en todos los dispositivos (`?clasico` vuelve a los antiguos). Fuentes: `art/<vega|kai>/<p>_tripo_lowpoly.blend` y `_tripo_rig.blend`.
 - **Versión en Ajustes** (`public/js/version.js`; al desplegar se añade el commit). Pulsarla 7 veces activa las **opciones de desarrollador** (`neon-settings.dev`); se pueden desactivar en su panel.
 - **Dummies de pruebas** (masculino y femenino, maniquíes CC0 de Quaternius con sus propios pesos renombrados al esqueleto común, `tools/bl_maniqui.py`): seleccionables en Práctica solo con las opciones de desarrollador. Para revisar animaciones.
+- El rival de Práctica («MUÑECO») pasa a ser siempre el dummy masculino (antes, un modelo de Quaternius con barba).

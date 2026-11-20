@@ -28,8 +28,11 @@ const ROSTER_3D_OVERRIDES = {
   vega: { model: 'vega', outline: 0.013, modelHeight: 1.76, cel: true },
   kai: { model: 'kai', outline: 0.014, modelHeight: 1.78, cel: true },
 };
-// Dummies de pruebas: solo se cargan con las opciones de desarrollador activadas
+// Dummies: el rival de Práctica («MUÑECO») es siempre el dummy masculino; los dummies seleccionables
+// (dummy_m, dummy_f) solo se cargan con las opciones de desarrollador activadas.
+const DUMMY_OVERRIDE = { model: 'maniqui_m', outline: 0.014, modelHeight: 1.78, cel: true, tint: null };   // sin tinte: conserva sus colores
 const DEV_OVERRIDES = {
+  dummy: DUMMY_OVERRIDE,
   dummy_m: { model: 'maniqui_m', outline: 0.014, modelHeight: 1.78, cel: true },
   dummy_f: { model: 'maniqui_f', outline: 0.014, modelHeight: 1.78, cel: true },
 };
@@ -82,7 +85,8 @@ export class Renderer3D {
     if (AURA_STYLE) previews.push('aura_review');   // malla alisada por partes (tools/bl_aura_review.py)
     if (SOMBRA3D) previews.push('sombra');
     if (ROSTER_3D) previews.push(...Object.keys(ROSTER_3D_OVERRIDES));
-    if (devMode()) previews.push(...Object.values(DEV_OVERRIDES).map(o => o.model));
+    previews.push(DUMMY_OVERRIDE.model);
+    if (devMode()) previews.push('maniqui_f');
     for (const model of previews) {
       try {
         await this.lib.preload([...Object.keys(this.gltf), model]);
