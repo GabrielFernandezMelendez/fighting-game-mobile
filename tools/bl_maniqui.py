@@ -23,11 +23,23 @@ for x, X in (('l', 'L'), ('r', 'R')):
     REN.update({f'clavicle_{x}': f'Shoulder.{X}', f'upperarm_{x}': f'UpperArm.{X}', f'lowerarm_{x}': f'LowerArm.{X}',
                 f'hand_{x}': f'Fist.{X}', f'thigh_{x}': f'UpperLeg.{X}', f'calf_{x}': f'LowerLeg.{X}',
                 f'foot_{x}': f'Foot.{X}', f'ball_{x}': f'Foot.{X}'})
+# el maniquí de Quaternius usa nombres de Rigify (DEF-…)
+RIGIFY = {'DEF-hips': 'Body', 'DEF-spine.001': 'Hips', 'DEF-spine.002': 'Abdomen', 'DEF-spine.003': 'Torso',
+          'DEF-neck': 'Neck', 'DEF-head': 'Head'}
+for X in ('L', 'R'):
+    RIGIFY.update({f'DEF-shoulder.{X}': f'Shoulder.{X}', f'DEF-upper_arm.{X}': f'UpperArm.{X}', f'DEF-forearm.{X}': f'LowerArm.{X}',
+                   f'DEF-hand.{X}': f'Fist.{X}', f'DEF-thigh.{X}': f'UpperLeg.{X}', f'DEF-shin.{X}': f'LowerLeg.{X}',
+                   f'DEF-foot.{X}': f'Foot.{X}', f'DEF-toe.{X}': f'Foot.{X}'})
 def target(name):
     if name in REN: return REN[name]
-    for x, X in (('l', 'L'), ('r', 'R')):       # dedos → Fist1 (los nudillos), pulgar → Fist
+    if name in RIGIFY: return RIGIFY[name]
+    for X in ('L', 'R'):
+        if name.startswith('DEF-f_') and name.endswith('.' + X): return f'Fist1.{X}'     # dedos → nudillos
+        if name.startswith('DEF-thumb') and name.endswith('.' + X): return f'Fist.{X}'
+    for x, X in (('l', 'L'), ('r', 'R')):       # nombres estilo Unreal (por si cambia el paquete)
         if name.endswith('_' + x) and name.split('_')[0] in ('index', 'middle', 'ring', 'pinky'): return f'Fist1.{X}'
         if name.endswith('_' + x) and name.startswith('thumb'): return f'Fist.{X}'
+    if name not in ('root',): print('  sin destino:', name)
     return 'Body'
 
 bpy.ops.wm.read_factory_settings(use_empty=True)

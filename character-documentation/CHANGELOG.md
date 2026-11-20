@@ -231,3 +231,10 @@
 - **Vega y Kai**: modelos nuevos generados con Tripo, reducidos de 262 000 y 437 000 a 30 000 triángulos (UV y textura conservadas, texturas a 1024 px en WebP) y montados sobre el esqueleto común con `tools/bl_tripo_prep.py` + `tools/bl_aura_rig.py`. Se usan por defecto en todos los dispositivos (`?clasico` vuelve a los antiguos). Fuentes: `art/<vega|kai>/<p>_tripo_lowpoly.blend` y `_tripo_rig.blend`.
 - **Versión en Ajustes** (`public/js/version.js`; al desplegar se añade el commit). Pulsarla 7 veces activa las **opciones de desarrollador** (`neon-settings.dev`); se pueden desactivar en su panel.
 - **Dummies de pruebas** (masculino y femenino, maniquíes CC0 de Quaternius con sus propios pesos renombrados al esqueleto común, `tools/bl_maniqui.py`): seleccionables en Práctica solo con las opciones de desarrollador. Para revisar animaciones.
+- El rival de Práctica («MUÑECO») pasa a ser siempre el dummy masculino (antes, un modelo de Quaternius con barba).
+
+## 2026-11-20 — Dummies animados y scroll en la tira de luchadores
+- **Dummies (masculino/femenino) animados:** el maniquí de Quaternius usa nombres de huesos de Rigify (`DEF-…`), que `tools/bl_maniqui.py` no reconocía; todo el peso caía en `Body` y la malla se quedaba en pose de reposo. Añadido el mapa Rigify → esqueleto común (dedos → `Fist1`, pulgar → `Fist`) y regenerados `maniqui_m/f.glb`. Ahora usan las animaciones de Aura (`aura_anims`).
+- **Práctica:** el rival «MUÑECO» pasa a ser el dummy masculino (sin tinte).
+- **Selección de luchador:** las tiras `#selCards` y `#rivCards` tienen scroll horizontal (táctil, sin barra, con degradado en el borde mientras quedan cartas); la carta elegida se desplaza a la vista.
+- **Sin cambios al gameplay.**

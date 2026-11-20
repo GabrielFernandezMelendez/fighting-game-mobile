@@ -101,6 +101,8 @@ function showFighter(prefix, id) {
 }
 const WKEYS = ['dagger', 'sword', 'hammer', 'spear'];
 const scaleDots = v => '●'.repeat(v <= 0.35 ? 1 : v <= 0.75 ? 2 : 3).padEnd(3, '○');
+// la tira de luchadores pierde el degradado del borde al llegar al final del scroll
+for (const sel of ['#selCards', '#rivCards']) { const el = $(sel); const f = () => el.classList.toggle('at-end', el.scrollLeft + el.clientWidth >= el.scrollWidth - 2); el.addEventListener('scroll', f, { passive: true }); new ResizeObserver(f).observe(el); }
 function buildSelect() {
   app.myReady = false;
   const box = $('#selCards'); box.innerHTML = '';
@@ -118,6 +120,7 @@ function pickChar(id, weapon) {
   if (id !== app.myChar || !app.myWeapon) app.myWeapon = weapon || CHARS[id].weapon;
   app.myChar = id; const C = CHARS[id];
   $$('#selCards .card').forEach(c => { c.classList.toggle('on', c.dataset.id === id); c.setAttribute('aria-selected', c.dataset.id === id); });
+  $('#selCards .card.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   showFighter('sel', id);
   const d = $('#selDetail'), wb = weaponBonus(app.myWeapon);
   const plus = Object.entries(wb).filter(([, v]) => v).map(([k, v]) => `${STAT_NAMES[k]} +${v}`).join(', ');
