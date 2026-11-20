@@ -13,3 +13,5 @@ Los modelos y animaciones de terceros son **CC0 (dominio público)**; las fuente
 | [PeerJS](https://peerjs.com) | PeerJS | MIT | Conexión P2P |
 
 Las animaciones se retargetean al esqueleto de RPG Characters con `tools/bl_retarget.py` (Blender 5 / `bpy`).
+
+| Maniquíes masculino y femenino (dummies de pruebas) | [Quaternius · Universal Animation Library 1 y 2](https://quaternius.com/packs/universalanimationlibrary2.html) | CC0 | Solo con las opciones de desarrollador |

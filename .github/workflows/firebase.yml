@@ -27,6 +27,9 @@ jobs:
       - name: Aviso si falta el secreto
         if: github.event_name != 'pull_request' && env.HAS_SA != 'true'
         run: echo "::warning::Falta el secreto FIREBASE_SERVICE_ACCOUNT_PELEASDEMO; no se despliega (ver docs/DEPLOY.md)."
+      - name: Número de build en la versión
+        if: github.event_name != 'pull_request'
+        run: sed -i "s/__BUILD__/${GITHUB_SHA::7}/g" public/js/version.js
       - name: Deploy a producción (solo main)
         if: github.event_name != 'pull_request' && env.HAS_SA == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0
